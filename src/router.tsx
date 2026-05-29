@@ -10,6 +10,9 @@ const StorePage = lazy(() =>
   import('@/pages/store').then((m) => ({ default: m.StorePage })),
 );
 const LoginPage = lazy(() => import('@/pages/login').then((m) => ({ default: m.LoginPage })));
+const LoginRegisterPage = lazy(() =>
+  import('@/pages/login-register').then((m) => ({ default: m.LoginRegisterPage })),
+);
 const AdminInventoryPage = lazy(() =>
   import('@/pages/admin-inventory').then((m) => ({ default: m.AdminInventoryPage })),
 );
@@ -23,7 +26,10 @@ const NotFoundPage = lazy(() =>
 function PageFallback() {
   return (
     <div className="flex min-h-[40vh] items-center justify-center" role="status" aria-live="polite">
-      <span className="size-8 animate-spin rounded-full border-2 border-muted border-t-primary" aria-hidden="true" />
+      <span
+        className="size-8 animate-spin rounded-full border-2 border-muted border-t-primary"
+        aria-hidden="true"
+      />
       <span className="sr-only">Cargando…</span>
     </div>
   );
@@ -35,12 +41,19 @@ function withSuspense(node: ReactNode) {
 
 export const router = createBrowserRouter([
   {
+    path: '/login',
+    element: withSuspense(<LoginPage />),
+  },
+  {
+    path: '/login/registro',
+    element: withSuspense(<LoginRegisterPage />),
+  },
+  {
     path: '/',
     element: <RootLayout />,
     children: [
       { index: true, element: withSuspense(<HomePage />) },
       { path: 'tienda', element: withSuspense(<StorePage />) },
-      { path: 'login', element: withSuspense(<LoginPage />) },
       { path: 'panel/inventario', element: withSuspense(<AdminInventoryPage />) },
       { path: 'panel/usuarios', element: withSuspense(<AdminInventoryPage />) },
       { path: 'panel', element: withSuspense(<AdminInventoryPage />) },

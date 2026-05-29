@@ -106,6 +106,102 @@
   }
 }
 
+/* Página de login Printcore */
+.login-printcore {
+  background-color: #000;
+}
+
+.login-glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+}
+
+.login-glow-orb--left {
+  top: 10%;
+  left: -10%;
+  width: 40%;
+  height: 50%;
+  background: radial-gradient(circle, rgba(220, 38, 38, 0.6) 0%, transparent 70%);
+}
+
+.login-glow-orb--right {
+  top: 20%;
+  right: -5%;
+  width: 45%;
+  height: 55%;
+  background: radial-gradient(circle, rgba(220, 38, 38, 0.45) 0%, transparent 70%);
+}
+
+.login-glow-line {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.5), transparent);
+  transform: rotate(-12deg);
+}
+
+.login-glow-line--1 {
+  top: 35%;
+  left: 5%;
+  width: 50%;
+}
+
+.login-glow-line--2 {
+  top: 55%;
+  right: 0;
+  width: 40%;
+  transform: rotate(8deg);
+}
+
+.login-card-glow {
+  background: rgba(12, 12, 12, 0.88);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 0 0 1px rgba(220, 38, 38, 0.45),
+    0 0 48px rgba(220, 38, 38, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.login-input {
+  height: 3rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.55);
+  padding-left: 2.75rem;
+  padding-right: 0.75rem;
+  font-size: 0.875rem;
+  color: #fff;
+  outline: none;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.login-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.login-input:focus-visible {
+  border-color: rgba(220, 38, 38, 0.55);
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25);
+}
+
+.login-hero-ring {
+  border-radius: 50%;
+  border: 2px solid rgba(220, 38, 38, 0.55);
+  box-shadow:
+    0 0 60px rgba(220, 38, 38, 0.45),
+    0 0 120px rgba(220, 38, 38, 0.15),
+    inset 0 0 40px rgba(220, 38, 38, 0.08);
+  background: radial-gradient(
+    circle,
+    rgba(220, 38, 38, 0.12) 0%,
+    rgba(0, 0, 0, 0.4) 55%,
+    transparent 70%
+  );
+}
+
 /* Utilidad de salto de contenido para lectores de pantalla. */
 .skip-link {
   @apply sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground;
