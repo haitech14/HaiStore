@@ -2,6 +2,18 @@ import type { Product } from '@/types/product';
 
 export const demoProducts: Product[] = [
   {
+    id: 'ricoh-im-430f',
+    name: 'Impresora Multifuncional RICOH IM 430F',
+    description: 'Multifuncional monocromática de alto rendimiento para oficinas exigentes.',
+    price: 702,
+    currency: 'USD',
+    image_url: '/products/ricoh-im-430f.png',
+    stock: 10,
+    category: 'Multifuncionales',
+    brand: 'RICOH',
+    created_at: new Date().toISOString(),
+  },
+  {
     id: 'ricoh-im-c3000',
     name: 'RICOH IM C3000',
     description: 'Multifuncional a color láser A3 para oficinas exigentes.',

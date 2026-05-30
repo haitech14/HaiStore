@@ -1,0 +1,141 @@
+import { useMemo } from 'react';
+
+import {
+  getRuletaConicGradient,
+  RULETA_SEGMENT_ANGLE,
+  SUBSCRIPTION_RULETA_PREMIOS,
+} from '@/config/subscription-ruleta-premios';
+import { cn } from '@/lib/utils';
+
+const BULB_COUNT = 24;
+const SPIN_DURATION_MS = 4600;
+/** Distancia radial de las etiquetas desde el centro (px aprox. en ruleta 360px). */
+const LABEL_RADIUS_PX = 118;
+
+interface SubscriptionRuletaWheelProps {
+  idleDiskRotation: number;
+  spinRotation: number;
+  isSpinning: boolean;
+  className?: string;
+}
+
+export function SubscriptionRuletaWheel({
+  idleDiskRotation,
+  spinRotation,
+  isSpinning,
+  className,
+}: SubscriptionRuletaWheelProps) {
+  const gradient = useMemo(() => getRuletaConicGradient(), []);
+
+  const diskRotation = isSpinning ? spinRotation : idleDiskRotation;
+
+  return (
+    <div className={cn('relative mx-auto w-full max-w-[400px] px-1 pb-6 pt-1', className)}>
+      <div className="relative mx-auto aspect-square w-full max-w-[360px]">
+        {/* Puntero dorado fijo */}
+        <div
+          aria-hidden="true"
+          className="absolute left-1/2 top-[-2px] z-30 -translate-x-1/2"
+        >
+          <div className="relative flex flex-col items-center">
+            <div className="size-0 border-x-[14px] border-b-[24px] border-x-transparent border-b-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.9)]" />
+            <div className="absolute top-[2px] size-0 border-x-[9px] border-b-[16px] border-x-transparent border-b-amber-200" />
+          </div>
+        </div>
+
+        {/* Marco dorado exterior */}
+        <div
+          className={cn(
+            'absolute inset-0 rounded-full p-[9px]',
+            'bg-gradient-to-b from-amber-200 via-yellow-500 to-amber-700',
+            'shadow-[0_0_35px_rgba(251,191,36,0.45),inset_0_2px_4px_rgba(255,255,255,0.35)]',
+          )}
+        >
+          {/* Bombillas sobre el borde amarillo */}
+          {Array.from({ length: BULB_COUNT }).map((_, index) => {
+            const angle = (index / BULB_COUNT) * 360 - 90;
+            return (
+              <div
+                key={`bulb-${index}`}
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 z-20"
+                style={{ transform: `rotate(${angle}deg)` }}
+              >
+                <span className="absolute left-1/2 top-[5px] block size-2.5 -translate-x-1/2 rounded-full bg-yellow-50 shadow-[0_0_7px_2px_rgba(255,255,255,0.95),0_0_14px_4px_rgba(250,204,21,0.55)]" />
+              </div>
+            );
+          })}
+
+          <div className="relative size-full rounded-full bg-gradient-to-b from-amber-300/80 to-amber-800/90 p-[4px]">
+            <div className="relative size-full overflow-hidden rounded-full shadow-[inset_0_0_18px_rgba(0,0,0,0.35)]">
+              {/* Disco de color */}
+              <div
+                className={cn(
+                  'absolute inset-0 rounded-full',
+                  isSpinning &&
+                    'transition-transform duration-[4600ms] ease-[cubic-bezier(0.12,0.75,0.22,1)] motion-reduce:transition-none motion-reduce:duration-0',
+                  !isSpinning && 'transition-none',
+                )}
+                style={{ transform: `rotate(${diskRotation}deg)` }}
+              >
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{ background: gradient }}
+                />
+
+                {SUBSCRIPTION_RULETA_PREMIOS.map((premio, index) => {
+                  const midAngle =
+                    index * RULETA_SEGMENT_ANGLE + RULETA_SEGMENT_ANGLE / 2 - 90;
+                  const Icon = premio.icon;
+
+                  return (
+                    <div
+                      key={premio.id}
+                      aria-hidden="true"
+                      className="absolute left-1/2 top-1/2"
+                      style={{
+                        transform: `rotate(${midAngle}deg) translateY(-${LABEL_RADIUS_PX}px)`,
+                      }}
+                    >
+                      <div className="flex w-[72px] flex-col items-center gap-1 text-center sm:w-[78px]">
+                        <Icon
+                          className="wheel-segment-icon size-6 sm:size-7"
+                          strokeWidth={2.5}
+                          aria-hidden="true"
+                        />
+                        <span className="leading-[1.08] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65),0_0_6px_rgba(0,0,0,0.35)]">
+                          <span className="block text-[0.54rem] font-extrabold uppercase tracking-tight sm:text-[0.6rem]">
+                            {premio.label}
+                          </span>
+                          <span className="mt-0.5 block text-[0.48rem] font-bold uppercase sm:text-[0.54rem]">
+                            {premio.sublabel}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Centro fijo — más compacto */}
+              <div className="absolute left-1/2 top-1/2 z-10 flex size-[22%] min-w-[68px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border-[3px] border-amber-400 bg-white px-2 py-1.5 text-center shadow-[0_4px_14px_rgba(0,0,0,0.25)] sm:min-w-[74px]">
+                <p className="font-black uppercase leading-[1.05] tracking-wide text-black">
+                  <span className="block text-[0.46rem] sm:text-[0.52rem]">Gira</span>
+                  <span className="block text-[0.46rem] sm:text-[0.52rem]">y gana</span>
+                </p>
+                <div className="mt-1 flex gap-1" aria-hidden="true">
+                  <span className="size-1.5 rounded-full bg-red-500 sm:size-2" />
+                  <span className="size-1.5 rounded-full bg-yellow-400 sm:size-2" />
+                  <span className="size-1.5 rounded-full bg-green-500 sm:size-2" />
+                  <span className="size-1.5 rounded-full bg-blue-500 sm:size-2" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export { SPIN_DURATION_MS };

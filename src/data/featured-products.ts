@@ -15,6 +15,28 @@ export interface FeaturedProduct {
 
 export const featuredProducts: FeaturedProduct[] = [
   {
+    id: 'ricoh-im-430f',
+    name: 'Impresora Multifuncional RICOH IM 430F',
+    category: 'Multifuncionales',
+    price: 702,
+    oldPrice: 891,
+    discount: 21,
+    rating: 5,
+    reviews: 48,
+    image: '/products/ricoh-im-430f.png',
+  },
+  {
+    id: 'toner-ricoh-c6003-cyan',
+    name: 'Toner Ricoh MP C6003 C4503 841849 Cyan Compatible',
+    category: 'Toner y suministros',
+    price: 40.27,
+    oldPrice: 80.81,
+    discount: 50,
+    rating: 5,
+    reviews: 94,
+    image: '/categories/toner-suministros.png',
+  },
+  {
     id: 'sony-wh1000xm5',
     name: 'Sony WH-1000XM5',
     category: 'Audio',

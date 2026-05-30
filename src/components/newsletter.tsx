@@ -1,7 +1,20 @@
 import { useState } from 'react';
-import { Mail, CheckCircle2 } from 'lucide-react';
+import {
+  ArrowRight,
+  Bell,
+  CheckCircle2,
+  Lock,
+  Mail,
+  ShieldCheck,
+  Sparkles,
+  Tag,
+} from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
+const trustItems = [
+  { icon: Tag, label: 'Ofertas exclusivas' },
+  { icon: Bell, label: 'Novedades primero' },
+  { icon: ShieldCheck, label: 'Sin spam, lo prometemos' },
+] as const;
 
 export function Newsletter() {
   const [email, setEmail] = useState('');
@@ -10,63 +23,105 @@ export function Newsletter() {
   return (
     <section
       aria-labelledby="newsletter-titulo"
-      className="relative overflow-hidden rounded-2xl bg-red-600 px-6 py-10 text-white sm:px-10"
+      className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-600 via-red-600 to-red-700 px-5 py-8 text-white shadow-lg sm:px-8 sm:py-10"
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-white/10 blur-3xl"
+        className="pointer-events-none absolute -right-20 top-0 size-72 rounded-full bg-white/10 blur-3xl"
       />
-      <div className="relative flex flex-col items-center gap-6 lg:flex-row lg:justify-between">
-        <div className="flex items-center gap-4 text-center lg:text-left">
-          <span
-            className="hidden size-12 shrink-0 items-center justify-center rounded-xl bg-white/15 sm:flex"
-            aria-hidden="true"
-          >
-            <Mail className="size-6" />
-          </span>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 left-1/3 size-48 rounded-full bg-black/10 blur-2xl"
+      />
+
+      <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-10">
+        {/* Texto + icono */}
+        <div className="flex flex-1 items-center gap-4 sm:gap-5">
+          <div className="relative shrink-0" aria-hidden="true">
+            <Sparkles className="absolute -left-1 top-0 size-3 text-white/70" />
+            <Sparkles className="absolute -right-0.5 bottom-1 size-2.5 text-white/60" />
+            <span className="flex size-14 items-center justify-center rounded-full bg-red-800/90 shadow-[0_4px_14px_rgba(0,0,0,0.25)] sm:size-16">
+              <Mail className="size-7 sm:size-8" strokeWidth={1.75} />
+            </span>
+          </div>
           <div>
-            <h2 id="newsletter-titulo" className="text-xl font-bold sm:text-2xl">
-              Recibe novedades y ofertas exclusivas
+            <h2 id="newsletter-titulo" className="text-xl font-bold leading-tight sm:text-2xl">
+              Suscríbete a nuestro Newsletter
             </h2>
-            <p className="text-sm text-white/80">
-              Sé el primero en enterarte de nuestras promociones.
+            <p className="mt-1 text-sm text-white/90 sm:text-base">
+              y recibe noticias y grandes ofertas
             </p>
           </div>
         </div>
 
-        {done ? (
-          <p role="status" className="flex items-center gap-2 font-semibold">
-            <CheckCircle2 aria-hidden="true" />
-            ¡Gracias por suscribirte!
-          </p>
-        ) : (
-          <form
-            className="flex w-full max-w-md items-stretch gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setDone(true);
-            }}
-          >
-            <label htmlFor="newsletter-email" className="sr-only">
-              Correo electrónico
-            </label>
-            <input
-              id="newsletter-email"
-              type="email"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="Ingresa tu correo electrónico"
-              className="h-11 w-full rounded-md border-0 bg-white px-4 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-white"
-            />
-            <Button
-              type="submit"
-              className="h-11 shrink-0 bg-black px-6 text-white hover:bg-black/80 focus-visible:ring-white focus-visible:ring-offset-red-600"
+        {/* Formulario */}
+        <div className="w-full lg:max-w-xl lg:shrink-0">
+          {done ? (
+            <p
+              role="status"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-white/15 px-4 py-3 font-semibold"
             >
-              Suscribirme
-            </Button>
-          </form>
-        )}
+              <CheckCircle2 className="size-5" aria-hidden="true" />
+              ¡Gracias por suscribirte!
+            </p>
+          ) : (
+            <form
+              className="flex h-12 w-full items-center overflow-hidden rounded-full bg-white pr-1 shadow-md sm:h-[3.25rem]"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setDone(true);
+              }}
+            >
+              <label htmlFor="newsletter-email" className="sr-only">
+                Dirección de email
+              </label>
+              <Mail
+                className="pointer-events-none ml-4 size-4 shrink-0 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <input
+                id="newsletter-email"
+                type="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="Dirección de email"
+                className="h-full min-w-0 flex-1 border-0 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-0"
+              />
+              <button
+                type="submit"
+                className="flex h-[calc(100%-8px)] shrink-0 items-center justify-center gap-1.5 rounded-full bg-red-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-red-600 sm:px-5"
+              >
+                Suscribirse
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+
+      {/* Beneficios */}
+      <div className="relative mt-8 flex flex-col gap-4 border-t border-white/20 pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <ul className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-x-0">
+          {trustItems.map((item, index) => (
+            <li key={item.label} className="flex items-center">
+              {index > 0 && (
+                <span
+                  className="mx-3 hidden h-4 w-px bg-white/35 sm:block"
+                  aria-hidden="true"
+                />
+              )}
+              <span className="flex items-center gap-1.5 text-xs text-white/95 sm:text-sm">
+                <item.icon className="size-3.5 shrink-0 sm:size-4" aria-hidden="true" />
+                {item.label}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="flex items-center gap-1.5 text-xs text-white/90 sm:text-sm">
+          <Lock className="size-3.5 shrink-0" aria-hidden="true" />
+          Tu información está segura con nosotros.
+        </p>
       </div>
     </section>
   );

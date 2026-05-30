@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  Briefcase,
   Copy,
   Cog,
   Droplets,
@@ -9,7 +10,9 @@ import {
   Package,
   Printer,
   Ruler,
+  ScanLine,
   Star,
+  Video,
 } from 'lucide-react';
 
 export interface MegaMenuLink {
@@ -46,6 +49,7 @@ export const megaMenuColumns: MegaMenuColumn[] = [
       { slug: 'multifuncionales', name: 'Multifuncionales', icon: Copy, href: '/tienda' },
       { slug: 'impresoras', name: 'Impresoras', icon: Printer, href: '/tienda' },
       { slug: 'formato-ancho', name: 'Formato Ancho', icon: Ruler, href: '/tienda' },
+      { slug: 'escaneres', name: 'Escáneres', icon: ScanLine, href: '/tienda?categoria=escaneres' },
     ],
   },
   {
@@ -78,6 +82,18 @@ export const megaMenuColumns: MegaMenuColumn[] = [
         href: '/tienda',
       },
       { slug: 'monitores', name: 'Monitores', icon: Monitor, href: '/tienda' },
+      {
+        slug: 'soluciones-colaboracion',
+        name: 'Soluciones de Colaboración',
+        icon: Video,
+        href: '/tienda?categoria=soluciones-colaboracion',
+      },
+      {
+        slug: 'soluciones-negocio',
+        name: 'Soluciones de Negocio',
+        icon: Briefcase,
+        href: '/tienda?categoria=soluciones-negocio',
+      },
       { slug: 'accesorios', name: 'Accesorios', icon: Headphones, href: '/tienda' },
     ],
   },

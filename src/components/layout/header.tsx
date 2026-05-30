@@ -3,38 +3,22 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import {
   ShoppingCart,
   Search,
-  User,
   Menu,
-  ChevronDown,
   X,
-  LogIn,
-  UserPlus,
-  Package,
   Mail,
   MapPin,
   Download,
   Phone,
-  LogOut,
-  Settings,
 } from 'lucide-react';
 import { Icon } from '@mdi/react';
 import { mdiWhatsapp, mdiFacebook, mdiInstagram, mdiYoutube } from '@mdi/js';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { AccountDropdown } from '@/components/layout/account-dropdown';
 import { CategoriesMegaMenu } from '@/components/layout/categories-mega-menu';
-import { useAuth } from '@/context/auth-context';
 import { useCart } from '@/context/cart-context';
 import { cn } from '@/lib/utils';
-import { USER_ROLE_LABELS } from '@/types/product';
 
 const homeItem = { to: '/', label: 'Inicio', end: true } as const;
 
@@ -187,7 +171,6 @@ function SearchForm({ className }: { className?: string }) {
 
 export function Header() {
   const { totalItems, totalPrice } = useCart();
-  const { user, isAdmin, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -268,81 +251,7 @@ export function Header() {
           <SearchForm className="max-w-md" />
         </div>
 
-        {/* Cuenta */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="hidden h-11 gap-2 px-2 sm:inline-flex">
-              <User className="size-5" aria-hidden="true" />
-              <span className="flex flex-col items-start leading-tight">
-                <span className="text-xs text-muted-foreground">
-                  {user ? USER_ROLE_LABELS[user.role] : 'Precio público'}
-                </span>
-                <span className="text-sm font-semibold">
-                  {user ? user.name : 'Iniciar sesión'}
-                </span>
-              </span>
-              <ChevronDown
-                className="size-4 text-muted-foreground"
-                aria-hidden="true"
-              />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>
-              {user ? user.email : 'Mi cuenta'}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {!user ? (
-              <>
-                <DropdownMenuItem asChild>
-                  <Link to="/login">
-                    <LogIn aria-hidden="true" />
-                    Iniciar sesión
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/login">
-                    <UserPlus aria-hidden="true" />
-                    Acceso mayorista / distribuidor
-                  </Link>
-                </DropdownMenuItem>
-              </>
-            ) : (
-              <>
-                {isAdmin && (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link to="/panel/inventario">
-                        <Settings aria-hidden="true" />
-                        Inventario
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/panel/usuarios">
-                        <UserPlus aria-hidden="true" />
-                        Roles de usuario
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuItem asChild>
-                  <Link to="/tienda">
-                    <Package aria-hidden="true" />
-                    Ver catálogo
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    void logout();
-                  }}
-                >
-                  <LogOut aria-hidden="true" />
-                  Cerrar sesión
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <AccountDropdown />
 
         {/* Carrito */}
         <Button asChild variant="ghost" className="ml-auto h-11 gap-2 px-2 sm:ml-0">

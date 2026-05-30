@@ -25,6 +25,10 @@ const ProductDetailPage = lazy(() =>
 const NotFoundPage = lazy(() =>
   import('@/pages/not-found').then((m) => ({ default: m.NotFoundPage })),
 );
+const TermsPage = lazy(() => import('@/pages/legal').then((m) => ({ default: m.TermsPage })));
+const PrivacyPage = lazy(() =>
+  import('@/pages/legal').then((m) => ({ default: m.PrivacyPage })),
+);
 
 function PageFallback() {
   return (
@@ -60,8 +64,11 @@ export const router = createBrowserRouter([
       { path: 'tienda/producto/:id', element: withSuspense(<ProductDetailPage />) },
       { path: 'panel/inventario', element: withSuspense(<AdminInventoryPage />) },
       { path: 'panel/usuarios', element: withSuspense(<AdminInventoryPage />) },
+      { path: 'panel/configuracion', element: withSuspense(<AdminInventoryPage />) },
       { path: 'panel', element: withSuspense(<AdminInventoryPage />) },
       { path: 'contacto', element: withSuspense(<ContactPage />) },
+      { path: 'terminos', element: withSuspense(<TermsPage />) },
+      { path: 'privacidad', element: withSuspense(<PrivacyPage />) },
       { path: '*', element: withSuspense(<NotFoundPage />) },
     ],
   },

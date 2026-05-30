@@ -19,6 +19,10 @@ export function usdToPen(usd: number): number {
   return Math.round(usd * USD_TO_PEN);
 }
 
+export function penToUsd(pen: number): number {
+  return Math.round((pen / USD_TO_PEN) * 100) / 100;
+}
+
 export function formatUsd(usd: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(usd);
 }

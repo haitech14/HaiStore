@@ -1,0 +1,118 @@
+import { useCallback, useState } from 'react';
+import { FileText } from 'lucide-react';
+
+import { ProductQuoteDialog } from '@/components/product-detail/product-quote-dialog';
+import {
+  ProductQuotePdfViewer,
+  type QuotePdfPreview,
+} from '@/components/product-detail/product-quote-pdf-viewer';
+import type { ProductResourceLink } from '@/types/product-detail';
+import type { Product } from '@/types/product';
+
+interface ProductDetailResourcesProps {
+  links: ProductResourceLink[];
+  product: Product;
+  displayTitle: string;
+  sku: string;
+  brandLabel: string;
+  installmentPen?: number | null;
+  installmentCount?: number;
+}
+
+function ResourceButton({
+  link,
+  onQuoteClick,
+}: {
+  link: ProductResourceLink;
+  onQuoteClick: () => void;
+}) {
+  const className =
+    'flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm font-semibold text-neutral-800 transition-colors hover:border-neutral-300 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600';
+
+  if (link.action === 'quote') {
+    return (
+      <button type="button" onClick={onQuoteClick} className={className}>
+        <FileText className="size-4 shrink-0 text-red-600" aria-hidden="true" />
+        {link.label}
+      </button>
+    );
+  }
+
+  return (
+    <a href={link.href ?? '#'} className={className}>
+      <FileText className="size-4 shrink-0 text-red-600" aria-hidden="true" />
+      {link.label}
+    </a>
+  );
+}
+
+export function ProductDetailResources({
+  links,
+  product,
+  displayTitle,
+  sku,
+  brandLabel,
+  installmentPen = null,
+  installmentCount = 6,
+}: ProductDetailResourcesProps) {
+  const [quoteOpen, setQuoteOpen] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState<QuotePdfPreview | null>(null);
+
+  const handlePreviewClose = useCallback((open: boolean) => {
+    if (!open) {
+      setPdfPreview((current) => {
+        if (current?.url) URL.revokeObjectURL(current.url);
+        return null;
+      });
+    }
+  }, []);
+
+  const quoteLink = links.find((link) => link.action === 'quote');
+  const fichaLink = links.find((link) => link.label === 'Ficha Técnica');
+  const manualLink = links.find((link) => link.label === 'Manual de Usuario');
+
+  if (links.length === 0 && installmentPen == null) {
+    return null;
+  }
+
+  return (
+    <>
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+          {quoteLink && (
+            <ResourceButton link={quoteLink} onQuoteClick={() => setQuoteOpen(true)} />
+          )}
+          {fichaLink && <ResourceButton link={fichaLink} onQuoteClick={() => setQuoteOpen(true)} />}
+          {manualLink && <ResourceButton link={manualLink} onQuoteClick={() => setQuoteOpen(true)} />}
+        </div>
+
+        {installmentPen != null && (
+          <div className="flex flex-col gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <p className="font-medium text-neutral-800">
+              Hasta {installmentCount} cuotas sin intereses de{' '}
+              <span className="font-bold">S/ {installmentPen.toLocaleString('es-PE')}</span>
+            </p>
+            <button
+              type="button"
+              className="shrink-0 text-left text-sm font-semibold text-red-600 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 sm:text-right"
+            >
+              Ver opciones &gt;
+            </button>
+          </div>
+        )}
+      </div>
+
+      <ProductQuoteDialog
+        open={quoteOpen}
+        onOpenChange={setQuoteOpen}
+        product={product}
+        displayTitle={displayTitle}
+        sku={sku}
+        brandLabel={brandLabel}
+        onGenerated={setPdfPreview}
+      />
+
+      <ProductQuotePdfViewer preview={pdfPreview} onOpenChange={handlePreviewClose} />
+    </>
+  );
+}

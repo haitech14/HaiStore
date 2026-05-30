@@ -2,7 +2,7 @@ import { Outlet } from 'react-router-dom';
 
 import { Header } from '@/components/layout/header';
 import { SiteFooter } from '@/components/layout/site-footer';
-import { ColorWheelModal } from '@/components/color-wheel/color-wheel-modal';
+import { SubscriptionPopup } from '@/components/SubscriptionPopup';
 
 export function RootLayout() {
   return (
@@ -15,7 +15,7 @@ export function RootLayout() {
         <Outlet />
       </main>
       <SiteFooter />
-      <ColorWheelModal />
+      <SubscriptionPopup />
     </div>
   );
 }

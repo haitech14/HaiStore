@@ -1,4 +1,5 @@
 import {
+  Briefcase,
   Copy,
   Printer,
   Ruler,
@@ -6,6 +7,8 @@ import {
   Cog,
   Laptop,
   Monitor,
+  ScanLine,
+  Video,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -52,6 +55,27 @@ export const categories: Category[] = [
     tagline: 'Partes y componentes para impresoras',
     icon: Cog,
     image: '/categories/repuestos.png',
+  },
+  {
+    slug: 'escaneres',
+    name: 'Escáneres',
+    tagline: 'Digitalización rápida y precisa de documentos',
+    icon: ScanLine,
+    image: '/categories/escaneres.png',
+  },
+  {
+    slug: 'soluciones-colaboracion',
+    name: 'Soluciones de Colaboración',
+    tagline: 'Videoconferencia y salas de reuniones inteligentes',
+    icon: Video,
+    image: '/categories/soluciones-colaboracion.png',
+  },
+  {
+    slug: 'soluciones-negocio',
+    name: 'Soluciones de Negocio',
+    tagline: 'Infraestructura y tecnología para empresas',
+    icon: Briefcase,
+    image: '/categories/soluciones-negocio.png',
   },
   {
     slug: 'computadoras-laptop',

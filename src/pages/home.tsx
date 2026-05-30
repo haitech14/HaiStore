@@ -1,4 +1,5 @@
 import { BrandStrip } from '@/components/brand-strip';
+import { BusinessSolutionsSection } from '@/components/business-solutions-section';
 import { CategoryStrip } from '@/components/category-strip';
 import { FeaturedProducts } from '@/components/featured-products';
 import { GuidesSection } from '@/components/guides-section';
@@ -14,12 +15,20 @@ export function HomePage() {
       <HeroBanner />
       <CategoryStrip />
 
-      <div className="container flex flex-col gap-14 py-12 sm:py-16">
+      <div className="container py-10 sm:py-12">
         <FeaturedProducts />
+      </div>
+
+      <BusinessSolutionsSection />
+
+      <div className="container py-10 sm:py-12">
+        <Newsletter />
+      </div>
+
+      <div className="container flex flex-col gap-14 pb-12 sm:pb-16">
         <PromoBanners />
         <BrandStrip brands={printerBrands} />
         <TrustBar />
-        <Newsletter />
         <GuidesSection />
       </div>
     </div>

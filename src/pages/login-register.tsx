@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Mail, Shield, User } from 'lucide-react';
 
-import { PrintcoreHexLogo } from '@/components/auth/printcore-hex-logo';
 import { useAuth } from '@/context/auth-context';
 
 export function LoginRegisterPage() {
@@ -41,9 +40,8 @@ export function LoginRegisterPage() {
       </div>
 
       <section className="login-card-glow relative z-10 w-full max-w-md rounded-2xl border border-red-600/40 p-6 sm:p-8">
-        <Link to="/" className="mb-6 flex items-center justify-center gap-2">
-          <PrintcoreHexLogo className="size-8 text-red-600" />
-          <span className="text-lg font-bold">PRINTCORE</span>
+        <Link to="/" className="mb-6 flex items-center justify-center" aria-label="Haitech, inicio">
+          <img src="/logo.png" alt="Haitech" className="h-10 w-auto" />
         </Link>
 
         <div className="mb-4 flex justify-center">

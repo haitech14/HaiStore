@@ -166,9 +166,8 @@
 .login-card-white {
   background: #ffffff;
   box-shadow:
-    0 0 0 1px rgba(220, 38, 38, 0.35),
-    0 8px 40px rgba(0, 0, 0, 0.35),
-    0 0 32px rgba(220, 38, 38, 0.12);
+    0 4px 24px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 
 .login-input {
@@ -223,6 +222,52 @@
     rgba(0, 0, 0, 0.4) 55%,
     transparent 70%
   );
+}
+
+/* Login Haitech — split 50/50 */
+.login-haitech {
+  background: #fff;
+}
+
+.login-haitech__hero {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.login-haitech__hero-shade {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.05) 0%,
+    rgba(0, 0, 0, 0.15) 45%,
+    rgba(0, 0, 0, 0.92) 100%
+  );
+}
+
+.login-haitech__hero-footer {
+  padding: 1.5rem 1.25rem 2rem;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.85) 35%, #000 100%);
+}
+
+@media (min-width: 640px) {
+  .login-haitech__hero-footer {
+    padding: 2rem 2.5rem 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .login-haitech__hero-footer {
+    padding: 2.5rem 3rem 3rem;
+  }
+}
+
+/* Iconos de la ruleta: trazo blanco con borde luminoso, sin contenedor. */
+.wheel-segment-icon {
+  color: #fff;
+  filter:
+    drop-shadow(0 0 0.75px #fff)
+    drop-shadow(0 0 1.5px #fff)
+    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
 }
 
 /* Utilidad de salto de contenido para lectores de pantalla. */

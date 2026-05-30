@@ -5,6 +5,7 @@ import cors from 'cors';
 import { supportRouter } from './routes/support.js';
 import { productsRouter } from './routes/products.js';
 import { authRouter } from './routes/auth.js';
+import { settingsRouter } from './routes/settings.js';
 
 const app = express();
 const PORT = process.env.ADMIN_PORT ?? 3080;
@@ -25,6 +26,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/support', supportRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/products', productsRouter);
+app.use('/api/settings', settingsRouter);
 
 // Manejo de rutas no encontradas.
 app.use((_req, res) => {
