@@ -4,6 +4,7 @@ import { MapPin, Package, Plus, Truck } from 'lucide-react';
 
 import { NewShipmentDialog } from '@/components/admin/shipping/new-shipment-dialog';
 import { ShipmentRowActions } from '@/components/admin/shipping/shipment-row-actions';
+import { ShipmentSuccessDialog } from '@/components/admin/shipping/shipment-success-dialog';
 
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { Badge } from '@/components/ui/badge';
@@ -64,6 +65,8 @@ export function ShippingPanel() {
   const [shipments, setShipments] = useState<ShipmentRecord[]>(() => loadShipments());
   const [savedHint, setSavedHint] = useState<string | null>(null);
   const [newShipmentOpen, setNewShipmentOpen] = useState(false);
+  const [editShipment, setEditShipment] = useState<ShipmentRecord | null>(null);
+  const [successShipment, setSuccessShipment] = useState<ShipmentRecord | null>(null);
 
   const carrierName = useMemo(() => {
     const map = new Map(carriers.map((c) => [c.id, c.name]));
@@ -146,13 +149,34 @@ export function ShippingPanel() {
 
       <NewShipmentDialog
         open={newShipmentOpen}
-        onOpenChange={setNewShipmentOpen}
+        onOpenChange={(open) => {
+          setNewShipmentOpen(open);
+          if (!open) setEditShipment(null);
+        }}
+        editShipment={editShipment}
         zones={zones}
         carriers={carriers}
         rates={rates}
-        onCreated={(next) => {
+        onSaved={(next, record) => {
           setShipments(next);
-          setSavedHint('Envío registrado.');
+          const wasEdit = Boolean(editShipment);
+          setEditShipment(null);
+          setSuccessShipment(record);
+          setSavedHint(wasEdit ? 'Envío actualizado.' : 'Envío registrado.');
+        }}
+      />
+
+      <ShipmentSuccessDialog
+        shipment={successShipment}
+        carrierName={
+          successShipment ? carrierName(successShipment.carrierId) : ''
+        }
+        onOpenChange={(open) => {
+          if (!open) setSuccessShipment(null);
+        }}
+        onEdit={(record) => {
+          setEditShipment(record);
+          setNewShipmentOpen(true);
         }}
       />
 
@@ -262,7 +286,9 @@ export function ShippingPanel() {
                   {shipments.map((row) => (
                     <tr key={row.id} className="border-b last:border-0">
                       <td className="px-4 py-3 font-medium">{row.orderRef}</td>
-                      <td className="hidden px-4 py-3 md:table-cell">{row.customerName}</td>
+                      <td className="hidden px-4 py-3 md:table-cell">
+                        {row.razonSocial?.trim() || row.customerName}
+                      </td>
                       <td className="px-4 py-3">
                         <span className="block">{row.district}</span>
                         <span className="text-xs text-muted-foreground">{row.etaLabel}</span>
@@ -296,6 +322,10 @@ export function ShippingPanel() {
                               }
                             : {})}
                           onDuplicate={() => setShipments(duplicateShipment(row.id))}
+                          onEdit={() => {
+                            setEditShipment(row);
+                            setNewShipmentOpen(true);
+                          }}
                           onDelete={() => setShipments(deleteShipment(row.id))}
                         />
                       </td>

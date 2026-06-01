@@ -19,6 +19,7 @@ export const ADMIN_ROUTES = {
   /** @deprecated Usar TPV */
   TPV_LEGACY: '/admin/tpv',
   SERVICES: '/admin/servicios',
+  RENTALS: '/admin/alquileres-planes',
   SHIPPING: '/admin/envios',
   CATEGORIES: '/admin/categorias',
   PRICE_LISTS: '/admin/listas-precios',
@@ -72,6 +73,13 @@ export const ADMIN_NAV_MAIN = [
   { key: 'CUSTOMERS' as const, label: 'Clientes', href: ADMIN_ROUTES.CUSTOMERS, icon: 'users' },
   { key: 'MARKETING' as const, label: 'Marketing', href: ADMIN_ROUTES.MARKETING, icon: 'megaphone' },
   { key: 'SHIPPING' as const, label: 'Envíos', href: ADMIN_ROUTES.SHIPPING, icon: 'truck' },
+  { key: 'SERVICES' as const, label: 'Servicios', href: ADMIN_ROUTES.SERVICES, icon: 'wrench' },
+  {
+    key: 'RENTALS' as const,
+    label: 'Alquileres y Planes',
+    href: ADMIN_ROUTES.RENTALS,
+    icon: 'calendar-range',
+  },
   { key: 'SETTINGS' as const, label: 'Configuración', href: ADMIN_ROUTES.SETTINGS_GENERAL, icon: 'settings' },
 ] as const;
 

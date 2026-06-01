@@ -64,6 +64,9 @@ const AdminVentasPage = lazy(() =>
 const AdminServiciosPage = lazy(() =>
   import('@/pages/admin/admin-more-modules').then((m) => ({ default: m.AdminServiciosPage })),
 );
+const AdminAlquileresPage = lazy(() =>
+  import('@/pages/admin/admin-more-modules').then((m) => ({ default: m.AdminAlquileresPage })),
+);
 const AdminEnviosPage = lazy(() =>
   import('@/pages/admin/admin-more-modules').then((m) => ({ default: m.AdminEnviosPage })),
 );
@@ -123,6 +126,7 @@ export const router = createBrowserRouter([
       },
       { path: 'tpv', element: <Navigate to="/admin/ventas?vista=tpv" replace /> },
       { path: 'servicios', element: withSuspense(<AdminServiciosPage />) },
+      { path: 'alquileres-planes', element: withSuspense(<AdminAlquileresPage />) },
       { path: 'envios', element: withSuspense(<AdminEnviosPage />) },
       { path: 'categorias', element: withSuspense(<AdminCategoriasPage />) },
       { path: 'listas-precios', element: withSuspense(<AdminListasPreciosPage />) },

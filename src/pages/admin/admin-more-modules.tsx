@@ -1,12 +1,9 @@
-import { Link } from 'react-router-dom';
-
-import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { AdminModuleLayout } from '@/components/admin/admin-module-layout';
 import { AppearancePanel } from '@/components/admin/appearance-panel';
+import { RentalPlansPanel } from '@/components/admin/rentals/rental-plans-panel';
+import { ServicesPanel } from '@/components/admin/services/services-panel';
 import { ShippingPanel } from '@/components/admin/shipping/shipping-panel';
 import { TpvPanel } from '@/components/admin/tpv/tpv-panel';
-import { Button } from '@/components/ui/button';
-import { ADMIN_ROUTES } from '@/lib/admin-routes';
 
 export function AdminTpvPage() {
   return (
@@ -21,18 +18,23 @@ export function AdminTpvPage() {
 
 export function AdminServiciosPage() {
   return (
-    <div className="space-y-6">
-      <p className="max-w-2xl text-sm text-muted-foreground">
-        Gestión de servicio técnico, mantenimientos y órdenes de trabajo.
-      </p>
-      <AdminEmptyState
-        title="Módulo de servicios"
-        description="Aquí podrás programar visitas, asignar técnicos y hacer seguimiento de equipos en campo."
-      />
-      <Button asChild variant="outline" className="mt-4">
-        <Link to={ADMIN_ROUTES.CUSTOMERS}>Ver clientes</Link>
-      </Button>
-    </div>
+    <AdminModuleLayout
+      title="Servicios"
+      description="Servicio técnico, mantenimientos y órdenes de trabajo en campo."
+    >
+      <ServicesPanel />
+    </AdminModuleLayout>
+  );
+}
+
+export function AdminAlquileresPage() {
+  return (
+    <AdminModuleLayout
+      title="Alquileres y planes"
+      description="Planes mensuales por volumen de impresión para equipos en alquiler."
+    >
+      <RentalPlansPanel />
+    </AdminModuleLayout>
   );
 }
 

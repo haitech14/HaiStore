@@ -61,3 +61,78 @@ export function updateShipmentStatus(id: string, status: ShipmentRecord['status'
   saveShipments(next);
   return next;
 }
+
+export type NewShipmentInput = Omit<ShipmentRecord, 'id' | 'status' | 'createdAt'>;
+
+export function generateShipmentOrderRef(): string {
+  const year = new Date().getFullYear();
+  const suffix = String(Math.floor(1000 + Math.random() * 9000));
+  return `HS-${year}-${suffix}`;
+}
+
+const TRACKING_PREFIX: Record<string, string> = {
+  haitech: 'HT-LIM',
+  olva: 'OLVA',
+  shalom: 'SHM',
+  urbano: 'URB',
+};
+
+export function generateShipmentTrackingCode(carrierId: string): string {
+  const prefix = TRACKING_PREFIX[carrierId] ?? 'TRK';
+  return `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
+}
+
+export function createShipment(input: NewShipmentInput): ShipmentRecord[] {
+  const row: ShipmentRecord = {
+    id: `shp-${Date.now()}`,
+    status: 'pending_pickup',
+    createdAt: new Date().toISOString(),
+    ...input,
+    customerName: input.customerName.trim(),
+    razonSocial: input.razonSocial?.trim() || input.customerName.trim(),
+    customerPhone: input.customerPhone?.trim() || null,
+  };
+  const next = [row, ...loadShipments()];
+  saveShipments(next);
+  return next;
+}
+
+export function updateShipment(id: string, input: NewShipmentInput): ShipmentRecord[] {
+  const next = loadShipments().map((row) =>
+    row.id === id
+      ? {
+          ...row,
+          ...input,
+          customerName: input.customerName.trim(),
+          razonSocial: input.razonSocial?.trim() || input.customerName.trim(),
+          customerPhone: input.customerPhone?.trim() || null,
+        }
+      : row,
+  );
+  saveShipments(next);
+  return next;
+}
+
+export function deleteShipment(id: string): ShipmentRecord[] {
+  const next = loadShipments().filter((row) => row.id !== id);
+  saveShipments(next);
+  return next;
+}
+
+export function duplicateShipment(id: string): ShipmentRecord[] {
+  const source = loadShipments().find((row) => row.id === id);
+  if (!source) return loadShipments();
+
+  const copy: ShipmentRecord = {
+    ...source,
+    id: `shp-${Date.now()}`,
+    orderRef: generateShipmentOrderRef(),
+    trackingCode: generateShipmentTrackingCode(source.carrierId),
+    status: 'pending_pickup',
+    createdAt: new Date().toISOString(),
+  };
+
+  const next = [copy, ...loadShipments()];
+  saveShipments(next);
+  return next;
+}

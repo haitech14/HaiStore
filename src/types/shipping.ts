@@ -33,16 +33,38 @@ export interface ShippingRate {
   active: boolean;
 }
 
+export interface ShipmentLineItem {
+  id: string;
+  description: string;
+  unitPriceUsd: number;
+  quantity: number;
+}
+
 export interface ShipmentRecord {
   id: string;
   orderRef: string;
+  /** Razón social (alias histórico: customerName). */
   customerName: string;
+  razonSocial?: string;
+  taxId?: string | null;
+  address?: string | null;
+  /** Ciudad o destino logístico (ej. Huancayo). */
+  destination?: string | null;
   district: string;
+  attention?: string | null;
+  customerDni?: string | null;
+  customerPhone?: string | null;
+  /** Detalle de agencia, ej. «A Domicilio». */
+  agencyDetail?: string | null;
   zoneId: ShippingZoneId;
   carrierId: string;
   status: ShipmentStatus;
   shippingCostPen: number;
   trackingCode: string;
   createdAt: string;
+  /** Fecha del despacho (ISO o YYYY-MM-DD). */
+  shipmentDate?: string | null;
   etaLabel: string;
+  exchangeRate?: number;
+  lineItems?: ShipmentLineItem[];
 }

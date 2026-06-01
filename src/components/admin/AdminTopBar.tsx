@@ -28,6 +28,8 @@ function resolveAdminTopBarTitle(pathname: string, search: string): string {
     return search.includes('vista=tpv') || search.includes('nuevo=1') ? 'Nueva venta' : 'Ventas';
   }
   if (pathname.startsWith(ADMIN_ROUTES.SHIPPING)) return 'Envíos';
+  if (pathname.startsWith(ADMIN_ROUTES.SERVICES)) return 'Servicios';
+  if (pathname.startsWith(ADMIN_ROUTES.RENTALS)) return 'Alquileres y planes';
   if (pathname.startsWith(ADMIN_ROUTES.MARKETING)) return 'Marketing';
   if (pathname === ADMIN_ROUTES.DASHBOARD) return 'Panel administrativo';
   return 'Panel administrativo';

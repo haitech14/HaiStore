@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
   BarChart3,
+  CalendarRange,
   ChevronLeft,
   ChevronRight,
   CreditCard,
@@ -37,6 +38,7 @@ const ICONS: Record<string, LucideIcon> = {
   settings: Settings,
   'credit-card': CreditCard,
   wrench: Wrench,
+  'calendar-range': CalendarRange,
   truck: Truck,
   tags: Tags,
   palette: Palette,

@@ -27,6 +27,7 @@ import type {
 } from '@/types/product-detail';
 import type { Product } from '@/types/product';
 import { collectProductImageUrls } from '@/lib/product-media';
+import { resolveActiveRentalPlansForStorefront } from '@/lib/rental-plans-storage';
 import { usdToPen } from '@/lib/utils';
 
 const SUPPLY_FEATURES: ProductFeatureIcon[] = [
@@ -62,13 +63,6 @@ const DEFAULT_BULK_TIERS = [
   { range: '2-4 unidades', discount: '5% dscto.', discountPercent: 5 },
   { range: '5-9 unidades', discount: '10% dscto.', discountPercent: 10 },
   { range: '10+ unidades', discount: '15% dscto.', discountPercent: 15 },
-];
-
-const DEFAULT_RENTAL_PLANS = [
-  { pagesPerMonth: 3000, monthlyPricePen: 349 },
-  { pagesPerMonth: 5000, monthlyPricePen: 399 },
-  { pagesPerMonth: 8000, monthlyPricePen: 449 },
-  { pagesPerMonth: 10000, monthlyPricePen: 499 },
 ];
 
 const IM430F_DESCRIPTION: ProductDescriptionContent = {
@@ -533,7 +527,7 @@ export function buildProductDetail(
     comboItems: buildComboItems(product, isPrinter, isSupply),
     equipmentConfigSteps: buildEquipmentConfigSteps(isPrinter, isSupply),
     bulkDiscountTiers: DEFAULT_BULK_TIERS,
-    rentalPlans: isPrinter ? DEFAULT_RENTAL_PLANS : [],
+    rentalPlans: isPrinter ? resolveActiveRentalPlansForStorefront() : [],
     isPrinterEquipment: isPrinter,
     isSupplyProduct: isSupply,
     isOnOffer: pricing.isOnOffer,

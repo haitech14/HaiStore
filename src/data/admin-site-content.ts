@@ -24,6 +24,10 @@ export const adminPlaceholderCopy: Record<
     title: 'Servicios',
     description: 'Órdenes de servicio técnico y mantenimiento.',
   },
+  'alquileres-planes': {
+    title: 'Alquileres y planes',
+    description: 'Planes mensuales por volumen de páginas para equipos en alquiler.',
+  },
   envios: {
     title: 'Envíos',
     description: 'Tarifas, zonas y seguimiento de entregas.',
