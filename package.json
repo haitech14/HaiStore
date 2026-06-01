@@ -11,7 +11,11 @@
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "server": "node --watch server/index.js",
-    "dev:all": "concurrently -n web,api -c cyan,magenta \"npm:dev\" \"npm:server\""
+    "dev:all": "concurrently -n web,api -c cyan,magenta \"npm:dev\" \"npm:server\"",
+    "sync:supabase": "node scripts/sync-supabase.mjs",
+    "sync:product-images": "node scripts/sync-product-images.mjs",
+    "sync:vercel-env": "node scripts/push-vercel-env.mjs",
+    "db:migrate:005": "node scripts/apply-supabase-migration.mjs supabase/migrations/005_products_catalog_fields.sql"
   },
   "engines": {
     "node": ">=18"
@@ -71,6 +75,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "pg": "^8.21.0",
     "postcss": "^8.5.15",
     "svgo": "^4.0.1",
     "tailwindcss": "^3.4.19",

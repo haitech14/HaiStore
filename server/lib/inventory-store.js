@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 
 import { normalizeAttributes } from './inventory-attributes.js';
 import { optimizeProductMedia } from './optimize-image.js';
+import { persistProductMedia } from './persist-product-media.js';
 import {
   normalizeProductStock,
   normalizeWarehouses,
@@ -12,7 +13,9 @@ import {
 } from './inventory-warehouses.js';
 import { seedProducts } from './seed-products.js';
 import { ensureProductSortOrders, sortProductsByOrder } from './inventory-product-order.js';
+import { resolveProductGallery, resolveProductImageUrl } from './product-image-url.js';
 import { ensureFullPrices, resolvePriceRole } from './roles.js';
+import { shouldPreferSupabaseCatalog } from './catalog-source.js';
 import { getInventoryPath } from './server-paths.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -195,11 +198,12 @@ export function mergeCatalogProduct(seed, existing, warehouses) {
 }
 
 /**
- * Alinea el inventario con el catálogo maestro (`inventory-catalog.json`, misma base que la vitrina).
- * @param {{ resetDeleted?: boolean }} options - Si true, vuelve a importar productos eliminados antes.
+ * Alinea el inventario con el catálogo maestro (`inventory-catalog.json`).
+ * Por defecto solo fusiona productos del catálogo que ya están en inventario (no crea filas nuevas).
+ * @param {{ resetDeleted?: boolean; importMissing?: boolean }} options
  */
 export async function syncInventoryFromCatalog(options = {}) {
-  const { resetDeleted = false } = options;
+  const { resetDeleted = false, importMissing = false } = options;
   await ensureInventoryFile();
   const raw = await fs.readFile(inventoryPath(), 'utf-8');
   const data = JSON.parse(raw);
@@ -219,6 +223,7 @@ export async function syncInventoryFromCatalog(options = {}) {
 
   const catalogProducts = seedProducts
     .filter((seed) => !deleted.has(seed.id))
+    .filter((seed) => importMissing || existingById.has(seed.id))
     .map((seed) => mergeCatalogProduct(seed, existingById.get(seed.id), warehouses));
 
   const customProducts = (data.products ?? [])
@@ -241,7 +246,28 @@ export async function syncInventoryFromCatalog(options = {}) {
   };
 }
 
+async function readInventoryFromSupabase() {
+  const { listProducts } = await import('./product-catalog.js');
+  const products = await listProducts({ role: 'public', adminView: true });
+  let warehouses = normalizeWarehouses();
+  try {
+    const raw = await fs.readFile(inventoryPath(), 'utf-8');
+    warehouses = normalizeWarehouses(JSON.parse(raw).warehouses);
+  } catch {
+    // En Vercel no hay archivo persistente; almacenes por defecto.
+  }
+  return {
+    products: Array.isArray(products) ? products : [],
+    deletedProductIds: [],
+    warehouses,
+  };
+}
+
 export async function readInventory() {
+  if (shouldPreferSupabaseCatalog()) {
+    return readInventoryFromSupabase();
+  }
+
   await ensureInventoryFile();
   const raw = await fs.readFile(inventoryPath(), 'utf-8');
   const data = JSON.parse(raw);
@@ -268,6 +294,8 @@ export async function readInventory() {
 }
 
 export async function writeInventory(data) {
+  const preferSupabase = shouldPreferSupabaseCatalog();
+
   let warehouses = data.warehouses;
   if (!warehouses) {
     try {
@@ -283,12 +311,24 @@ export async function writeInventory(data) {
   const migrated = (data.products ?? []).map((product) =>
     migrateInventoryProduct(product, warehouses),
   );
-  const products = await Promise.all(migrated.map((product) => optimizeProductMedia(product)));
+  const withPublicMedia = await Promise.all(migrated.map((product) => persistProductMedia(product)));
+  const products = await Promise.all(withPublicMedia.map((product) => optimizeProductMedia(product)));
   const normalized = {
     products,
     deletedProductIds: normalizeDeletedIds(data.deletedProductIds),
     warehouses,
   };
+
+  if (preferSupabase) {
+    const { syncProductsToSupabase } = await import('./product-catalog.js');
+    await syncProductsToSupabase(products);
+    if (!process.env.VERCEL) {
+      await fs.mkdir(path.dirname(inventoryPath()), { recursive: true });
+      await fs.writeFile(inventoryPath(), JSON.stringify(normalized, null, 2));
+    }
+    return;
+  }
+
   await fs.mkdir(path.dirname(inventoryPath()), { recursive: true });
   await fs.writeFile(inventoryPath(), JSON.stringify(normalized, null, 2));
 }
@@ -303,19 +343,17 @@ export function getEffectivePrice(product, role) {
 
 export function toPublicProduct(product, role) {
   const priceRole = resolvePriceRole(role);
+  const image_url = resolveProductImageUrl(product);
+  const gallery = resolveProductGallery(product);
+
   return {
     id: product.id,
     name: product.name,
     description: product.description ?? null,
     price: getEffectivePrice(product, role),
     currency: product.currency ?? 'USD',
-    image_url: product.image_url ?? null,
-    gallery:
-      Array.isArray(product.gallery) && product.gallery.length > 0
-        ? product.gallery.filter((url) => typeof url === 'string' && url.length > 0)
-        : product.image_url
-          ? [product.image_url]
-          : [],
+    image_url,
+    gallery,
     stock: product.stock ?? 0,
     category: product.category ?? null,
     brand: product.brand ?? null,

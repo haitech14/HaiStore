@@ -5,80 +5,77 @@ import {
   toPublicProduct,
 } from './inventory-store.js';
 import { seedProducts } from './seed-products.js';
-import { getSupabaseAdmin, isSupabaseAuthEnabled } from './supabase-auth.js';
+import { shouldPreferSupabaseCatalog } from './catalog-source.js';
+import { getSupabaseAdmin } from './supabase-auth.js';
 import { normalizeWarehouses } from './inventory-warehouses.js';
+import { resolveProductGallery, resolveProductImageUrl } from './product-image-url.js';
 
-/** En Vercel el disco es efímero; Supabase es la fuente de verdad del catálogo. */
-export function shouldPreferSupabaseCatalog() {
-  if (!isSupabaseAuthEnabled()) return false;
-  if (process.env.HAISTORE_CATALOG_SOURCE === 'file') return false;
-  if (process.env.HAISTORE_CATALOG_SOURCE === 'supabase') return true;
-  return Boolean(process.env.VERCEL);
+export { shouldPreferSupabaseCatalog };
+
+export function withResolvedMedia(product) {
+  const image_url = resolveProductImageUrl(product);
+  const gallery = resolveProductGallery(product);
+  return { ...product, image_url, gallery };
 }
 
 export function buildSupabaseProductRow(product) {
-  const image_url =
-    typeof product.image_url === 'string' && product.image_url.startsWith('data:')
-      ? null
-      : product.image_url;
-
-  const gallery = Array.isArray(product.gallery)
-    ? product.gallery.filter((url) => typeof url === 'string' && url.length > 0)
-    : image_url
-      ? [image_url]
-      : [];
-
-  const attributes = Array.isArray(product.attributes) ? product.attributes : [];
+  const migrated = migrateInventoryProduct(product);
+  const withMedia = withResolvedMedia(migrated);
+  const attributes = Array.isArray(withMedia.attributes) ? withMedia.attributes : [];
 
   return {
-    id: product.id,
-    name: product.name,
-    description: product.description ?? null,
-    price: product.prices?.public ?? product.price ?? 0,
-    prices: product.prices ?? ensureFullPrices({ public: product.price ?? 0 }),
-    currency: product.currency ?? 'USD',
-    image_url,
-    gallery,
-    sort_order: Number.isFinite(Number(product.sort_order))
-      ? Math.max(0, Math.floor(Number(product.sort_order)))
+    id: withMedia.id,
+    name: withMedia.name,
+    description: withMedia.description ?? null,
+    price: withMedia.prices?.public ?? withMedia.price ?? 0,
+    prices: withMedia.prices ?? ensureFullPrices({ public: withMedia.price ?? 0 }),
+    currency: withMedia.currency ?? 'USD',
+    image_url: withMedia.image_url,
+    gallery: withMedia.gallery,
+    sort_order: Number.isFinite(Number(withMedia.sort_order))
+      ? Math.max(0, Math.floor(Number(withMedia.sort_order)))
       : 0,
     attributes,
-    stock: product.stock ?? 0,
-    category: product.category ?? null,
-    brand: product.brand ?? null,
-    inventory_snapshot: product,
+    stock: withMedia.stock ?? 0,
+    category: withMedia.category ?? null,
+    brand: withMedia.brand ?? null,
+    inventory_snapshot: withMedia,
     updated_at: new Date().toISOString(),
   };
 }
 
 function rowToInventoryProduct(row) {
   const snapshot = row.inventory_snapshot;
+  let product;
+
   if (snapshot && typeof snapshot === 'object' && snapshot.id) {
-    return migrateInventoryProduct(snapshot);
+    product = migrateInventoryProduct(snapshot);
+  } else {
+    const prices = ensureFullPrices(row.prices ?? { public: row.price ?? 0 });
+    const gallery = Array.isArray(row.gallery)
+      ? row.gallery.filter((url) => typeof url === 'string' && url.length > 0)
+      : row.image_url
+        ? [row.image_url]
+        : [];
+
+    product = migrateInventoryProduct({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      prices,
+      currency: row.currency ?? 'USD',
+      image_url: row.image_url,
+      gallery,
+      stock: row.stock ?? 0,
+      category: row.category,
+      brand: row.brand,
+      created_at: row.created_at,
+      sort_order: row.sort_order ?? 0,
+      attributes: Array.isArray(row.attributes) ? row.attributes : [],
+    });
   }
 
-  const prices = ensureFullPrices(row.prices ?? { public: row.price ?? 0 });
-  const gallery = Array.isArray(row.gallery)
-    ? row.gallery.filter((url) => typeof url === 'string' && url.length > 0)
-    : row.image_url
-      ? [row.image_url]
-      : [];
-
-  return migrateInventoryProduct({
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    prices,
-    currency: row.currency ?? 'USD',
-    image_url: row.image_url,
-    gallery,
-    stock: row.stock ?? 0,
-    category: row.category,
-    brand: row.brand,
-    created_at: row.created_at,
-    sort_order: row.sort_order ?? 0,
-    attributes: Array.isArray(row.attributes) ? row.attributes : [],
-  });
+  return withResolvedMedia(product);
 }
 
 function rowToPublicProduct(row, role) {
@@ -90,6 +87,10 @@ let bootstrapPromise = null;
 export async function ensureSupabaseCatalogSeeded() {
   const supabase = getSupabaseAdmin();
   if (!supabase) return false;
+
+  if (process.env.HAISTORE_AUTO_SEED_CATALOG !== 'true') {
+    return false;
+  }
 
   if (!bootstrapPromise) {
     bootstrapPromise = (async () => {
@@ -146,8 +147,10 @@ async function listFromSupabase(role, adminView) {
 
 async function listFromInventory(role, adminView) {
   const { products } = await readInventory();
-  if (adminView) return products;
-  return products.map((product) => toPublicProduct(product, role));
+  if (adminView) {
+    return products.map((product) => withResolvedMedia(product));
+  }
+  return products.map((product) => toPublicProduct(withResolvedMedia(product), role));
 }
 
 export async function listProducts({ role = 'public', adminView = false } = {}) {
@@ -187,7 +190,7 @@ export async function getPublicProductById(id, role = 'public') {
   const { products } = await readInventory();
   const product = products.find((entry) => entry.id === id);
   if (!product) return undefined;
-  return toPublicProduct(product, role);
+  return toPublicProduct(withResolvedMedia(product), role);
 }
 
 function toLegacySupabaseRow(row) {
