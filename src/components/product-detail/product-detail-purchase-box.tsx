@@ -8,11 +8,11 @@ import {
   Zap,
 } from 'lucide-react';
 
+import { AddToCartButton } from '@/components/cart/add-to-cart-button';
 import { ProductWhatsAppButton } from '@/components/product-whatsapp-button';
 import { Button } from '@/components/ui/button';
 import { ProductDetailPriceBlock } from '@/components/product-detail/product-detail-price-block';
 import { ProductDetailPurchaseAccordion } from '@/components/product-detail/product-detail-purchase-accordion';
-import { useCart } from '@/context/cart-context';
 import type { ProductDetailViewModel } from '@/types/product-detail';
 import type { Product } from '@/types/product';
 import { cn, usdToPen } from '@/lib/utils';
@@ -52,7 +52,6 @@ function useOrderCountdown() {
 }
 
 export function ProductDetailPurchaseBox({ product, detail }: ProductDetailPurchaseBoxProps) {
-  const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [volumeExpanded, setVolumeExpanded] = useState(false);
   const [warrantyExpanded, setWarrantyExpanded] = useState(false);
@@ -68,12 +67,6 @@ export function ProductDetailPurchaseBox({ product, detail }: ProductDetailPurch
 
   const adjustQuantity = (delta: number) => {
     setQuantity((current) => Math.max(1, Math.min(stockDisplay || 99, current + delta)));
-  };
-
-  const handleAddToCart = () => {
-    for (let i = 0; i < quantity; i += 1) {
-      addItem(product);
-    }
   };
 
   return (
@@ -225,16 +218,16 @@ export function ProductDetailPurchaseBox({ product, detail }: ProductDetailPurch
 
       <div className="mt-3 flex flex-col gap-2">
         <div className="flex gap-2">
-          <Button
-            type="button"
-            size="lg"
-            className="h-11 min-h-11 flex-1 gap-2 rounded-lg bg-red-600 text-sm font-semibold text-white hover:bg-red-500 focus-visible:ring-red-600"
-            onClick={handleAddToCart}
+          <AddToCartButton
+            product={product}
+            addOptions={{ quantity }}
             disabled={outOfStock}
+            size="lg"
+            className="h-11 min-h-11 flex-1 rounded-lg bg-red-600 text-sm font-semibold text-white hover:bg-red-500 focus-visible:ring-red-600"
           >
             <ShoppingCart className="size-4" aria-hidden="true" />
             Agregar al carrito
-          </Button>
+          </AddToCartButton>
           <ProductWhatsAppButton
             className="size-11"
             stopPropagation={false}
@@ -247,16 +240,16 @@ export function ProductDetailPurchaseBox({ product, detail }: ProductDetailPurch
             }}
           />
         </div>
-        <Button
-          type="button"
+        <AddToCartButton
+          product={product}
+          addOptions={{ quantity }}
+          disabled={outOfStock}
           size="lg"
           variant="outline"
-          className="h-11 w-full rounded-lg border-red-200 bg-white text-sm font-semibold text-red-700 hover:bg-red-50 focus-visible:ring-red-600"
-          disabled={outOfStock}
-          onClick={handleAddToCart}
+          className="h-11 w-full rounded-lg border-red-200 bg-white text-sm font-semibold text-red-700 hover:bg-red-50 focus-visible:ring-red-600 hover:text-red-700"
         >
           Comprar ahora
-        </Button>
+        </AddToCartButton>
       </div>
 
       <div className="mt-5 rounded-lg bg-neutral-200 px-3 py-4 sm:px-4">

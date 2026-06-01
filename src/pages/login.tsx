@@ -2,6 +2,7 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
+  ArrowLeft,
   ArrowRight,
   Eye,
   EyeOff,
@@ -105,8 +106,16 @@ export function LoginPage() {
 
       <section
         aria-labelledby="login-titulo"
-        className="login-haitech__form flex items-center justify-center bg-white px-4 py-10 sm:px-8 lg:min-h-dvh lg:py-12"
+        className="login-haitech__form relative flex items-center justify-center bg-white px-4 py-10 sm:px-8 lg:min-h-dvh lg:py-12"
       >
+        <Link
+          to="/"
+          className="absolute left-4 top-4 z-10 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 sm:left-6 sm:top-6"
+        >
+          <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
+          Volver al inicio
+        </Link>
+
         <div className="login-card-white w-full max-w-[420px] rounded-2xl p-6 sm:p-8 lg:p-10">
           <div className="mb-6 flex justify-center">
             <Link

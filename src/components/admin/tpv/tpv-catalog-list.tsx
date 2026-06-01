@@ -1,13 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Package } from 'lucide-react';
 
 import { buildInventoryCategoryOptions } from '@/lib/inventory-categories';
 import { compareProductsBySortOrder } from '@/lib/inventory-product-order';
 import { formatTpvMoney, unitPriceForTpv } from '@/lib/tpv-pricing';
 import { cn } from '@/lib/utils';
-import type { InventoryProduct } from '@/types/product';
+import type { InventoryProduct, PriceRole } from '@/types/product';
 import type { TpvCurrency } from '@/types/tpv';
-import type { PriceRole } from '@/types/product';
 
 interface TpvCatalogListProps {
   products: InventoryProduct[];
@@ -65,7 +64,7 @@ function CatalogProductRow({
         type="button"
         onClick={onAdd}
         className={cn(
-          'flex w-full items-center gap-3 rounded-lg border bg-background p-2 text-left transition-colors',
+          'flex w-full min-h-11 items-center gap-3 rounded-lg border bg-background p-2 text-left transition-colors',
           'hover:border-[hsl(var(--admin-accent))] hover:bg-muted/40',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--admin-accent))]',
         )}
@@ -130,6 +129,24 @@ export function TpvCatalogList({
     }));
   }, [products, search]);
 
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (catalogByCategory.length === 0) {
+      setSelectedCategory(null);
+      return;
+    }
+    const stillValid = catalogByCategory.some((group) => group.name === selectedCategory);
+    if (!stillValid) {
+      setSelectedCategory(catalogByCategory[0]?.name ?? null);
+    }
+  }, [catalogByCategory, selectedCategory]);
+
+  const activeGroup = useMemo(
+    () => catalogByCategory.find((group) => group.name === selectedCategory),
+    [catalogByCategory, selectedCategory],
+  );
+
   if (catalogByCategory.length === 0) {
     return (
       <p className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
@@ -141,34 +158,65 @@ export function TpvCatalogList({
   }
 
   return (
-    <div className="max-h-[min(70vh,720px)] space-y-6 overflow-y-auto pr-1">
-      {catalogByCategory.map((group) => {
-        const sectionId = `tpv-cat-${group.name.replace(/\s+/g, '-').toLowerCase()}`;
-        return (
-        <section key={group.name} aria-labelledby={sectionId}>
-          <h4
-            id={sectionId}
-            className="sticky top-0 z-10 mb-2 border-b bg-card/95 py-2 text-xs font-bold uppercase tracking-wide text-foreground backdrop-blur-sm"
-          >
-            {group.name}
-            <span className="ml-2 font-normal text-muted-foreground">
-              ({group.products.length})
-            </span>
-          </h4>
-          <ul className="flex flex-col gap-2" role="list">
-            {group.products.map((product) => (
-              <CatalogProductRow
-                key={product.id}
-                product={product}
-                unitPrice={unitPriceForTpv(product, priceList, currency)}
-                currency={currency}
-                onAdd={() => onAddProduct(product)}
-              />
-            ))}
-          </ul>
-        </section>
-        );
-      })}
+    <div className="flex max-h-[min(70vh,720px)] min-h-[280px] flex-col gap-3 sm:flex-row sm:gap-0">
+      <nav
+        className="flex shrink-0 flex-row gap-1 overflow-x-auto border-b pb-2 sm:w-[9.5rem] sm:flex-col sm:gap-0.5 sm:overflow-y-auto sm:overflow-x-hidden sm:border-b-0 sm:border-r sm:pb-0 sm:pr-2 md:w-[10.5rem]"
+        aria-label="Categorías del catálogo"
+      >
+        {catalogByCategory.map((group) => {
+          const isActive = group.name === selectedCategory;
+          return (
+            <button
+              key={group.name}
+              type="button"
+              onClick={() => setSelectedCategory(group.name)}
+              aria-current={isActive ? 'true' : undefined}
+              className={cn(
+                'min-h-11 shrink-0 rounded-lg px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide transition-colors sm:w-full',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--admin-accent))]',
+                isActive
+                  ? 'bg-[hsl(var(--admin-accent))] text-white'
+                  : 'text-foreground hover:bg-muted/60',
+              )}
+            >
+              <span className="line-clamp-2">{group.name}</span>
+              <span
+                className={cn(
+                  'mt-0.5 block text-[0.65rem] font-normal normal-case tabular-nums',
+                  isActive ? 'text-white/85' : 'text-muted-foreground',
+                )}
+              >
+                {group.products.length} producto{group.products.length === 1 ? '' : 's'}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+
+      <div className="min-h-0 min-w-0 flex-1 sm:pl-3">
+        {activeGroup ? (
+          <>
+            <h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              {activeGroup.name}
+            </h4>
+            <ul className="flex max-h-[min(62vh,640px)] flex-col gap-2 overflow-y-auto pr-1" role="list">
+              {activeGroup.products.map((product) => (
+                <CatalogProductRow
+                  key={product.id}
+                  product={product}
+                  unitPrice={unitPriceForTpv(product, priceList, currency)}
+                  currency={currency}
+                  onAdd={() => onAddProduct(product)}
+                />
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            Elige una categoría para ver los productos.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

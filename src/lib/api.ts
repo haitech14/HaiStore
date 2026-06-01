@@ -1,4 +1,4 @@
-import { authHeaders } from '@/lib/auth-storage';
+import { authHeaders, setDemoToken } from '@/lib/auth-storage';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
@@ -23,6 +23,21 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { error?: string };
+
+    if (response.status === 401) {
+      setDemoToken(null);
+      throw new Error(
+        body.error ??
+          'Sesión expirada o no válida. Cierra sesión e inicia de nuevo como administrador.',
+      );
+    }
+
+    if (response.status === 403) {
+      throw new Error(
+        body.error ?? 'No tienes permisos de administrador para ver el inventario.',
+      );
+    }
+
     if (response.status === 502 || response.status === 504) {
       throw new Error(
         import.meta.env.PROD

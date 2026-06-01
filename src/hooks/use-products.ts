@@ -30,7 +30,14 @@ export function useProducts() {
 
 async function fetchAdminInventory(): Promise<InventoryProduct[]> {
   const rows = await apiFetch<InventoryProduct[]>('/api/products/admin/all');
-  return rows.map((row) => normalizeInventoryProduct(row, DEFAULT_WAREHOUSES));
+  return rows.map((row) => {
+    try {
+      return normalizeInventoryProduct(row, DEFAULT_WAREHOUSES);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'dato inválido';
+      throw new Error(`Inventario con formato inválido (${row.id ?? 'sin id'}): ${message}`);
+    }
+  });
 }
 
 export function useAdminInventory() {
@@ -40,6 +47,11 @@ export function useAdminInventory() {
     queryKey: ['admin-inventory'],
     queryFn: fetchAdminInventory,
     enabled: isAdmin,
+    retry: (failureCount, error) => {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('Sesión') || message.includes('permisos')) return false;
+      return failureCount < 1;
+    },
   });
 }
 
@@ -114,7 +126,7 @@ export function useInventoryMutations() {
   });
 
   const syncCatalog = useMutation({
-    mutationFn: (resetDeleted: boolean = true) =>
+    mutationFn: (resetDeleted: boolean = false) =>
       apiFetch<{ ok: boolean; total: number; fromCatalog: number }>(
         '/api/products/sync-catalog',
         {

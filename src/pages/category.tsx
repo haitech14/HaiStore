@@ -11,16 +11,20 @@ import { useStoreCategoriesTree } from '@/hooks/use-store-categories';
 import { useProducts } from '@/hooks/use-products';
 import {
   findCategoryBySlug,
-  getCategoryProductLabels,
+  resolveCategoryPageProductLabels,
 } from '@/lib/category-product-labels';
-import {
-  collectInventoryLabels,
-  findStoreCategoryBySlug,
-} from '@/lib/store-category-display';
+import { findStoreCategoryBySlug } from '@/lib/store-category-display';
 import { productMatchesCategoryFilter } from '@/lib/inventory-categories';
 import { sortProductsByOrder } from '@/lib/inventory-product-order';
+import { ProductConditionTabs, useCategoryConditionFilter } from '@/components/product-condition-tabs';
 import { CATEGORY_HERO_ID, scrollToCategoryHero } from '@/lib/category-path';
-import type { Category } from '@/data/categories';
+import {
+  catalogFamilyForCategorySlug,
+  productMatchesCatalogFamily,
+  productMatchesCondition,
+  PRODUCT_CONDITIONS,
+  type ProductCondition,
+} from '@/lib/product-condition';
 
 function ProductSkeleton() {
   return (
@@ -36,31 +40,13 @@ function ProductSkeleton() {
   );
 }
 
-function resolveProductLabels(
-  category: Category,
-  storeCategory: ReturnType<typeof findStoreCategoryBySlug>,
-  subSlug: string | null,
-): string[] {
-  if (storeCategory && subSlug) {
-    const sub = storeCategory.children?.find((row) => row.slug === subSlug);
-    if (sub) {
-      const labels = sub.inventoryLabels ?? [];
-      return labels.length > 0 ? labels : [sub.name];
-    }
-  }
-
-  if (storeCategory) {
-    return collectInventoryLabels(storeCategory);
-  }
-
-  return [...getCategoryProductLabels(category)];
-}
-
 export function CategoryPage() {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const subSlug = searchParams.get('sub');
+  const estadoFilter = useCategoryConditionFilter();
+  const catalogFamily = slug ? catalogFamilyForCategorySlug(slug) : null;
 
   const category = slug ? findCategoryBySlug(slug) : undefined;
   const { data: categoryTree = [] } = useStoreCategoriesTree();
@@ -81,17 +67,43 @@ export function CategoryPage() {
 
   const productLabels = useMemo(() => {
     if (!category) return [];
-    return resolveProductLabels(category, storeCategory, subSlug);
+    return resolveCategoryPageProductLabels(category, storeCategory, subSlug);
   }, [category, storeCategory, subSlug]);
 
-  const filteredProducts = useMemo(() => {
-    if (!products?.length || productLabels.length === 0) return [];
-    return sortProductsByOrder(
-      products.filter((product) =>
-        productLabels.some((label) => productMatchesCategoryFilter(product, label)),
-      ),
+  const baseProducts = useMemo(() => {
+    if (!products?.length) return [];
+    return products.filter((product) => {
+      const matchesLabel = productLabels.some((label) =>
+        productMatchesCategoryFilter(product, label),
+      );
+      const matchesFamily =
+        catalogFamily != null && productMatchesCatalogFamily(product, catalogFamily);
+      return matchesLabel || matchesFamily;
+    });
+  }, [products, productLabels, catalogFamily]);
+
+  const conditionCounts = useMemo(() => {
+    if (!catalogFamily || baseProducts.length === 0) {
+      return {} as Partial<Record<ProductCondition, number>>;
+    }
+    return PRODUCT_CONDITIONS.reduce(
+      (acc, condition) => {
+        acc[condition] = baseProducts.filter((product) =>
+          productMatchesCondition(product, condition),
+        ).length;
+        return acc;
+      },
+      {} as Record<ProductCondition, number>,
     );
-  }, [products, productLabels]);
+  }, [baseProducts, catalogFamily]);
+
+  const filteredProducts = useMemo(() => {
+    let list = baseProducts;
+    if (estadoFilter) {
+      list = list.filter((product) => productMatchesCondition(product, estadoFilter));
+    }
+    return sortProductsByOrder(list);
+  }, [baseProducts, estadoFilter]);
 
   useLayoutEffect(() => {
     if (subSlug) return;
@@ -174,6 +186,14 @@ export function CategoryPage() {
           />
         )}
 
+        {catalogFamily ? (
+          <ProductConditionTabs
+            categorySlug={category.slug}
+            activeCondition={estadoFilter}
+            counts={conditionCounts}
+          />
+        ) : null}
+
         <section aria-labelledby="productos-categoria-titulo">
           <header className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -198,7 +218,7 @@ export function CategoryPage() {
           )}
 
           {isLoading ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
               {Array.from({ length: 10 }).map((_, index) => (
                 <ProductSkeleton key={index} />
               ))}
@@ -213,7 +233,7 @@ export function CategoryPage() {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
               {filteredProducts.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}

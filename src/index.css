@@ -87,6 +87,43 @@
   }
 }
 
+/* Carrito: feedback al añadir producto. */
+@keyframes cart-add-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  40% {
+    transform: scale(1.04);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes cart-line-flash {
+  0% {
+    box-shadow: 0 0 0 0 hsl(0 72% 51% / 0.35);
+  }
+
+  70% {
+    box-shadow: 0 0 0 6px hsl(0 72% 51% / 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 hsl(0 72% 51% / 0);
+  }
+}
+
+.cart-add-success {
+  animation: cart-add-pop 0.45s ease-out;
+}
+
+.cart-line-highlight {
+  animation: cart-line-flash 1.2s ease-out;
+}
+
 /* Carrusel continuo de marcas — respeta prefers-reduced-motion. */
 @keyframes brand-marquee {
   from {

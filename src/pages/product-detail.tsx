@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ProductDetailView } from '@/components/product-detail/product-detail-view';
 import { Button } from '@/components/ui/button';
 import { useProduct } from '@/hooks/use-product';
+import { recordProductView } from '@/lib/product-views';
 
 export function ProductDetailPage() {
   const { id: rawId } = useParams<{ id: string }>();
@@ -13,6 +14,11 @@ export function ProductDetailPage() {
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [id]);
+
+  useLayoutEffect(() => {
+    if (!product?.id) return;
+    void recordProductView(product.id);
+  }, [product?.id]);
 
   if (isLoading) {
     return (

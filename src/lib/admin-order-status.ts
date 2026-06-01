@@ -1,5 +1,21 @@
 import type { OrderStatus } from '@/components/admin/AdminOrderStatusBadge';
-import type { StoreOrderStatus } from '@/types/store';
+import type { StoreOrderStatus, StorePaymentStatus } from '@/types/store';
+
+export const STORE_ORDER_STATUS_LABELS: Record<StoreOrderStatus, string> = {
+  pending_payment: 'Pago pendiente',
+  confirmed: 'Confirmado',
+  processing: 'En preparación',
+  shipped: 'Enviado',
+  delivered: 'Entregado',
+  cancelled: 'Cancelado',
+};
+
+export const STORE_PAYMENT_STATUS_LABELS: Record<StorePaymentStatus, string> = {
+  pending: 'Pendiente',
+  paid: 'Pagado',
+  failed: 'Fallido',
+  refunded: 'Reembolsado',
+};
 
 /** Mapea el enum de Supabase al badge del panel admin. */
 export function mapStoreOrderStatusToBadge(status: StoreOrderStatus): OrderStatus {

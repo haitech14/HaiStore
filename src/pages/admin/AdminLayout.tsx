@@ -2,15 +2,21 @@ import { Outlet, useLocation } from 'react-router-dom';
 
 import { AdminApiStatusBanner } from '@/components/admin/admin-api-status-banner';
 import { AdminCatalogSubNav } from '@/components/admin/admin-catalog-subnav';
+import { AdminServicesSubNav } from '@/components/admin/admin-services-subnav';
 import { AdminSettingsSubNav } from '@/components/admin/admin-settings-subnav';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AdminTopBar } from '@/components/admin/AdminTopBar';
 import { RequireAuth } from '@/components/auth/require-auth';
-import { isAdminCatalogPath, isAdminSettingsPath } from '@/lib/admin-routes';
+import {
+  isAdminCatalogPath,
+  isAdminServicesPath,
+  isAdminSettingsPath,
+} from '@/lib/admin-routes';
 
 export function AdminLayout() {
   const { pathname } = useLocation();
   const showCatalogSubNav = isAdminCatalogPath(pathname);
+  const showServicesSubNav = isAdminServicesPath(pathname);
   const showSettingsSubNav = isAdminSettingsPath(pathname);
 
   return (
@@ -24,6 +30,7 @@ export function AdminLayout() {
             <AdminTopBar />
             <AdminApiStatusBanner />
             {showCatalogSubNav && <AdminCatalogSubNav />}
+            {showServicesSubNav && <AdminServicesSubNav />}
             {showSettingsSubNav && <AdminSettingsSubNav />}
           </div>
           <main id="contenido" className="flex-1 overflow-x-hidden p-4 sm:p-6">

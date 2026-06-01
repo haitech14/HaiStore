@@ -34,7 +34,7 @@ export function AdminListasPreciosPage() {
     : null;
 
   async function handleSync() {
-    await syncCatalog.mutateAsync(true);
+    await syncCatalog.mutateAsync(false);
     await refetch();
   }
 

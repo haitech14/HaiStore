@@ -34,7 +34,8 @@ export function ProductAttributeBadges({
   return (
     <ul
       className={cn(
-        'flex flex-nowrap gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        'flex flex-wrap gap-1.5 pb-0.5',
+        !compact && 'overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         className,
       )}
       aria-label="Características del producto"
@@ -44,7 +45,7 @@ export function ProductAttributeBadges({
           <Badge
             variant="secondary"
             className={cn(
-              'whitespace-nowrap rounded-md border border-neutral-200 bg-neutral-50 font-medium text-neutral-800',
+              'whitespace-nowrap rounded-md border border-neutral-300 bg-neutral-200 font-medium text-neutral-700',
               compact
                 ? 'px-1.5 py-0 text-[0.6rem] leading-relaxed sm:text-[0.65rem]'
                 : 'px-2 py-0.5 text-xs',

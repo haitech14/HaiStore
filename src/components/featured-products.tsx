@@ -1,24 +1,16 @@
 import { useMemo } from 'react';
 
 import { ProductCarouselSection } from '@/components/product-carousel-section';
-import {
-  FEATURED_PRODUCT_IDS,
-  featuredProducts as catalogFeaturedFallback,
-  type FeaturedProduct,
-} from '@/data/featured-products';
+import { FEATURED_PRODUCT_IDS, type FeaturedProduct } from '@/data/featured-products';
 import { useProducts } from '@/hooks/use-products';
-import { pickFeaturedByIds, productToFeatured } from '@/lib/store-products';
+import { resolveStoreFeaturedProducts } from '@/lib/store-products';
 
 function useFeaturedFromStore(): FeaturedProduct[] {
   const { data: storeProducts } = useProducts();
 
   return useMemo(() => {
-    if (storeProducts) {
-      const ordered = pickFeaturedByIds(storeProducts, FEATURED_PRODUCT_IDS);
-      if (ordered.length > 0) return ordered;
-      return storeProducts.slice(0, 8).map(productToFeatured);
-    }
-    return catalogFeaturedFallback;
+    if (!storeProducts?.length) return [];
+    return resolveStoreFeaturedProducts(storeProducts, FEATURED_PRODUCT_IDS);
   }, [storeProducts]);
 }
 

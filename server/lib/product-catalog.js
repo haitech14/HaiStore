@@ -3,6 +3,7 @@ import {
   migrateInventoryProduct,
   readInventory,
   toPublicProduct,
+  writeInventory,
 } from './inventory-store.js';
 import { seedProducts } from './seed-products.js';
 import { shouldPreferSupabaseCatalog } from './catalog-source.js';
@@ -34,6 +35,10 @@ export function buildSupabaseProductRow(product) {
     gallery: withMedia.gallery,
     sort_order: Number.isFinite(Number(withMedia.sort_order))
       ? Math.max(0, Math.floor(Number(withMedia.sort_order)))
+      : 0,
+    is_featured: withMedia.is_featured === true,
+    view_count: Number.isFinite(Number(withMedia.view_count))
+      ? Math.max(0, Math.floor(Number(withMedia.view_count)))
       : 0,
     attributes,
     stock: withMedia.stock ?? 0,
@@ -71,6 +76,10 @@ function rowToInventoryProduct(row) {
       brand: row.brand,
       created_at: row.created_at,
       sort_order: row.sort_order ?? 0,
+      is_featured: row.is_featured === true,
+      view_count: Number.isFinite(Number(row.view_count))
+        ? Math.max(0, Math.floor(Number(row.view_count)))
+        : 0,
       attributes: Array.isArray(row.attributes) ? row.attributes : [],
     });
   }
@@ -234,4 +243,46 @@ export async function syncProductsToSupabase(products) {
 
   const rows = products.map((product) => buildSupabaseProductRow(product));
   await upsertProductRows(supabase, rows);
+}
+
+export async function incrementProductViewCount(productId) {
+  if (!productId?.trim()) return false;
+
+  if (shouldPreferSupabaseCatalog()) {
+    const supabase = getSupabaseAdmin();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('products')
+        .select('view_count')
+        .eq('id', productId)
+        .maybeSingle();
+
+      if (!error && data) {
+        const next = Math.max(0, Math.floor(Number(data.view_count ?? 0))) + 1;
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ view_count: next })
+          .eq('id', productId);
+        if (!updateError) return true;
+        if (!/column|schema cache|Could not find/i.test(updateError.message)) {
+          console.warn('[catalog] increment view Supabase:', updateError.message);
+        }
+      }
+    }
+  }
+
+  const inventory = await readInventory();
+  const index = inventory.products.findIndex((entry) => entry.id === productId);
+  if (index === -1) return false;
+
+  const current = inventory.products[index];
+  const view_count = Math.max(0, Math.floor(Number(current.view_count ?? 0))) + 1;
+  inventory.products[index] = { ...current, view_count };
+  await writeInventory({
+    products: inventory.products,
+    deletedProductIds: inventory.deletedProductIds ?? [],
+    warehouses: inventory.warehouses,
+  });
+
+  return true;
 }

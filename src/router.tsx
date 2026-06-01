@@ -1,82 +1,102 @@
-import { lazy, Suspense, type ReactNode } from 'react';
-import { Navigate, createBrowserRouter } from 'react-router-dom';
+import { Suspense, type ReactNode } from 'react';
+import { Link, Navigate, createBrowserRouter, isRouteErrorResponse, useRouteError } from 'react-router-dom';
 
 import { RootLayout } from '@/components/layout/root-layout';
+import { lazyWithRetry } from '@/lib/lazy-with-retry';
 
-const HomePage = lazy(() =>
-  import('@/pages/home').then((m) => ({ default: m.HomePage })),
+const HomePage = lazyWithRetry(() => import('@/pages/home').then((m) => ({ default: m.HomePage })), 'inicio');
+const StorePage = lazyWithRetry(() => import('@/pages/store').then((m) => ({ default: m.StorePage })), 'tienda');
+const CategoryPage = lazyWithRetry(
+  () => import('@/pages/category').then((m) => ({ default: m.CategoryPage })),
+  'categoría',
 );
-const StorePage = lazy(() =>
-  import('@/pages/store').then((m) => ({ default: m.StorePage })),
+const LoginPage = lazyWithRetry(() => import('@/pages/login').then((m) => ({ default: m.LoginPage })), 'login');
+const LoginRegisterPage = lazyWithRetry(
+  () => import('@/pages/login-register').then((m) => ({ default: m.LoginRegisterPage })),
+  'registro',
 );
-const CategoryPage = lazy(() =>
-  import('@/pages/category').then((m) => ({ default: m.CategoryPage })),
+const ContactPage = lazyWithRetry(
+  () => import('@/pages/contact').then((m) => ({ default: m.ContactPage })),
+  'contacto',
 );
-const LoginPage = lazy(() => import('@/pages/login').then((m) => ({ default: m.LoginPage })));
-const LoginRegisterPage = lazy(() =>
-  import('@/pages/login-register').then((m) => ({ default: m.LoginRegisterPage })),
+const AccountPage = lazyWithRetry(
+  () => import('@/pages/account').then((m) => ({ default: m.AccountPage })),
+  'mi cuenta',
 );
-const ContactPage = lazy(() =>
-  import('@/pages/contact').then((m) => ({ default: m.ContactPage })),
+const ProductDetailPage = lazyWithRetry(
+  () => import('@/pages/product-detail').then((m) => ({ default: m.ProductDetailPage })),
+  'producto',
 );
-const AccountPage = lazy(() =>
-  import('@/pages/account').then((m) => ({ default: m.AccountPage })),
+const NotFoundPage = lazyWithRetry(
+  () => import('@/pages/not-found').then((m) => ({ default: m.NotFoundPage })),
+  'página',
 );
-const ProductDetailPage = lazy(() =>
-  import('@/pages/product-detail').then((m) => ({ default: m.ProductDetailPage })),
-);
-const NotFoundPage = lazy(() =>
-  import('@/pages/not-found').then((m) => ({ default: m.NotFoundPage })),
-);
-const TermsPage = lazy(() => import('@/pages/legal').then((m) => ({ default: m.TermsPage })));
-const PrivacyPage = lazy(() =>
-  import('@/pages/legal').then((m) => ({ default: m.PrivacyPage })),
+const TermsPage = lazyWithRetry(() => import('@/pages/legal').then((m) => ({ default: m.TermsPage })), 'términos');
+const PrivacyPage = lazyWithRetry(
+  () => import('@/pages/legal').then((m) => ({ default: m.PrivacyPage })),
+  'privacidad',
 );
 
-const AdminLayout = lazy(() =>
-  import('@/pages/admin/AdminLayout').then((m) => ({ default: m.AdminLayout })),
+const AdminLayout = lazyWithRetry(
+  () => import('@/pages/admin/AdminLayout').then((m) => ({ default: m.AdminLayout })),
+  'admin',
 );
-const AdminDashboard = lazy(() =>
-  import('@/pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })),
+const AdminDashboard = lazyWithRetry(
+  () => import('@/pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })),
+  'panel',
 );
-const AdminPlaceholder = lazy(() =>
-  import('@/pages/admin/AdminPlaceholder').then((m) => ({ default: m.AdminPlaceholder })),
+const AdminPlaceholder = lazyWithRetry(
+  () => import('@/pages/admin/AdminPlaceholder').then((m) => ({ default: m.AdminPlaceholder })),
+  'admin',
 );
-const AdminInventarioPage = lazy(() =>
-  import('@/pages/admin/AdminInventarioPage').then((m) => ({ default: m.AdminInventarioPage })),
+const AdminInventarioPage = lazyWithRetry(
+  () => import('@/pages/admin/AdminInventarioPage').then((m) => ({ default: m.AdminInventarioPage })),
+  'inventario',
 );
-const AdminClientesPage = lazy(() =>
-  import('@/pages/admin/AdminClientesPage').then((m) => ({ default: m.AdminClientesPage })),
+const AdminClientesPage = lazyWithRetry(
+  () => import('@/pages/admin/AdminClientesPage').then((m) => ({ default: m.AdminClientesPage })),
+  'clientes',
 );
-const AdminConfiguracionLayout = lazy(() =>
-  import('@/pages/admin/AdminConfiguracionLayout').then((m) => ({
-    default: m.AdminConfiguracionLayout,
-  })),
+const AdminConfiguracionLayout = lazyWithRetry(
+  () =>
+    import('@/pages/admin/AdminConfiguracionLayout').then((m) => ({
+      default: m.AdminConfiguracionLayout,
+    })),
+  'configuración',
 );
-const AdminConfiguracionSectionPage = lazy(() =>
-  import('@/pages/admin/AdminConfiguracionSectionPage').then((m) => ({
-    default: m.AdminConfiguracionSectionPage,
-  })),
+const AdminConfiguracionSectionPage = lazyWithRetry(
+  () =>
+    import('@/pages/admin/AdminConfiguracionSectionPage').then((m) => ({
+      default: m.AdminConfiguracionSectionPage,
+    })),
+  'configuración',
 );
-const AdminVentasPage = lazy(() =>
-  import('@/pages/admin/AdminVentasPage').then((m) => ({ default: m.AdminVentasPage })),
+const AdminVentasPage = lazyWithRetry(
+  () => import('@/pages/admin/AdminVentasPage').then((m) => ({ default: m.AdminVentasPage })),
+  'ventas',
 );
-const AdminServiciosPage = lazy(() =>
-  import('@/pages/admin/admin-more-modules').then((m) => ({ default: m.AdminServiciosPage })),
+const AdminServiciosPage = lazyWithRetry(
+  () => import('@/pages/admin/admin-more-modules').then((m) => ({ default: m.AdminServiciosPage })),
+  'servicios',
 );
-const AdminAlquileresPage = lazy(() =>
-  import('@/pages/admin/admin-more-modules').then((m) => ({ default: m.AdminAlquileresPage })),
+const AdminAlquileresPage = lazyWithRetry(
+  () => import('@/pages/admin/admin-more-modules').then((m) => ({ default: m.AdminAlquileresPage })),
+  'alquileres',
 );
-const AdminEnviosPage = lazy(() =>
-  import('@/pages/admin/admin-more-modules').then((m) => ({ default: m.AdminEnviosPage })),
+const AdminEnviosPage = lazyWithRetry(
+  () => import('@/pages/admin/admin-more-modules').then((m) => ({ default: m.AdminEnviosPage })),
+  'envíos',
 );
-const AdminCategoriasPage = lazy(() =>
-  import('@/pages/admin/AdminCategoriasPage').then((m) => ({ default: m.AdminCategoriasPage })),
+const AdminCategoriasPage = lazyWithRetry(
+  () => import('@/pages/admin/AdminCategoriasPage').then((m) => ({ default: m.AdminCategoriasPage })),
+  'categorías',
 );
-const AdminListasPreciosPage = lazy(() =>
-  import('@/pages/admin/AdminListasPreciosPage').then((m) => ({
-    default: m.AdminListasPreciosPage,
-  })),
+const AdminListasPreciosPage = lazyWithRetry(
+  () =>
+    import('@/pages/admin/AdminListasPreciosPage').then((m) => ({
+      default: m.AdminListasPreciosPage,
+    })),
+  'listas de precios',
 );
 
 function PageFallback() {
@@ -95,7 +115,52 @@ function withSuspense(node: ReactNode) {
   return <Suspense fallback={<PageFallback />}>{node}</Suspense>;
 }
 
+function RouteErrorFallback() {
+  const error = useRouteError();
+  const detail =
+    isRouteErrorResponse(error)
+      ? error.statusText || `Error ${error.status}`
+      : error instanceof Error
+        ? error.message
+        : null;
+
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background p-6 text-center text-foreground">
+      <h1 className="text-xl font-semibold text-balance">No se pudo cargar esta página</h1>
+      {detail ? (
+        <p className="max-w-md text-sm text-muted-foreground">{detail}</p>
+      ) : (
+        <p className="max-w-md text-sm text-muted-foreground">
+          Ocurrió un error inesperado. Prueba recargar o volver al inicio.
+        </p>
+      )}
+      <p className="max-w-md text-xs text-muted-foreground">
+        Si acabas de publicar un despliegue, haz una recarga forzada (Ctrl+F5) para actualizar los
+        archivos de la app.
+      </p>
+      <div className="flex flex-wrap justify-center gap-3">
+        <button
+          type="button"
+          className="min-h-11 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+          onClick={() => window.location.reload()}
+        >
+          Recargar
+        </button>
+        <Link
+          to="/"
+          className="inline-flex min-h-11 items-center rounded-md border px-4 text-sm font-medium"
+        >
+          Ir al inicio
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export const router = createBrowserRouter([
+  {
+    errorElement: <RouteErrorFallback />,
+    children: [
   {
     path: '/login',
     element: withSuspense(<LoginPage />),
@@ -158,6 +223,8 @@ export const router = createBrowserRouter([
       { path: 'terminos', element: withSuspense(<TermsPage />) },
       { path: 'privacidad', element: withSuspense(<PrivacyPage />) },
       { path: '*', element: withSuspense(<NotFoundPage />) },
+    ],
+  },
     ],
   },
 ]);

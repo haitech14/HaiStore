@@ -16,6 +16,7 @@ import {
 import { applyBulkPatch } from '../lib/inventory-bulk-patch.js';
 import {
   getPublicProductById,
+  incrementProductViewCount,
   listProducts,
   syncProductsToSupabase,
 } from '../lib/product-catalog.js';
@@ -67,7 +68,8 @@ function duplicateProduct(source, warehouses) {
 productsRouter.post('/sync-catalog', requireAdmin, async (req, res, next) => {
   try {
     const resetDeleted = req.body?.resetDeleted === true;
-    const result = await syncInventoryFromCatalog({ resetDeleted });
+    const importMissing = req.body?.importMissing === true;
+    const result = await syncInventoryFromCatalog({ resetDeleted, importMissing });
     await syncProductsToSupabase(result.products);
     res.json({
       ok: true,
@@ -208,8 +210,25 @@ productsRouter.put('/reorder', requireAdmin, async (req, res, next) => {
       deletedProductIds: inventory.deletedProductIds ?? [],
       warehouses: inventory.warehouses,
     });
+    await syncProductsToSupabase(inventory.products);
 
     res.json({ ok: true, total: inventory.products.length, products: inventory.products });
+  } catch (error) {
+    next(error);
+  }
+});
+
+productsRouter.post('/:id/view', async (req, res, next) => {
+  try {
+    const productId = req.params.id?.trim();
+    if (!productId) return res.status(400).json({ error: 'Id inválido' });
+
+    const role = await resolveRequestRole(req);
+    const product = await getPublicProductById(productId, role);
+    if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
+
+    await incrementProductViewCount(productId);
+    res.json({ ok: true });
   } catch (error) {
     next(error);
   }

@@ -38,6 +38,16 @@ export function isAdminCatalogPath(pathname: string): boolean {
   );
 }
 
+export const ADMIN_SERVICES_NAV = [
+  { label: 'Servicios', tab: null as string | null },
+  { label: 'Categorías', tab: 'categorias' },
+  { label: 'Lista de Precios', tab: 'precios' },
+] as const;
+
+export function isAdminServicesPath(pathname: string): boolean {
+  return pathname === ADMIN_ROUTES.SERVICES || pathname.startsWith(`${ADMIN_ROUTES.SERVICES}/`);
+}
+
 export const ADMIN_SETTINGS_SECTIONS = [
   'general',
   'usuarios',

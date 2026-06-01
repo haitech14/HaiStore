@@ -2,6 +2,7 @@ import { Outlet, ScrollRestoration } from 'react-router-dom';
 
 import { Header } from '@/components/layout/header';
 import { SiteFooter } from '@/components/layout/site-footer';
+import { ShoppingCartDrawer } from '@/components/cart/shopping-cart-drawer';
 import { ProductCompareTray } from '@/components/product/product-compare-tray';
 import { SubscriptionPopup } from '@/components/SubscriptionPopup';
 
@@ -18,6 +19,7 @@ export function RootLayout() {
       </main>
       <SiteFooter />
       <SubscriptionPopup />
+      <ShoppingCartDrawer />
       <ProductCompareTray />
     </div>
   );

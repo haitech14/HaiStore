@@ -54,7 +54,7 @@ const PAGE_SIZE = 20;
 const ALL_CATEGORIES = 'all';
 
 export function InventoryPanel() {
-  const { data: products, isLoading, isError } = useAdminInventory();
+  const { data: products, isLoading, isError, error, refetch, isFetching } = useAdminInventory();
   const { data: warehouses = DEFAULT_WAREHOUSES } = useWarehouses();
   const { data: categoryTree = [] } = useStoreCategoriesTree();
   const { columnOrder, reorder, resetOrder, isDefaultOrder } = useInventoryColumnOrder();
@@ -218,14 +218,14 @@ export function InventoryPanel() {
   const handleSyncFromStore = async () => {
     if (
       !window.confirm(
-        '¿Sincronizar inventario con el catálogo de la tienda? Se importarán productos del catálogo que falten, se actualizarán precios e imágenes del catálogo maestro y se conservarán stock, atributos y proveedores ya registrados.',
+        '¿Sincronizar inventario con el catálogo maestro? Solo se actualizan productos que ya existen (precios e imágenes). No se volverán a importar productos que eliminaste.',
       )
     ) {
       return;
     }
     setBulkBusy(true);
     try {
-      await syncCatalog.mutateAsync(true);
+      await syncCatalog.mutateAsync(false);
       clearSelection();
       setPage(1);
     } finally {
@@ -391,9 +391,26 @@ export function InventoryPanel() {
       </p>
 
       {isError && (
-        <p role="alert" className="text-destructive">
-          No se pudo cargar el inventario. Verifica que el servidor admin esté en ejecución.
-        </p>
+        <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <p className="font-medium">
+            {error instanceof Error ? error.message : 'No se pudo cargar el inventario.'}
+          </p>
+          <p className="mt-1 text-destructive/90">
+            {import.meta.env.DEV
+              ? 'Si acabas de guardar cambios en el código, el servidor se reinicia y debes volver a iniciar sesión. Usa «npm run dev:all» para tener API y web juntos.'
+              : 'Comprueba que tu cuenta tenga rol de administrador e intenta cerrar sesión y entrar de nuevo.'}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3 border-destructive/40 text-destructive hover:bg-destructive/10"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+          >
+            {isFetching ? 'Reintentando…' : 'Reintentar'}
+          </Button>
+        </div>
       )}
 
       <div className="overflow-x-auto rounded-lg border">

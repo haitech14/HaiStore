@@ -20,7 +20,7 @@ export function AdminServiciosPage() {
   return (
     <AdminModuleLayout
       title="Servicios"
-      description="Servicio técnico, mantenimientos y órdenes de trabajo en campo."
+      description="Órdenes de servicio, categorías y lista de precios para cotizaciones técnicas."
     >
       <ServicesPanel />
     </AdminModuleLayout>

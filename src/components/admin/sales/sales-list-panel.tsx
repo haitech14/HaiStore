@@ -1,5 +1,6 @@
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { AdminOrderStatusBadge } from '@/components/admin/AdminOrderStatusBadge';
+import { SaleOrderActions } from '@/components/admin/sales/sale-order-actions';
 import { formatOrderTotal, mapStoreOrderStatusToBadge } from '@/lib/admin-order-status';
 import type { StoreOrder } from '@/types/store';
 
@@ -59,7 +60,7 @@ export function SalesListPanel({ orders, isLoading }: SalesListPanelProps) {
 
   return (
     <div className="overflow-x-auto rounded-lg border">
-      <table className="w-full min-w-[720px] text-left text-sm">
+      <table className="w-full min-w-[800px] text-left text-sm">
         <thead className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-4 py-3 font-medium">Nº venta</th>
@@ -68,6 +69,7 @@ export function SalesListPanel({ orders, isLoading }: SalesListPanelProps) {
             <th className="px-4 py-3 font-medium">Estado</th>
             <th className="px-4 py-3 font-medium">Pago</th>
             <th className="px-4 py-3 font-medium text-right">Total</th>
+            <th className="min-w-[11rem] px-4 py-3 font-medium text-right">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -85,6 +87,9 @@ export function SalesListPanel({ orders, isLoading }: SalesListPanelProps) {
               </td>
               <td className="px-4 py-3 text-right font-medium tabular-nums">
                 {formatOrderTotal(Number(order.total_usd), order.total_pen, order.currency)}
+              </td>
+              <td className="px-4 py-3 text-right">
+                <SaleOrderActions order={order} />
               </td>
             </tr>
           ))}

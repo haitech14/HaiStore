@@ -24,6 +24,47 @@ function dayKey(isoDate) {
   return date.toISOString().slice(0, 10);
 }
 
+const ORDER_DETAIL_SELECT = `
+  id,
+  order_number,
+  customer_id,
+  user_id,
+  status,
+  payment_status,
+  payment_method,
+  currency,
+  subtotal_usd,
+  tax_usd,
+  total_usd,
+  total_pen,
+  exchange_rate,
+  shipping_address,
+  billing_address,
+  notes,
+  paid_at,
+  shipped_at,
+  delivered_at,
+  cancelled_at,
+  created_at,
+  updated_at,
+  customer:store_customers (
+    id,
+    email,
+    full_name,
+    company_name,
+    phone,
+    tax_id
+  ),
+  items:store_order_items (
+    id,
+    product_id,
+    quantity,
+    unit_price_usd,
+    line_total_usd,
+    product_snapshot
+  )
+`;
+
 ordersRouter.get('/admin/dashboard', requireAdmin, async (req, res, next) => {
   try {
     const supabase = getSupabaseAdmin();
@@ -243,6 +284,135 @@ ordersRouter.get('/admin/recent', requireAdmin, async (req, res, next) => {
     }
 
     res.json({ orders: data ?? [], source: 'supabase' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+ordersRouter.get('/admin/:id', requireAdmin, async (req, res, next) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    if (!supabase) {
+      return res.status(503).json({ error: 'Supabase no configurado' });
+    }
+
+    const { data, error } = await supabase
+      .from('store_orders')
+      .select(ORDER_DETAIL_SELECT)
+      .eq('id', req.params.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[orders] detail error:', error);
+      return res.status(500).json({ error: 'No se pudo cargar la venta' });
+    }
+
+    if (!data) {
+      return res.status(404).json({ error: 'Venta no encontrada' });
+    }
+
+    res.json({ order: data, source: 'supabase' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const ORDER_STATUSES = new Set([
+  'pending_payment',
+  'confirmed',
+  'processing',
+  'shipped',
+  'delivered',
+  'cancelled',
+]);
+
+const PAYMENT_STATUSES = new Set(['pending', 'paid', 'failed', 'refunded']);
+
+function buildOrderPatch(body) {
+  const patch = {};
+  if (body.status !== undefined) {
+    if (!ORDER_STATUSES.has(body.status)) {
+      throw new Error('Estado de pedido no válido');
+    }
+    patch.status = body.status;
+  }
+  if (body.payment_status !== undefined) {
+    if (!PAYMENT_STATUSES.has(body.payment_status)) {
+      throw new Error('Estado de pago no válido');
+    }
+    patch.payment_status = body.payment_status;
+  }
+  if (body.payment_method !== undefined) {
+    const method =
+      body.payment_method === null || body.payment_method === ''
+        ? null
+        : String(body.payment_method).trim().slice(0, 120);
+    patch.payment_method = method;
+  }
+  if (body.notes !== undefined) {
+    patch.notes =
+      body.notes === null || body.notes === '' ? null : String(body.notes).trim().slice(0, 2000);
+  }
+  return patch;
+}
+
+ordersRouter.patch('/admin/:id', requireAdmin, async (req, res, next) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    if (!supabase) {
+      return res.status(503).json({ error: 'Supabase no configurado' });
+    }
+
+    let patch;
+    try {
+      patch = buildOrderPatch(req.body ?? {});
+    } catch (error) {
+      return res.status(400).json({
+        error: error instanceof Error ? error.message : 'Datos no válidos',
+      });
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
+    }
+
+    const { data, error } = await supabase
+      .from('store_orders')
+      .update(patch)
+      .eq('id', req.params.id)
+      .select(ORDER_DETAIL_SELECT)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[orders] patch error:', error);
+      return res.status(500).json({ error: 'No se pudo actualizar la venta' });
+    }
+
+    if (!data) {
+      return res.status(404).json({ error: 'Venta no encontrada' });
+    }
+
+    res.json({ order: data, source: 'supabase' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+ordersRouter.delete('/admin/:id', requireAdmin, async (req, res, next) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    if (!supabase) {
+      return res.status(503).json({ error: 'Supabase no configurado' });
+    }
+
+    const { error } = await supabase.from('store_orders').delete().eq('id', req.params.id);
+
+    if (error) {
+      console.error('[orders] delete error:', error);
+      return res.status(500).json({ error: 'No se pudo eliminar la venta' });
+    }
+
+    res.json({ ok: true });
   } catch (error) {
     next(error);
   }

@@ -39,19 +39,19 @@ export function ProductDetailRentalOption({ plans, className }: ProductDetailRen
       className={cn('rounded-xl border border-neutral-200 bg-white p-4', className)}
       aria-label="Alquiler mensual"
     >
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:flex-nowrap sm:justify-between">
-        <p className="text-sm text-neutral-700">
-          Alquila desde{' '}
-          <span className="text-lg font-bold text-neutral-900">
+      <div className="flex flex-wrap items-start gap-x-4 gap-y-3 sm:flex-nowrap sm:justify-between">
+        <div className="min-w-0 space-y-1">
+          <p className="text-sm text-neutral-700">Alquila desde</p>
+          <p className="text-2xl font-bold leading-none text-neutral-900">
             S/ {selectedPlan.monthlyPricePen.toLocaleString('es-PE')}
-          </span>
-          <span className="text-sm font-normal text-neutral-500"> / mes</span>
-          <span className="ml-1.5 text-xs text-neutral-500">
-            ({formatUsd(penToUsd(selectedPlan.monthlyPricePen))} / mes)
-          </span>
-        </p>
+            <span className="text-sm font-normal text-neutral-500"> / mes</span>
+          </p>
+          <p className="text-xs text-neutral-500">
+            {formatUsd(penToUsd(selectedPlan.monthlyPricePen))} / mes
+          </p>
+        </div>
 
-        <div className="relative w-full min-w-[9rem] sm:w-auto sm:min-w-[8.5rem]">
+        <div className="relative w-full min-w-[9rem] sm:w-auto sm:min-w-[8.5rem] sm:pt-1">
           <Label htmlFor="rental-pages-detail" className="sr-only">
             Producción estimada por mes
           </Label>

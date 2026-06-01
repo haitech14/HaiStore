@@ -31,6 +31,10 @@ export function toPublicProduct(product: InventoryProduct, role: string): Produc
     created_at: product.created_at,
     price_role: priceRole,
     sort_order: product.sort_order,
+    is_featured: product.is_featured === true,
+    view_count: Number.isFinite(Number(product.view_count))
+      ? Math.max(0, Math.floor(Number(product.view_count)))
+      : 0,
     attributes: normalizeAttributes(product.attributes),
   };
 }

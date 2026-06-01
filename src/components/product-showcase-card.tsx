@@ -5,9 +5,8 @@ import { ShoppingCart, Star } from 'lucide-react';
 import { ProductAttributeBadges } from '@/components/product-attribute-badges';
 import { ProductCardOverlayActions } from '@/components/product/product-card-overlay-actions';
 import { ProductQuickViewDialog } from '@/components/product/product-quick-view-dialog';
+import { AddToCartButton } from '@/components/cart/add-to-cart-button';
 import { ProductWhatsAppButton } from '@/components/product-whatsapp-button';
-import { Button } from '@/components/ui/button';
-import { useCart } from '@/context/cart-context';
 import { useProductCompare } from '@/context/product-compare-context';
 import type { FeaturedProduct } from '@/data/featured-products';
 import { featuredToCompareItem } from '@/lib/compare-product';
@@ -53,24 +52,21 @@ function Rating({ rating, reviews }: { rating: number; reviews: number }) {
 }
 
 export function ProductShowcaseCard({ product }: { product: FeaturedProduct }) {
-  const { addItem } = useCart();
   const { isSelected, toggle } = useProductCompare();
   const [imageError, setImageError] = useState(false);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const compareSelected = isSelected(product.id);
 
-  const handleAdd = () => {
-    addItem({
-      id: product.id,
-      name: product.name,
-      description: null,
-      price: product.price,
-      currency: 'USD',
-      image_url: product.image,
-      stock: 10,
-      category: product.category,
-      created_at: new Date().toISOString(),
-    });
+  const cartProduct = {
+    id: product.id,
+    name: product.name,
+    description: null,
+    price: product.price,
+    currency: 'USD',
+    image_url: product.image,
+    stock: 10,
+    category: product.category,
+    created_at: new Date().toISOString(),
   };
 
   const detailHref = productPath(product.id);
@@ -118,14 +114,24 @@ export function ProductShowcaseCard({ product }: { product: FeaturedProduct }) {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col gap-2.5 px-4 pb-4 pt-1">
-          <div className="flex flex-1 flex-col gap-1.5">
-            <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-neutral-400">
-              {product.category}
-            </p>
-            <h3 className="text-sm font-bold leading-snug text-neutral-900 sm:text-[0.95rem]">
-              {product.name}
-            </h3>
+        <div className="flex flex-1 flex-col gap-2 px-4 pb-3 pt-2">
+          <div className="flex items-start justify-between gap-2">
+            {product.category ? (
+              <span
+                className="max-w-[72%] truncate rounded-md bg-neutral-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-neutral-500"
+                title={product.category}
+              >
+                {product.category}
+              </span>
+            ) : null}
+            {product.brand ? (
+              <span className="shrink-0 text-xs font-semibold text-[#DC2626]">{product.brand}</span>
+            ) : null}
+          </div>
+
+          <h3 className="line-clamp-2 text-balance text-sm font-bold leading-snug text-neutral-900 sm:text-[0.95rem]">
+            {product.name}
+          </h3>
             <ProductAttributeBadges
               product={{
                 id: product.id,
@@ -135,10 +141,11 @@ export function ProductShowcaseCard({ product }: { product: FeaturedProduct }) {
                 attributes: product.attributes ?? [],
               }}
               compact
+              className="flex-wrap"
             />
             <Rating rating={product.rating} reviews={product.reviews} />
 
-            <div className="mt-1 space-y-0.5">
+            <div className="mt-auto space-y-0.5 pt-1">
               <p className="text-base font-bold text-neutral-900">
                 <DualPrice usd={product.price} />
               </p>
@@ -148,7 +155,6 @@ export function ProductShowcaseCard({ product }: { product: FeaturedProduct }) {
                 </p>
               )}
             </div>
-          </div>
         </div>
       </div>
 
@@ -166,14 +172,14 @@ export function ProductShowcaseCard({ product }: { product: FeaturedProduct }) {
       />
 
       <div className="relative z-10 mt-auto flex items-stretch gap-2 px-4 pb-4">
-        <Button
-          type="button"
-          onClick={handleAdd}
-          className="h-10 min-h-11 flex-1 gap-2 rounded-lg bg-red-600 text-sm font-semibold text-white hover:bg-red-500 focus-visible:ring-red-600"
+        <AddToCartButton
+          product={cartProduct}
+          className="h-10 min-h-11 flex-1 rounded-lg bg-red-600 px-2 text-xs font-semibold text-white hover:bg-red-500 focus-visible:ring-red-600 sm:text-sm lg:px-2.5"
         >
-          <ShoppingCart className="size-4" aria-hidden="true" />
-          Añadir al carrito
-        </Button>
+          <ShoppingCart className="size-4 shrink-0" aria-hidden="true" />
+          <span className="lg:hidden">Añadir al carrito</span>
+          <span className="hidden lg:inline">Añadir</span>
+        </AddToCartButton>
         <ProductWhatsAppButton
           className="h-10 min-h-11 w-10 rounded-lg"
           product={{

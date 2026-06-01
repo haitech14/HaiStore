@@ -39,10 +39,10 @@ export function ProductDetailCombo({ items, mainProduct, embedded = false }: Pro
   }, [items, selected]);
 
   const handleAddCombo = () => {
-    items
-      .filter((item) => selected[item.id])
-      .forEach((item) => {
-        addItem({
+    const picked = items.filter((item) => selected[item.id]);
+    picked.forEach((item, index) => {
+      addItem(
+        {
           id: `${mainProduct.id}-${item.id}`,
           name: item.name,
           description: `Accesorio para ${mainProduct.name}`,
@@ -52,8 +52,10 @@ export function ProductDetailCombo({ items, mainProduct, embedded = false }: Pro
           stock: 10,
           category: 'Accesorios',
           created_at: new Date().toISOString(),
-        });
-      });
+        },
+        { openDrawer: index === picked.length - 1 },
+      );
+    });
   };
 
   if (items.length === 0) return null;

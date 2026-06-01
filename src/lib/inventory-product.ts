@@ -124,6 +124,10 @@ export function normalizeInventoryProduct(
       purchase_price_usd: resolvePurchasePriceUsd(suppliers, fallbackPurchase),
       created_at: raw.created_at ?? new Date().toISOString(),
       sort_order: Number.isFinite(Number(raw.sort_order)) ? Number(raw.sort_order) : 0,
+      is_featured: raw.is_featured === true,
+      view_count: Number.isFinite(Number(raw.view_count))
+        ? Math.max(0, Math.floor(Number(raw.view_count)))
+        : 0,
       prices,
   };
 

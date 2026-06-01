@@ -10,9 +10,9 @@ import { cn } from '@/lib/utils';
 const BULB_COUNT = 24;
 const SPIN_DURATION_MS = 4600;
 /** Centro del aro dorado (% desde el centro del disco). */
-const BULB_RADIUS_PERCENT = 49;
-const ICON_RADIUS_PERCENT = 27;
-const TEXT_RADIUS_PERCENT = 34;
+const BULB_RADIUS_PERCENT = 46;
+/** Radio del bloque icono + texto (% desde el centro; menor = más cerca del hub). */
+const SEGMENT_CONTENT_RADIUS_PERCENT = 26;
 
 const SPIN_TRANSITION =
   'transition-transform duration-[4600ms] ease-[cubic-bezier(0.12,0.75,0.22,1)] motion-reduce:transition-none motion-reduce:duration-0';
@@ -97,72 +97,56 @@ export function SubscriptionRuletaWheel({
                 {SUBSCRIPTION_RULETA_PREMIOS.map((premio, index) => {
                   const midAngle =
                     index * RULETA_SEGMENT_ANGLE + RULETA_SEGMENT_ANGLE / 2 - 90;
-                  const iconPos = polarPosition(midAngle, ICON_RADIUS_PERCENT);
-                  const textPos = polarPosition(midAngle, TEXT_RADIUS_PERCENT);
+                  const contentPos = polarPosition(midAngle, SEGMENT_CONTENT_RADIUS_PERCENT);
                   const Icon = premio.icon;
                   const upright = -(diskRotation + midAngle);
 
                   return (
-                    <div key={premio.id} aria-hidden="true">
+                    <div
+                      key={premio.id}
+                      aria-hidden="true"
+                      className="absolute size-0"
+                      style={{
+                        left: contentPos.left,
+                        top: contentPos.top,
+                        transform: `translate(-50%, -50%) rotate(${midAngle}deg)`,
+                      }}
+                    >
                       <div
-                        className="absolute size-0"
-                        style={{
-                          left: iconPos.left,
-                          top: iconPos.top,
-                          transform: `translate(-50%, -50%) rotate(${midAngle}deg)`,
-                        }}
+                        className={cn(
+                          'flex w-[4.5rem] flex-col items-center gap-1 text-center sm:w-[4.75rem]',
+                          isSpinning ? SPIN_TRANSITION : 'transition-none',
+                        )}
+                        style={{ transform: `rotate(${upright}deg)` }}
                       >
-                        <div
-                          className={cn(
-                            'flex size-7 items-center justify-center sm:size-8',
-                            isSpinning ? SPIN_TRANSITION : 'transition-none',
-                          )}
-                          style={{ transform: `rotate(${upright}deg)` }}
-                        >
+                        <div className="flex size-9 items-center justify-center sm:size-10">
                           <Icon
-                            className="wheel-segment-icon size-[1.1rem] shrink-0 sm:size-5"
-                            strokeWidth={1.35}
+                            className="wheel-segment-icon size-6 shrink-0 sm:size-7"
+                            strokeWidth={1.25}
                             aria-hidden="true"
                           />
                         </div>
-                      </div>
-                      <div
-                        className="absolute size-0"
-                        style={{
-                          left: textPos.left,
-                          top: textPos.top,
-                          transform: `translate(-50%, -50%) rotate(${midAngle}deg)`,
-                        }}
-                      >
-                        <div
-                          className={cn(
-                            'flex w-[4.25rem] flex-col items-center text-center sm:w-[4.5rem]',
-                            isSpinning ? SPIN_TRANSITION : 'transition-none',
-                          )}
-                          style={{ transform: `rotate(${upright}deg)` }}
-                        >
-                          <span className="leading-[1.06] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65),0_0_6px_rgba(0,0,0,0.35)]">
-                            <span className="block text-[0.52rem] font-extrabold uppercase tracking-tight sm:text-[0.58rem]">
-                              {premio.label}
-                            </span>
-                            <span className="mt-0.5 block text-[0.46rem] font-bold uppercase sm:text-[0.52rem]">
-                              {premio.sublabel}
-                            </span>
+                        <span className="leading-[1.06] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65),0_0_6px_rgba(0,0,0,0.35)]">
+                          <span className="block text-[0.52rem] font-extrabold uppercase tracking-tight sm:text-[0.58rem]">
+                            {premio.label}
                           </span>
-                        </div>
+                          <span className="mt-0.5 block text-[0.46rem] font-bold uppercase sm:text-[0.52rem]">
+                            {premio.sublabel}
+                          </span>
+                        </span>
                       </div>
                     </div>
                   );
                 })}
               </div>
 
-              {/* Centro fijo — texto a la izquierda, puntos finos a la derecha */}
-              <div className="absolute left-1/2 top-1/2 z-10 flex size-[24%] min-w-[76px] -translate-x-1/2 -translate-y-1/2 items-center justify-between gap-1 rounded-full border-[3px] border-amber-400 bg-white px-2 py-1.5 shadow-[0_4px_14px_rgba(0,0,0,0.25)] sm:min-w-[82px] sm:px-2.5">
-                <p className="font-black uppercase leading-[1.02] tracking-wide text-black">
-                  <span className="block text-[0.44rem] sm:text-[0.5rem]">Gira</span>
-                  <span className="block text-[0.44rem] sm:text-[0.5rem]">y gana</span>
+              {/* Centro fijo — «Gira y gana» centrado */}
+              <div className="absolute left-1/2 top-1/2 z-10 flex size-[26%] min-w-[84px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center gap-1 rounded-full border-[3px] border-amber-400 bg-white px-2 py-2 shadow-[0_4px_14px_rgba(0,0,0,0.25)] sm:min-w-[92px] sm:px-2.5">
+                <p className="text-center font-normal uppercase leading-[1.05] tracking-wide text-black">
+                  <span className="block text-[0.58rem] sm:text-[0.68rem]">Gira</span>
+                  <span className="block text-[0.58rem] sm:text-[0.68rem]">y gana</span>
                 </p>
-                <div className="flex shrink-0 flex-col gap-[3px]" aria-hidden="true">
+                <div className="flex gap-1" aria-hidden="true">
                   <span className="size-1 rounded-full bg-red-500" />
                   <span className="size-1 rounded-full bg-yellow-400" />
                   <span className="size-1 rounded-full bg-green-500" />

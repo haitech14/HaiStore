@@ -34,6 +34,10 @@ export interface Product {
   price_role?: PriceRole;
   /** Posición en listados de tienda (menor = primero). */
   sort_order?: number;
+  /** Destacado manual en vitrina (carrusel del inicio). */
+  is_featured?: boolean;
+  /** Visitas acumuladas a la ficha del producto. */
+  view_count?: number;
   attributes?: ProductAttribute[];
 }
 
@@ -80,6 +84,8 @@ export interface ProductAttribute {
 export interface InventoryProduct extends Omit<Product, 'price' | 'price_role' | 'sort_order'> {
   /** Orden de visualización en tienda y admin (0 = primero). */
   sort_order: number;
+  is_featured?: boolean;
+  view_count?: number;
   /** Cantidades por almacén (el total en `stock` es la suma). */
   stock_by_warehouse?: ProductStockByWarehouse[];
   /** Código interno / SKU. */

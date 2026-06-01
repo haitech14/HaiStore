@@ -18,7 +18,7 @@ const DEFAULT_CATEGORIES = [
     slug: 'multifuncionales',
     parentId: null,
     sortOrder: 0,
-    inventoryLabels: ['Multifuncionales'],
+    inventoryLabels: ['Multifuncionales', 'Multifuncionales Nuevas'],
     image: '/categories/multifuncionales.png',
     tagline: 'Imprime, escanea y copia en un solo equipo',
   },

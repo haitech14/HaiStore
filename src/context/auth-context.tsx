@@ -49,11 +49,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshSession = React.useCallback(async () => {
     try {
-      const me = await apiFetch<{
-        user: AuthUser | null;
-        role: UserRole | 'public';
-        authProvider: 'supabase' | 'demo' | null;
-      }>('/api/auth/me');
+      const me = await Promise.race([
+        apiFetch<{
+          user: AuthUser | null;
+          role: UserRole | 'public';
+          authProvider: 'supabase' | 'demo' | null;
+        }>('/api/auth/me'),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('timeout')), 12_000);
+        }),
+      ]);
       applyMe(me);
     } catch {
       applyMe({ user: null, role: 'public', authProvider: null });
@@ -66,17 +71,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     void refreshSession();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        void refreshSession();
-      } else if (!getDemoTokenExists()) {
-        applyMe({ user: null, role: 'public', authProvider: null });
-      }
-    });
+    if (!isSupabaseConfigured()) {
+      return;
+    }
 
-    return () => subscription.unsubscribe();
+    try {
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session) {
+          void refreshSession();
+        } else if (!getDemoTokenExists()) {
+          applyMe({ user: null, role: 'public', authProvider: null });
+        }
+      });
+
+      return () => subscription.unsubscribe();
+    } catch (error) {
+      console.warn('[auth] No se pudo suscribir a cambios de sesión:', error);
+      return undefined;
+    }
   }, [applyMe, refreshSession]);
 
   const login = React.useCallback(

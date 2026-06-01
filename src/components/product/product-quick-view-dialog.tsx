@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
 
+import { AddToCartButton } from '@/components/cart/add-to-cart-button';
 import { ProductAttributeBadges } from '@/components/product-attribute-badges';
 import { DualPrice } from '@/components/product-showcase-card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useCart } from '@/context/cart-context';
 import { useProduct } from '@/hooks/use-product';
 import { productPath } from '@/lib/product-path';
 import type { FeaturedProduct } from '@/data/featured-products';
@@ -27,7 +26,6 @@ export function ProductQuickViewDialog({
   open,
   onOpenChange,
 }: ProductQuickViewDialogProps) {
-  const { addItem } = useCart();
   const { product, isLoading } = useProduct(open ? snapshot?.id : undefined);
 
   const displayName = product?.name ?? snapshot?.name ?? '';
@@ -85,17 +83,17 @@ export function ProductQuickViewDialog({
             ) : null}
 
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Button
-                type="button"
-                className="min-h-11 flex-1 bg-red-600 hover:bg-red-500"
-                disabled={outOfStock || !product}
-                onClick={() => {
-                  if (product) addItem(product);
-                }}
-              >
-                <Plus className="size-4" aria-hidden="true" />
-                Añadir al carrito
-              </Button>
+              {product ? (
+                <AddToCartButton
+                  product={product}
+                  disabled={outOfStock}
+                  className="min-h-11 flex-1 bg-red-600 hover:bg-red-500"
+                />
+              ) : (
+                <Button type="button" className="min-h-11 flex-1" disabled>
+                  Añadir al carrito
+                </Button>
+              )}
               <Button type="button" variant="outline" className="min-h-11 flex-1" asChild>
                 <Link to={detailHref} onClick={() => onOpenChange(false)}>
                   Ver ficha completa

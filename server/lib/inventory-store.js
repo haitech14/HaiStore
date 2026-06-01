@@ -360,6 +360,10 @@ export function toPublicProduct(product, role) {
     created_at: product.created_at,
     price_role: priceRole,
     sort_order: Number.isFinite(Number(product.sort_order)) ? Number(product.sort_order) : 0,
+    is_featured: product.is_featured === true,
+    view_count: Number.isFinite(Number(product.view_count))
+      ? Math.max(0, Math.floor(Number(product.view_count)))
+      : 0,
     attributes: product.attributes ?? [],
   };
 }

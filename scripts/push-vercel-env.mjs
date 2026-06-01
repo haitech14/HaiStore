@@ -16,6 +16,7 @@ const KEYS = [
   'SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
   'CORS_ORIGIN',
+  'HAISTORE_CATALOG_SOURCE',
   'HAISUPPORT_API_URL',
   'HAISUPPORT_API_KEY',
 ];
@@ -49,6 +50,10 @@ if (!env.VITE_SUPABASE_URL && !env.SUPABASE_URL) {
 
 if (!env.CORS_ORIGIN) {
   env.CORS_ORIGIN = 'https://haistore.vercel.app,http://localhost:5173';
+}
+
+if (!env.HAISTORE_CATALOG_SOURCE) {
+  env.HAISTORE_CATALOG_SOURCE = 'supabase';
 }
 
 if (!env.SUPABASE_URL && env.VITE_SUPABASE_URL) {

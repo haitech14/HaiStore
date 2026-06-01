@@ -170,7 +170,7 @@ function SearchForm({ className }: { className?: string }) {
 }
 
 export function Header() {
-  const { totalItems, totalPrice } = useCart();
+  const { totalItems, totalPrice, openCart } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -254,26 +254,28 @@ export function Header() {
         <AccountDropdown />
 
         {/* Carrito */}
-        <Button asChild variant="ghost" className="ml-auto h-11 gap-2 px-2 sm:ml-0">
-          <Link to="/tienda" aria-label={`Carrito, ${totalItems} artículos`}>
-            <span className="relative">
-              <ShoppingCart className="size-6 text-red-600" aria-hidden="true" />
-              {totalItems > 0 && (
-                <Badge
-                  className="absolute -right-2 -top-2 h-5 min-w-5 justify-center bg-red-600 px-1"
-                  aria-hidden="true"
-                >
-                  {totalItems}
-                </Badge>
-              )}
-            </span>
-            <span className="hidden flex-col items-start leading-tight sm:flex">
-              <span className="text-sm font-semibold">Carrito</span>
-              <span className="text-xs text-muted-foreground">
-                ${totalPrice.toFixed(2)}
-              </span>
-            </span>
-          </Link>
+        <Button
+          type="button"
+          variant="ghost"
+          className="ml-auto h-11 gap-2 px-2 sm:ml-0"
+          aria-label={`Carrito de compras, ${totalItems} artículos`}
+          onClick={openCart}
+        >
+          <span className="relative">
+            <ShoppingCart className="size-6 text-red-600" aria-hidden="true" />
+            {totalItems > 0 && (
+              <Badge
+                className="absolute -right-2 -top-2 h-5 min-w-5 justify-center bg-red-600 px-1 motion-safe:animate-in motion-safe:zoom-in"
+                aria-hidden="true"
+              >
+                {totalItems}
+              </Badge>
+            )}
+          </span>
+          <span className="hidden flex-col items-start leading-tight sm:flex">
+            <span className="text-sm font-semibold">Carrito</span>
+            <span className="text-xs text-muted-foreground">${totalPrice.toFixed(2)}</span>
+          </span>
         </Button>
       </div>
 

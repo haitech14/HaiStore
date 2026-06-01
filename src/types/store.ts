@@ -85,7 +85,10 @@ export interface StoreOrder {
   cancelled_at?: string | null;
   created_at: string;
   updated_at: string;
-  customer?: Pick<StoreCustomer, 'id' | 'email' | 'full_name' | 'company_name'> | null;
+  customer?: Pick<
+    StoreCustomer,
+    'id' | 'email' | 'full_name' | 'company_name' | 'phone' | 'tax_id'
+  > | null;
   items?: StoreOrderItem[];
 }
 
