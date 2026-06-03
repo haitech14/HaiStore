@@ -41,7 +41,11 @@ export function ProductCardPricing({
   return (
     <div className="space-y-0.5">
       <p className={PRODUCT_CARD_PRICE_COMPARE_CLASS}>
-        {penOnly ? formatPenStrike(pricing.compareUsd) : <DualPrice usd={pricing.compareUsd} />}
+        {penOnly ? (
+          formatPenStrike(pricing.compareUsd)
+        ) : (
+          <DualPrice usd={pricing.compareUsd} strikethrough />
+        )}
       </p>
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <p className={PRODUCT_CARD_PRICE_MAIN_CLASS}>

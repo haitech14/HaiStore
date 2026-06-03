@@ -16,14 +16,26 @@ import { productHasNuevoCornerBadge } from '@/lib/product-detail-badges';
 import { productPath } from '@/lib/product-path';
 import { cn, formatPenFromUsd, formatUsd } from '@/lib/utils';
 
-export function DualPrice({ usd, className }: { usd: number; className?: string }) {
+export function DualPrice({
+  usd,
+  className,
+  strikethrough = false,
+}: {
+  usd: number;
+  className?: string;
+  strikethrough?: boolean;
+}) {
+  const strike = strikethrough
+    ? 'line-through decoration-muted-foreground decoration-solid'
+    : undefined;
+
   return (
     <span className={cn('inline-flex flex-wrap items-baseline gap-x-1.5', className)}>
-      <span>{formatUsd(usd)}</span>
+      <span className={strike}>{formatUsd(usd)}</span>
       <span aria-hidden="true" className="font-normal text-neutral-400">
         ·
       </span>
-      <span>{formatPenFromUsd(usd)}</span>
+      <span className={strike}>{formatPenFromUsd(usd)}</span>
     </span>
   );
 }
