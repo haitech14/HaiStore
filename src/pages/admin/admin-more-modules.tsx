@@ -1,15 +1,21 @@
+import { useState } from 'react';
+
 import { AdminModuleLayout } from '@/components/admin/admin-module-layout';
 import { AppearancePanel } from '@/components/admin/appearance-panel';
 import { RentalPlansPanel } from '@/components/admin/rentals/rental-plans-panel';
+import { RentalRequestsPanel } from '@/components/admin/rentals/rental-requests-panel';
 import { ServicesPanel } from '@/components/admin/services/services-panel';
 import { ShippingPanel } from '@/components/admin/shipping/shipping-panel';
 import { TpvPanel } from '@/components/admin/tpv/tpv-panel';
+import { cn } from '@/lib/utils';
+
+type AlquileresTab = 'planes' | 'solicitudes';
 
 export function AdminTpvPage() {
   return (
     <AdminModuleLayout
       title="TPV — Punto de venta"
-      description="Venta en tienda con carrito, datos del cliente y emisión de proforma, factura o boleta en PDF."
+      description="Venta en tienda con carrito, datos del cliente y emisión de cotización, factura o boleta en PDF."
     >
       <TpvPanel />
     </AdminModuleLayout>
@@ -20,7 +26,7 @@ export function AdminServiciosPage() {
   return (
     <AdminModuleLayout
       title="Servicios"
-      description="Órdenes de servicio, categorías y lista de precios para cotizaciones técnicas."
+      description="Solicitudes de servicio técnico, categorías y lista de precios (sincronizado con HaiSupport)."
     >
       <ServicesPanel />
     </AdminModuleLayout>
@@ -28,12 +34,49 @@ export function AdminServiciosPage() {
 }
 
 export function AdminAlquileresPage() {
+  const [tab, setTab] = useState<AlquileresTab>('solicitudes');
+
   return (
     <AdminModuleLayout
       title="Alquileres y planes"
-      description="Planes mensuales por volumen de impresión para equipos en alquiler."
+      description="Solicitudes de alquiler y planes mensuales sincronizados con HaiSupport."
     >
-      <RentalPlansPanel />
+      <div
+        className="mb-4 flex gap-1 rounded-lg border bg-muted/30 p-1 sm:inline-flex"
+        role="tablist"
+        aria-label="Sección de alquileres"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'solicitudes'}
+          className={cn(
+            'min-h-10 flex-1 rounded-md px-4 text-sm font-medium transition-colors sm:flex-none',
+            tab === 'solicitudes'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+          onClick={() => setTab('solicitudes')}
+        >
+          Solicitudes
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'planes'}
+          className={cn(
+            'min-h-10 flex-1 rounded-md px-4 text-sm font-medium transition-colors sm:flex-none',
+            tab === 'planes'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+          onClick={() => setTab('planes')}
+        >
+          Planes
+        </button>
+      </div>
+
+      {tab === 'solicitudes' ? <RentalRequestsPanel /> : <RentalPlansPanel />}
     </AdminModuleLayout>
   );
 }

@@ -1,3 +1,4 @@
+import { randomId } from '@/lib/random-id';
 import {
   PRODUCT_ATTACHMENT_KINDS,
   type InventoryProduct,
@@ -32,7 +33,7 @@ function toProductAttachment(row: Partial<ProductAttachment>): ProductAttachment
     id:
       typeof row.id === 'string' && row.id.trim().length > 0
         ? row.id.trim()
-        : crypto.randomUUID(),
+        : randomId(),
     kind,
     label,
     url,
@@ -87,7 +88,7 @@ export function readAttachmentFile(
         return;
       }
       const attachment: ProductAttachment = {
-        id: crypto.randomUUID(),
+        id: randomId(),
         kind,
         label: PRODUCT_ATTACHMENT_LABELS[kind],
         file_name: file.name,

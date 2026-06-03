@@ -24,7 +24,8 @@ export function useProducts() {
   return useQuery({
     queryKey: ['products', role],
     queryFn: () => fetchProductsForRole(role),
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 15,
+    refetchInterval: 1000 * 20,
   });
 }
 
@@ -47,6 +48,7 @@ export function useAdminInventory() {
     queryKey: ['admin-inventory'],
     queryFn: fetchAdminInventory,
     enabled: isAdmin,
+    refetchInterval: isAdmin ? 8000 : false,
     retry: (failureCount, error) => {
       const message = error instanceof Error ? error.message : '';
       if (message.includes('Sesión') || message.includes('permisos')) return false;

@@ -5,5 +5,5 @@ export function shouldPreferSupabaseCatalog() {
   if (!isSupabaseAuthEnabled()) return false;
   if (process.env.HAISTORE_CATALOG_SOURCE === 'file') return false;
   if (process.env.HAISTORE_CATALOG_SOURCE === 'supabase') return true;
-  return Boolean(process.env.VERCEL);
+  return isSupabaseAuthEnabled();
 }

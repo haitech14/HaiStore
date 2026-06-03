@@ -12,10 +12,13 @@ const SPIN_DURATION_MS = 4600;
 /** Mitad del grosor del marco dorado (p-[9px]) para centrar focos en el borde. */
 const GOLD_FRAME_PADDING_PX = 9;
 const BULB_RADIUS_PERCENT = 50;
-/** Radio del bloque icono + texto (% desde el centro; menor = más cerca del hub). */
-const SEGMENT_CONTENT_RADIUS_PERCENT = 24;
+/** Diámetro del hub «Gira y gana» respecto al disco interior (%). Origen polar = centro del disco. */
+const HUB_DIAMETER_PERCENT = 32;
+/** Radio desde el centro del hub hasta el centro de cada icono (mismo valor para todos). */
+const SEGMENT_ICON_RADIUS_PERCENT = 34;
 /** Ajuste fino para centrar iconos en el medio de cada color. */
 const SEGMENT_CONTENT_ANGLE_OFFSET_DEG = 0;
+const WHEEL_CENTER_PERCENT = 50;
 
 const SPIN_TRANSITION =
   'transition-transform duration-[4600ms] ease-[cubic-bezier(0.12,0.75,0.22,1)] motion-reduce:transition-none motion-reduce:duration-0';
@@ -27,12 +30,12 @@ interface SubscriptionRuletaWheelProps {
   className?: string;
 }
 
-/** Convierte ángulo (0° = derecha, -90° = arriba) a posición % en el disco. */
-function polarPosition(angleDeg: number, radiusPercent: number) {
+/** Convierte ángulo (0° = derecha, -90° = arriba) a posición % desde el centro del hub. */
+function polarPositionFromHubCenter(angleDeg: number, radiusFromHubCenterPercent: number) {
   const rad = (angleDeg * Math.PI) / 180;
   return {
-    left: `${50 + radiusPercent * Math.cos(rad)}%`,
-    top: `${50 + radiusPercent * Math.sin(rad)}%`,
+    left: `${WHEEL_CENTER_PERCENT + radiusFromHubCenterPercent * Math.cos(rad)}%`,
+    top: `${WHEEL_CENTER_PERCENT + radiusFromHubCenterPercent * Math.sin(rad)}%`,
   };
 }
 
@@ -76,7 +79,7 @@ export function SubscriptionRuletaWheel({
           >
             {Array.from({ length: BULB_COUNT }).map((_, index) => {
               const angle = (index / BULB_COUNT) * 360 - 90;
-              const { left, top } = polarPosition(angle, BULB_RADIUS_PERCENT);
+              const { left, top } = polarPositionFromHubCenter(angle, BULB_RADIUS_PERCENT);
               return (
                 <span
                   key={`bulb-${index}`}
@@ -108,7 +111,10 @@ export function SubscriptionRuletaWheel({
                     RULETA_SEGMENT_ANGLE / 2 -
                     90 +
                     SEGMENT_CONTENT_ANGLE_OFFSET_DEG;
-                  const contentPos = polarPosition(midAngle, SEGMENT_CONTENT_RADIUS_PERCENT);
+                  const iconPos = polarPositionFromHubCenter(
+                    midAngle,
+                    SEGMENT_ICON_RADIUS_PERCENT,
+                  );
                   const Icon = premio.icon;
 
                   return (
@@ -117,17 +123,18 @@ export function SubscriptionRuletaWheel({
                       aria-hidden="true"
                       className="absolute size-0"
                       style={{
-                        left: contentPos.left,
-                        top: contentPos.top,
-                        transform: 'translate(-50%, -50%)',
+                        left: iconPos.left,
+                        top: iconPos.top,
                       }}
                     >
                       <div
                         className={cn(
-                          'flex w-[4rem] flex-col items-center gap-0.5 text-center sm:w-[4.25rem]',
+                          'relative',
                           isSpinning ? SPIN_TRANSITION : 'transition-none',
                         )}
-                        style={{ transform: `rotate(${-diskRotation}deg)` }}
+                        style={{
+                          transform: `translate(-50%, -50%) rotate(${-diskRotation}deg)`,
+                        }}
                       >
                         <div className="flex size-8 items-center justify-center sm:size-9">
                           <Icon
@@ -136,7 +143,9 @@ export function SubscriptionRuletaWheel({
                             aria-hidden="true"
                           />
                         </div>
-                        <span className="leading-[1.06] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65),0_0_6px_rgba(0,0,0,0.35)]">
+                        <span
+                          className="absolute left-1/2 top-full mt-1 w-[4rem] -translate-x-1/2 text-center leading-[1.06] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65),0_0_6px_rgba(0,0,0,0.35)]"
+                        >
                           <span className="block text-[0.52rem] font-extrabold uppercase tracking-tight sm:text-[0.58rem]">
                             {premio.label}
                           </span>
@@ -150,8 +159,11 @@ export function SubscriptionRuletaWheel({
                 })}
               </div>
 
-              {/* Centro fijo — «Gira y gana» centrado */}
-              <div className="absolute left-1/2 top-1/2 z-10 flex size-[32%] min-w-[96px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center gap-1.5 rounded-full border-[3px] border-amber-400 bg-white px-2.5 py-2.5 shadow-[0_4px_14px_rgba(0,0,0,0.25)] sm:min-w-[108px] sm:px-3 sm:py-3">
+              {/* Centro fijo — «Gira y gana» (origen polar de iconos y textos) */}
+              <div
+                className="absolute left-1/2 top-1/2 z-10 flex aspect-square -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center gap-1.5 rounded-full border-[3px] border-amber-400 bg-white px-2.5 py-2.5 shadow-[0_4px_14px_rgba(0,0,0,0.25)] sm:px-3 sm:py-3"
+                style={{ width: `${HUB_DIAMETER_PERCENT}%`, height: `${HUB_DIAMETER_PERCENT}%` }}
+              >
                 <p className="text-center text-[0.72rem] font-bold uppercase leading-[1.08] tracking-wide text-black sm:text-[0.88rem]">
                   <span className="block">Gira</span>
                   <span className="block">y gana</span>

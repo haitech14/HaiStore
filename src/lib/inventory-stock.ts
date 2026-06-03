@@ -1,3 +1,4 @@
+import { randomId } from '@/lib/random-id';
 import type { InventoryWarehouse, InventoryProduct, ProductStockByWarehouse } from '@/types/product';
 
 export const DEFAULT_WAREHOUSES: InventoryWarehouse[] = [
@@ -19,7 +20,7 @@ export function normalizeWarehouses(value: unknown): InventoryWarehouse[] {
     const id =
       typeof entry.id === 'string' && entry.id.trim().length > 0
         ? entry.id.trim()
-        : crypto.randomUUID();
+        : randomId();
     if (seen.has(id)) continue;
     seen.add(id);
     result.push({ id, name });

@@ -1,9 +1,17 @@
+import { Package, Recycle, Sparkles, type LucideIcon } from 'lucide-react';
+
 import {
   PRODUCT_CONDITION_LABELS,
   PRODUCT_CONDITIONS,
   type ProductCondition,
 } from '@/lib/product-condition';
 import { cn } from '@/lib/utils';
+
+const CONDITION_ICONS: Record<ProductCondition, LucideIcon> = {
+  nuevas: Sparkles,
+  seminuevas: Package,
+  remanufacturadas: Recycle,
+};
 
 interface ProductConditionTabListProps {
   idPrefix: string;
@@ -25,7 +33,7 @@ export function ProductConditionTabList({
   return (
     <div
       className={cn(
-        'flex max-w-full flex-nowrap gap-1 overflow-x-auto rounded-lg bg-neutral-100 p-1',
+        'flex max-w-full flex-nowrap items-center justify-end gap-2 overflow-x-auto',
         '[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         className,
       )}
@@ -35,6 +43,8 @@ export function ProductConditionTabList({
       {PRODUCT_CONDITIONS.map((condition) => {
         const count = counts?.[condition];
         const isActive = activeCondition === condition;
+        const Icon = CONDITION_ICONS[condition];
+
         return (
           <button
             key={condition}
@@ -45,13 +55,14 @@ export function ProductConditionTabList({
             aria-controls={`${idPrefix}-panel-${condition}`}
             onClick={() => onSelect(condition)}
             className={cn(
-              'min-h-11 shrink-0 rounded-md px-4 py-2 text-sm font-semibold transition-colors',
+              'inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm font-semibold shadow-sm transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
               isActive
-                ? 'bg-white text-neutral-900 shadow-sm'
-                : 'text-neutral-600 hover:text-neutral-900',
+                ? 'border-red-600 bg-red-600 text-white shadow-[0_2px_8px_rgba(220,38,38,0.35)]'
+                : 'border-neutral-200/90 bg-white text-neutral-800 hover:border-neutral-300 hover:bg-neutral-50',
             )}
           >
+            <Icon className="size-4 shrink-0" aria-hidden="true" strokeWidth={2} />
             {PRODUCT_CONDITION_LABELS[condition]}
             {count != null ? (
               <span className="sr-only">

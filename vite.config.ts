@@ -1,7 +1,23 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { ViteImageOptimizer } from 'vite-plugin-image-optimizer';
+import os from 'node:os';
 import path from 'node:path';
+
+const devPort = Number(process.env.VITE_DEV_PORT ?? 5173);
+
+function buildAllowedHosts(): true | string[] {
+  const fromEnv = (process.env.VITE_ALLOWED_HOSTS ?? '')
+    .split(',')
+    .map((host) => host.trim())
+    .filter(Boolean);
+
+  if (fromEnv.length > 0) return fromEnv;
+  if (process.env.VITE_LAN === '0') return [];
+
+  const hostname = os.hostname().toLowerCase();
+  return [hostname, `${hostname}.local`, '.local', '.ts.net', '.tailscale.net'];
+}
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -38,14 +54,23 @@ export default defineConfig({
     ],
   },
   server: {
-    host: true,
-    port: 5173,
+    host: '0.0.0.0',
+    port: devPort,
+    strictPort: false,
+    // Permite acceder desde móvil/tablet por IP, hostname o Tailscale sin 403.
+    allowedHosts: buildAllowedHosts(),
     // Proxy del API admin local (server/) durante el desarrollo.
     proxy: {
       '/api': {
-        target: 'http://localhost:3080',
+        target: 'http://127.0.0.1:3080',
         changeOrigin: true,
       },
     },
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: devPort,
+    strictPort: false,
+    allowedHosts: buildAllowedHosts(),
   },
 });

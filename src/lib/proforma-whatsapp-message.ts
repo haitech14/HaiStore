@@ -39,7 +39,7 @@ export function buildProformaWhatsAppMessage(
   return [
     `¡Hola ${greeting}! 👋`,
     '',
-    `Te comparto la *proforma ${proforma.documentNumber}* de *${company.legalName}*:`,
+    `Te comparto la *cotización ${proforma.documentNumber}* de *${company.legalName}*:`,
     '',
     `📋 *Cliente:* ${proforma.customer.razonSocial}`,
     proforma.customer.documento ? `🪪 *RUC/DNI:* ${proforma.customer.documento}` : null,

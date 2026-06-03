@@ -35,14 +35,22 @@ export interface StoreCustomer {
   updated_at: string;
 }
 
+export type CustomerSource = 'haistore' | 'haisupport';
+
 /** Cliente de tienda con rol del perfil vinculado (si existe). */
 export interface StoreCustomerWithRole extends StoreCustomer {
   profile_role: string | null;
+  source?: CustomerSource;
 }
 
 export interface AdminStoreCustomersPayload {
   customers: StoreCustomerWithRole[];
-  source: 'supabase' | 'unavailable';
+  source: 'supabase' | 'merged' | 'unavailable';
+  counts?: {
+    haistore: number;
+    haisupport: number;
+    merged: number;
+  };
 }
 
 export interface StoreOrderItem {

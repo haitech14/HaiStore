@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Printer } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { loadRentalPlans, saveRentalPlans, updateRentalPlan } from '@/lib/rental-plans-storage';
+import { useRentalPlans, useRentalPlansMutations } from '@/hooks/use-rental-plans';
 import type { RentalPlanConfig } from '@/types/rental-plan';
 
 function formatPen(value: number): string {
@@ -13,26 +14,44 @@ function formatPen(value: number): string {
 }
 
 export function RentalPlansPanel() {
-  const [plans, setPlans] = useState<RentalPlanConfig[]>(() => loadRentalPlans());
-  const [savedHint, setSavedHint] = useState<string | null>(null);
+  const { data: serverPlans = [], isLoading } = useRentalPlans();
+  const { savePlans } = useRentalPlansMutations();
+  const [plans, setPlans] = useState<RentalPlanConfig[]>([]);
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
-    if (!savedHint) return;
-    const t = window.setTimeout(() => setSavedHint(null), 2500);
-    return () => window.clearTimeout(t);
-  }, [savedHint]);
+    setPlans(serverPlans);
+    setDirty(false);
+  }, [serverPlans]);
 
-  const persist = (next: RentalPlanConfig[], message: string) => {
+  const persist = async (next: RentalPlanConfig[], message: string) => {
     setPlans(next);
-    saveRentalPlans(next);
-    setSavedHint(message);
+    try {
+      await savePlans.mutateAsync(next);
+      setDirty(false);
+      toast.success(message);
+    } catch {
+      toast.error('No se pudieron guardar los planes. Comprueba Supabase y la API.');
+    }
+  };
+
+  const updateLocal = (id: string, patch: Partial<RentalPlanConfig>) => {
+    setPlans((current) => current.map((plan) => (plan.id === id ? { ...plan, ...patch } : plan)));
+    setDirty(true);
   };
 
   const toggleActive = (id: string) => {
     const row = plans.find((p) => p.id === id);
     if (!row) return;
-    persist(updateRentalPlan(id, { active: !row.active }), 'Plan actualizado.');
+    void persist(
+      plans.map((plan) => (plan.id === id ? { ...plan, active: !plan.active } : plan)),
+      'Plan actualizado.',
+    );
   };
+
+  if (isLoading) {
+    return <p className="text-sm text-muted-foreground">Cargando planes…</p>;
+  }
 
   if (plans.length === 0) {
     return (
@@ -46,15 +65,9 @@ export function RentalPlansPanel() {
 
   return (
     <div className="space-y-4">
-      {savedHint && (
-        <p role="status" className="text-sm text-green-700">
-          {savedHint}
-        </p>
-      )}
-
       <p className="max-w-2xl text-sm text-muted-foreground">
-        Planes mensuales mostrados en la ficha de producto (alquiler de equipos). Los precios están en
-        soles (PEN) e incluyen el volumen de páginas indicado.
+        Planes sincronizados con Supabase (compartidos con HaiSupport). Se actualizan en la tienda en
+        tiempo casi real.
       </p>
 
       <div className="overflow-hidden rounded-xl border bg-card">
@@ -78,11 +91,7 @@ export function RentalPlansPanel() {
                     id={`plan-label-${plan.id}`}
                     value={plan.label}
                     className="min-w-[10rem]"
-                    onChange={(e) => {
-                      const next = updateRentalPlan(plan.id, { label: e.target.value });
-                      setPlans(next);
-                    }}
-                    onBlur={() => setSavedHint('Planes guardados.')}
+                    onChange={(e) => updateLocal(plan.id, { label: e.target.value })}
                   />
                 </td>
                 <td className="px-4 py-3 text-right">
@@ -96,16 +105,9 @@ export function RentalPlansPanel() {
                     step={500}
                     className="ml-auto w-28 text-right"
                     value={plan.pagesPerMonth}
-                    onChange={(e) => {
-                      const next = updateRentalPlan(plan.id, {
-                        pagesPerMonth: Number(e.target.value) || 0,
-                      });
-                      setPlans(next);
-                    }}
-                    onBlur={() => {
-                      saveRentalPlans(plans);
-                      setSavedHint('Planes guardados.');
-                    }}
+                    onChange={(e) =>
+                      updateLocal(plan.id, { pagesPerMonth: Number(e.target.value) || 0 })
+                    }
                   />
                 </td>
                 <td className="px-4 py-3 text-right">
@@ -119,16 +121,9 @@ export function RentalPlansPanel() {
                     step={1}
                     className="ml-auto w-28 text-right"
                     value={plan.monthlyPricePen}
-                    onChange={(e) => {
-                      const next = updateRentalPlan(plan.id, {
-                        monthlyPricePen: Number(e.target.value) || 0,
-                      });
-                      setPlans(next);
-                    }}
-                    onBlur={() => {
-                      saveRentalPlans(plans);
-                      setSavedHint('Planes guardados.');
-                    }}
+                    onChange={(e) =>
+                      updateLocal(plan.id, { monthlyPricePen: Number(e.target.value) || 0 })
+                    }
                   />
                   <span className="mt-1 block text-xs text-muted-foreground">
                     {formatPen(plan.monthlyPricePen)}
@@ -151,14 +146,15 @@ export function RentalPlansPanel() {
         </table>
       </div>
 
-      <aside className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground">Alquiler en tienda</p>
-        <ul className="mt-2 list-inside list-disc space-y-1">
-          <li>Los clientes eligen el plan en la ficha del equipo multifuncional.</li>
-          <li>Incluye mantenimiento, tóner y soporte según contrato comercial.</li>
-          <li>Contacto comercial: ventas Haitech para activar contrato formal.</li>
-        </ul>
-      </aside>
+      {dirty && (
+        <Button
+          type="button"
+          disabled={savePlans.isPending}
+          onClick={() => void persist(plans, 'Planes guardados.')}
+        >
+          {savePlans.isPending ? 'Guardando…' : 'Guardar cambios'}
+        </Button>
+      )}
     </div>
   );
 }

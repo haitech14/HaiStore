@@ -1,6 +1,18 @@
 import { Router } from 'express';
 
 import { requireAdmin, requireAuth } from '../lib/auth-store.js';
+import {
+  listHaiSupportClients,
+  mergeStoreAndHaiSupportCustomers,
+  searchHaiSupportClients,
+} from '../lib/haisupport-customers.js';
+import {
+  getHaiSupportSupabaseAdmin,
+  isHaiSupportSupabaseConfigured,
+} from '../lib/haisupport-supabase.js';
+import { notifyHaiSupportChange } from '../lib/haisupport-sync.js';
+import { ensureStoreCustomerFromHaitechClient } from '../lib/haisupport-bridge.js';
+import { inboundPayloadToHaitechClient, storeCustomerRowToHaitechClient } from '../lib/haitech-mappers.js';
 import { getSupabaseAdmin } from '../lib/supabase-auth.js';
 
 export const customersRouter = Router();
@@ -139,15 +151,15 @@ customersRouter.get('/admin/search', requireAdmin, async (req, res, next) => {
     }
 
     const supabase = getSupabaseAdmin();
-    if (!supabase) {
-      return res.json({ customers: [], source: 'unavailable' });
-    }
+    /** @type {Array<Record<string, unknown>>} */
+    let storeCustomers = [];
 
-    const pattern = `%${q}%`;
-    const { data, error } = await supabase
-      .from('store_customers')
-      .select(
-        `
+    if (supabase) {
+      const pattern = `%${q.replace(/,/g, ' ')}%`;
+      const { data, error } = await supabase
+        .from('store_customers')
+        .select(
+          `
         id,
         email,
         full_name,
@@ -157,30 +169,38 @@ customersRouter.get('/admin/search', requireAdmin, async (req, res, next) => {
         default_billing,
         profiles ( role )
       `,
-      )
-      .or(
-        `company_name.ilike.${pattern},tax_id.ilike.${pattern},full_name.ilike.${pattern},email.ilike.${pattern}`,
-      )
-      .order('company_name', { ascending: true, nullsFirst: false })
-      .limit(12);
+        )
+        .or(
+          `company_name.ilike.${pattern},tax_id.ilike.${pattern},full_name.ilike.${pattern},email.ilike.${pattern}`,
+        )
+        .order('company_name', { ascending: true, nullsFirst: false })
+        .limit(12);
 
-    if (error) {
-      console.error('[customers] search error:', error);
-      return res.status(500).json({ error: 'No se pudo buscar clientes' });
+      if (error) {
+        console.error('[customers] search error:', error);
+        return res.status(500).json({ error: 'No se pudo buscar clientes' });
+      }
+
+      storeCustomers = (data ?? []).map((row) => ({
+        id: row.id,
+        email: row.email,
+        full_name: row.full_name,
+        phone: row.phone,
+        company_name: row.company_name,
+        tax_id: row.tax_id,
+        default_billing: row.default_billing,
+        profile_role: row.profiles?.role ?? null,
+        source: 'haistore',
+      }));
     }
 
-    const customers = (data ?? []).map((row) => ({
-      id: row.id,
-      email: row.email,
-      full_name: row.full_name,
-      phone: row.phone,
-      company_name: row.company_name,
-      tax_id: row.tax_id,
-      default_billing: row.default_billing,
-      profile_role: row.profiles?.role ?? null,
-    }));
+    const haisupportMatches = await searchHaiSupportClients(q, 12);
+    const customers = mergeStoreAndHaiSupportCustomers(storeCustomers, haisupportMatches).slice(
+      0,
+      12,
+    );
 
-    res.json({ customers, source: 'supabase' });
+    res.json({ customers, source: 'merged' });
   } catch (error) {
     next(error);
   }
@@ -189,52 +209,68 @@ customersRouter.get('/admin/search', requireAdmin, async (req, res, next) => {
 customersRouter.get('/admin/all', requireAdmin, async (_req, res, next) => {
   try {
     const supabase = getSupabaseAdmin();
-    if (!supabase) {
-      return res.json({ customers: [], source: 'unavailable' });
-    }
+    /** @type {Array<Record<string, unknown>>} */
+    let storeCustomers = [];
 
-    const { data, error } = await supabase
-      .from('store_customers')
-      .select(
-        'id, profile_id, email, full_name, phone, company_name, tax_id, created_at, updated_at',
-      )
-      .order('created_at', { ascending: false });
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('store_customers')
+        .select(
+          'id, profile_id, email, full_name, phone, company_name, tax_id, created_at, updated_at',
+        )
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('[customers] list error:', error);
-      return res.status(500).json({ error: 'No se pudieron cargar los clientes' });
-    }
+      if (error) {
+        console.error('[customers] list error:', error);
+        return res.status(500).json({ error: 'No se pudieron cargar los clientes' });
+      }
 
-    const rows = data ?? [];
-    const profileIds = [...new Set(rows.map((row) => row.profile_id).filter(Boolean))];
-    /** @type {Map<string, { role: string, full_name: string | null }>} */
-    const profileById = new Map();
+      const rows = data ?? [];
+      const profileIds = [...new Set(rows.map((row) => row.profile_id).filter(Boolean))];
+      /** @type {Map<string, { role: string, full_name: string | null }>} */
+      const profileById = new Map();
 
-    if (profileIds.length > 0) {
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, role, full_name')
-        .in('id', profileIds);
+      if (profileIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, role, full_name')
+          .in('id', profileIds);
 
-      if (profilesError) {
-        console.error('[customers] profiles error:', profilesError);
-      } else {
-        for (const profile of profiles ?? []) {
-          profileById.set(profile.id, profile);
+        if (profilesError) {
+          console.error('[customers] profiles error:', profilesError);
+        } else {
+          for (const profile of profiles ?? []) {
+            profileById.set(profile.id, profile);
+          }
         }
       }
+
+      storeCustomers = rows.map((row) => {
+        const profile = row.profile_id ? profileById.get(row.profile_id) : null;
+        return {
+          ...row,
+          full_name: row.full_name ?? profile?.full_name ?? null,
+          profile_role: profile?.role ?? null,
+          source: 'haistore',
+        };
+      });
     }
 
-    const customers = rows.map((row) => {
-      const profile = row.profile_id ? profileById.get(row.profile_id) : null;
-      return {
-        ...row,
-        full_name: row.full_name ?? profile?.full_name ?? null,
-        profile_role: profile?.role ?? null,
-      };
-    });
+    const haisupportCustomers = isHaiSupportSupabaseConfigured()
+      ? await listHaiSupportClients()
+      : [];
 
-    res.json({ customers, source: 'supabase' });
+    const customers = mergeStoreAndHaiSupportCustomers(storeCustomers, haisupportCustomers);
+
+    res.json({
+      customers,
+      source: supabase || haisupportCustomers.length > 0 ? 'merged' : 'unavailable',
+      counts: {
+        haistore: storeCustomers.length,
+        haisupport: haisupportCustomers.length,
+        merged: customers.length,
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -273,6 +309,15 @@ customersRouter.patch('/admin/:id', requireAdmin, async (req, res, next) => {
       return res.status(500).json({ error: 'No se pudo cargar el cliente' });
     }
     if (!existing) {
+      if (isHaiSupportSupabaseConfigured()) {
+        const hs = getHaiSupportSupabaseAdmin();
+        const { data: hsRow } = await hs.from('clients').select('id').eq('id', id).maybeSingle();
+        if (hsRow) {
+          return res.status(400).json({
+            error: 'Este cliente pertenece a HaiSupport. Edítalo desde el panel de HaiSupport.',
+          });
+        }
+      }
       return res.status(404).json({ error: 'Cliente no encontrado' });
     }
 
@@ -359,6 +404,59 @@ customersRouter.patch('/admin/:id', requireAdmin, async (req, res, next) => {
       },
       source: 'supabase',
     });
+    notifyHaiSupportChange('customers', 'update', {
+      ...customerRow,
+      profile_role: profileRole,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+customersRouter.post('/admin', requireAdmin, async (req, res, next) => {
+  try {
+    const client = inboundPayloadToHaitechClient(req.body ?? {});
+    const { clientId, snapshot } = await ensureStoreCustomerFromHaitechClient(client);
+
+    const supabase = getSupabaseAdmin();
+    const { data: row } = await supabase
+      .from('store_customers')
+      .select('*')
+      .eq('id', clientId)
+      .single();
+
+    const customer = row
+      ? { ...storeCustomerRowToHaitechClient(row), profile_role: client.tipoCliente ?? 'public' }
+      : snapshot;
+
+    notifyHaiSupportChange('customers', 'create', customer);
+    res.status(201).json({ customer, source: 'haistore' });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('obligatoria')) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+
+customersRouter.delete('/admin/:id', requireAdmin, async (req, res, next) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    if (!supabase) return res.status(503).json({ error: 'Supabase no configurado' });
+
+    const { data: existing } = await supabase
+      .from('store_customers')
+      .select('id, haisupport_client_id')
+      .eq('id', req.params.id)
+      .maybeSingle();
+
+    if (!existing) return res.status(404).json({ error: 'Cliente no encontrado' });
+
+    const { error } = await supabase.from('store_customers').delete().eq('id', req.params.id);
+    if (error) return res.status(500).json({ error: 'No se pudo eliminar el cliente' });
+
+    notifyHaiSupportChange('customers', 'delete', { id: req.params.id });
+    res.json({ ok: true, id: req.params.id });
   } catch (error) {
     next(error);
   }

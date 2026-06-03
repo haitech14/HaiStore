@@ -92,6 +92,17 @@ export function isPrimaryProductBadge(id: string): boolean {
   return PRIMARY_BADGE_IDS.has(id);
 }
 
+/** Si el producto lleva badge «Nuevo» en la esquina de la tarjeta (no en la fila de specs). */
+export function productHasNuevoCornerBadge(product: ProductBadgeSource): boolean {
+  return buildProductDetailBadges(product, { primaryOnly: true }).some(
+    (badge) => badge.id === 'condicion' && /^nuevo$/i.test(badge.value.trim()),
+  );
+}
+
+export function isNuevoConditionBadge(badge: ProductDetailBadge): boolean {
+  return badge.id === 'condicion' && /^nuevo$/i.test(badge.value.trim());
+}
+
 function defaultBadges(product: ProductBadgeSource): ProductDetailBadge[] {
   if (isIm430f(product)) {
     return [

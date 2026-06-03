@@ -1,8 +1,9 @@
+import { randomId } from '@/lib/random-id';
 import type { InventoryProduct, InventorySupplier } from '@/types/product';
 
 export function createEmptySupplier(): InventorySupplier {
   return {
-    id: crypto.randomUUID(),
+    id: randomId(),
     name: '',
     purchase_price_usd: 0,
   };
@@ -22,7 +23,7 @@ export function normalizeSuppliers(
         const id =
           typeof row.id === 'string' && row.id.trim().length > 0
             ? row.id.trim()
-            : crypto.randomUUID();
+            : randomId();
         if (!name && purchase_price_usd <= 0) return null;
         return { id, name, purchase_price_usd };
       })
@@ -31,7 +32,7 @@ export function normalizeSuppliers(
 
   const legacy = Math.max(0, Number(legacyPurchaseUsd) || 0);
   if (legacy > 0) {
-    return [{ id: crypto.randomUUID(), name: '', purchase_price_usd: legacy }];
+    return [{ id: randomId(), name: '', purchase_price_usd: legacy }];
   }
 
   return [];

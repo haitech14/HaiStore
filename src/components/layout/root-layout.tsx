@@ -8,7 +8,7 @@ import { SubscriptionPopup } from '@/components/SubscriptionPopup';
 
 export function RootLayout() {
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex min-h-dvh flex-col bg-background">
       <ScrollRestoration />
       <a href="#contenido" className="skip-link">
         Saltar al contenido

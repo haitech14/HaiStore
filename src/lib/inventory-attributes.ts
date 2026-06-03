@@ -1,3 +1,4 @@
+import { randomId } from '@/lib/random-id';
 import type { ProductAttribute } from '@/types/product';
 
 export const COMMON_ATTRIBUTE_NAMES = [
@@ -14,7 +15,7 @@ export const COMMON_ATTRIBUTE_NAMES = [
 
 export function createEmptyAttribute(): ProductAttribute {
   return {
-    id: crypto.randomUUID(),
+    id: randomId(),
     name: '',
     value: '',
   };
@@ -32,7 +33,7 @@ export function normalizeAttributes(value: unknown): ProductAttribute[] {
       const id =
         typeof row.id === 'string' && row.id.trim().length > 0
           ? row.id.trim()
-          : crypto.randomUUID();
+          : randomId();
       if (!name && !val) return null;
       return { id, name, value: val };
     })

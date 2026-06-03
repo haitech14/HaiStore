@@ -48,8 +48,14 @@ export const CUSTOMER_ROLE_SECTIONS: CustomerRoleSection[] = [
   },
 ];
 
+export function isHaiSupportOnlyCustomer(customer: StoreCustomerWithRole): boolean {
+  return customer.source === 'haisupport';
+}
+
 export function getCustomerRoleGroupKey(customer: StoreCustomerWithRole): CustomerRoleGroupKey {
-  if (!customer.profile_id) return 'guest';
+  if (!customer.profile_id && customer.source !== 'haisupport') {
+    return 'guest';
+  }
 
   const role = customer.profile_role ?? 'public';
   if (role === 'admin') return 'admin';
@@ -71,6 +77,11 @@ export const CUSTOMER_EDIT_ROLES: { value: UserRole; label: string }[] = [
 ];
 
 export function roleBadgeLabel(customer: StoreCustomerWithRole): string {
+  if (customer.source === 'haisupport' && !customer.profile_id) {
+    const role = customer.profile_role ?? 'public';
+    if (role in USER_ROLE_LABELS) return USER_ROLE_LABELS[role as UserRole];
+    return role;
+  }
   if (!customer.profile_id) return 'Sin cuenta';
   const role = customer.profile_role ?? 'public';
   if (role in USER_ROLE_LABELS) return USER_ROLE_LABELS[role as UserRole];

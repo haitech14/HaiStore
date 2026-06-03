@@ -47,11 +47,27 @@ npm run dev:all
 - Frontend: http://localhost:5173
 - API admin: http://localhost:3080 (proxied en `/api`)
 
+### Acceso desde móvil u otro PC en la red
+
+1. Arranca con `npm run dev:all`.
+2. Copia la URL **Network** que muestra Vite (ej. `http://192.168.1.2:5173`).
+3. Si no carga desde el teléfono, abre el firewall (PowerShell **como administrador**):
+
+   ```bash
+   npm run dev:lan
+   ```
+
+   Luego vuelve a ejecutar `npm run dev:all`.
+
+4. No uses `localhost` en el móvil; usa la IP de red que imprime Vite.
+5. Si el puerto 5173 está ocupado, Vite usará 5174: revisa la consola y usa ese puerto.
+
 ## Scripts
 
 | Script              | Descripción                                  |
 | ------------------- | -------------------------------------------- |
 | `npm run dev`       | Dev server de Vite                           |
+| `npm run dev:lan`   | Abre puertos 5173/3080 en firewall (Windows, admin) |
 | `npm run server`    | API admin Node (`server/`) con `--watch`     |
 | `npm run dev:all`   | Frontend + API admin en paralelo             |
 | `npm run build`     | Type-check + build de producción             |

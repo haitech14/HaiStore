@@ -27,7 +27,6 @@ import type {
 } from '@/types/product-detail';
 import type { Product } from '@/types/product';
 import { collectProductImageUrls } from '@/lib/product-media';
-import { resolveActiveRentalPlansForStorefront } from '@/lib/rental-plans-storage';
 import { usdToPen } from '@/lib/utils';
 
 const SUPPLY_FEATURES: ProductFeatureIcon[] = [
@@ -458,6 +457,7 @@ function resolvePricing(
 export function buildProductDetail(
   product: Product,
   featuredMeta?: FeaturedProduct,
+  rentalPlansFromApi: Array<{ pagesPerMonth: number; monthlyPricePen: number }> = [],
 ): ProductDetailViewModel {
   const isPrinter = isPrinterEquipment(product);
   const isSupply = isSupplyProduct(product);
@@ -527,7 +527,7 @@ export function buildProductDetail(
     comboItems: buildComboItems(product, isPrinter, isSupply),
     equipmentConfigSteps: buildEquipmentConfigSteps(isPrinter, isSupply),
     bulkDiscountTiers: DEFAULT_BULK_TIERS,
-    rentalPlans: isPrinter ? resolveActiveRentalPlansForStorefront() : [],
+    rentalPlans: isPrinter ? rentalPlansFromApi : [],
     isPrinterEquipment: isPrinter,
     isSupplyProduct: isSupply,
     isOnOffer: pricing.isOnOffer,

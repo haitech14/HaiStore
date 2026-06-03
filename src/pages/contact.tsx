@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { submitSupportTicket, SupportTicketError } from '@/lib/support-ticket';
 
 const contactSchema = z.object({
   name: z.string().min(2, 'Introduce al menos 2 caracteres.'),
@@ -25,6 +26,8 @@ type ContactValues = z.infer<typeof contactSchema>;
 
 export function ContactPage() {
   const [sent, setSent] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -35,17 +38,25 @@ export function ContactPage() {
   });
 
   const onSubmit = async (values: ContactValues) => {
-    // Demo: envía al API admin local (server/) que integra HaiSupport.
+    setSubmitError(null);
+
     try {
-      await fetch('/api/support/tickets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
+      const ticket = await submitSupportTicket({
+        name: values.name,
+        email: values.email,
+        message: values.message,
+        type: 'contact',
+        metadata: { channel: 'contact-page' },
       });
-    } catch {
-      // En demo ignoramos errores de red; el servidor puede no estar levantado.
+      setIsDemo(ticket.demo === true);
+      setSent(true);
+    } catch (error) {
+      setSubmitError(
+        error instanceof SupportTicketError
+          ? error.message
+          : 'No se pudo enviar el mensaje. Comprueba tu conexión e intenta de nuevo.',
+      );
     }
-    setSent(true);
   };
 
   return (
@@ -59,9 +70,24 @@ export function ContactPage() {
         </CardHeader>
         <CardContent>
           {sent ? (
-            <div role="status" className="flex items-center gap-2 text-primary">
-              <CheckCircle2 aria-hidden="true" />
-              <p>¡Gracias! Hemos recibido tu mensaje.</p>
+            <div className="flex flex-col gap-3">
+              <div role="status" className="flex items-center gap-2 text-primary">
+                <CheckCircle2 aria-hidden="true" />
+                <p>¡Gracias! Hemos recibido tu mensaje.</p>
+              </div>
+              {isDemo && (
+                <div
+                  role="status"
+                  className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+                >
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                  <p>
+                    Modo demo: HaiSupport no está conectado. Configura{' '}
+                    <code className="text-xs">HAISUPPORT_API_URL</code> y{' '}
+                    <code className="text-xs">HAISUPPORT_API_KEY</code> para enviar tickets reales.
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <form
@@ -69,6 +95,12 @@ export function ContactPage() {
               className="flex flex-col gap-4"
               noValidate
             >
+              {submitError && (
+                <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                  {submitError}
+                </p>
+              )}
+
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="name">Nombre</Label>
                 <Input

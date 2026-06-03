@@ -1,14 +1,44 @@
 import { Router } from 'express';
 
-import { requireAdmin } from '../lib/auth-store.js';
+import { requireAdmin, resolveUserFromToken } from '../lib/auth-store.js';
 import {
   createProformaFromBody,
   patchProforma,
   readProformas,
-  writeProformas,
+  removeProforma,
+  saveProforma,
 } from '../lib/proformas-store.js';
+import { getClientIp, isSupportRateLimited } from '../lib/support-rate-limit.js';
 
 export const proformasRouter = Router();
+
+const STORE_SELLER = { name: 'Tienda en línea', email: '' };
+
+/** Cotización desde ficha de producto (clientes públicos o autenticados). */
+proformasRouter.post('/from-product', async (req, res, next) => {
+  const clientKey = `proforma-product:${getClientIp(req)}`;
+  if (isSupportRateLimited(clientKey)) {
+    return res.status(429).json({ error: 'Demasiadas solicitudes. Espere un minuto e inténtelo de nuevo.' });
+  }
+
+  try {
+    const header = req.headers.authorization ?? '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+    const user = (await resolveUserFromToken(token)) ?? STORE_SELLER;
+
+    const created = createProformaFromBody(
+      { ...(req.body ?? {}), source: 'product', documentType: 'proforma' },
+      { user },
+    );
+    const saved = await saveProforma(created, 'create');
+    res.status(201).json({ proforma: saved });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('requiere')) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+});
 
 proformasRouter.get('/', requireAdmin, async (_req, res, next) => {
   try {
@@ -22,10 +52,8 @@ proformasRouter.get('/', requireAdmin, async (_req, res, next) => {
 proformasRouter.post('/', requireAdmin, async (req, res, next) => {
   try {
     const created = createProformaFromBody(req.body ?? {}, req);
-    const { proformas } = await readProformas();
-    const nextList = [created, ...proformas.filter((entry) => entry.id !== created.id)];
-    await writeProformas(nextList);
-    res.status(201).json({ proforma: created });
+    const saved = await saveProforma(created, 'create');
+    res.status(201).json({ proforma: saved });
   } catch (error) {
     if (error instanceof Error && error.message.includes('requiere')) {
       return res.status(400).json({ error: error.message });
@@ -41,9 +69,8 @@ proformasRouter.patch('/:id', requireAdmin, async (req, res, next) => {
     if (index === -1) return res.status(404).json({ error: 'Proforma no encontrada' });
 
     const updated = patchProforma(proformas[index], req.body ?? {});
-    proformas[index] = updated;
-    await writeProformas(proformas);
-    res.json({ proforma: updated });
+    const saved = await saveProforma(updated, 'update');
+    res.json({ proforma: saved });
   } catch (error) {
     next(error);
   }
@@ -52,11 +79,10 @@ proformasRouter.patch('/:id', requireAdmin, async (req, res, next) => {
 proformasRouter.delete('/:id', requireAdmin, async (req, res, next) => {
   try {
     const { proformas } = await readProformas();
-    const filtered = proformas.filter((entry) => entry.id !== req.params.id);
-    if (filtered.length === proformas.length) {
+    if (!proformas.some((entry) => entry.id === req.params.id)) {
       return res.status(404).json({ error: 'Proforma no encontrada' });
     }
-    await writeProformas(filtered);
+    await removeProforma(req.params.id);
     res.json({ ok: true, id: req.params.id });
   } catch (error) {
     next(error);

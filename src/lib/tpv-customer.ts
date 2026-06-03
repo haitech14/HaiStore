@@ -31,7 +31,8 @@ export function storeCustomerToTpvCustomer(row: StoreCustomerSearchResult): TpvC
     documento: row.tax_id?.trim() || '',
     atencion: row.full_name?.trim() || '',
     celular: row.phone?.trim() || '',
-    direccion: billingField<string>(billing, 'address')?.trim() || 'Lima',
+    direccion: billingField<string>(billing, 'address')?.trim() || billingField<string>(billing, 'direccion')?.trim() || 'Lima',
+    ciudad: billingField<string>(billing, 'city')?.trim() || billingField<string>(billing, 'ciudad')?.trim() || 'Lima',
     priceList: resolveTpvPriceList(row.profile_role, billing),
     currency: resolveTpvCurrency(billing),
   };

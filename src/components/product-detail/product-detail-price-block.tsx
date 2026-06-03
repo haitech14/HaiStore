@@ -1,3 +1,4 @@
+import { AdminRolePricesTooltip } from '@/components/admin/admin-role-prices-tooltip';
 import { formatUsd, penToUsd, usdToPen } from '@/lib/utils';
 import type { ProductDetailViewModel } from '@/types/product-detail';
 import type { Product } from '@/types/product';
@@ -30,7 +31,9 @@ export function ProductDetailPriceBlock({ product, detail }: ProductDetailPriceB
         {oldPriceUsd != null && (
           <span className="mr-2 line-through">{formatUsd(oldPriceUsd)}</span>
         )}
-        <span>{formatUsd(product.price)}</span>
+        <AdminRolePricesTooltip productId={product.id} displayUsd={product.price}>
+          <span>{formatUsd(product.price)}</span>
+        </AdminRolePricesTooltip>
       </p>
     </div>
   );

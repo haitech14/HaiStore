@@ -1,6 +1,8 @@
 import { Router } from 'express';
 
 import { requireAdmin } from '../lib/auth-store.js';
+import { notifyHaiSupportChange } from '../lib/haisupport-sync.js';
+import { createStoreOrderFromBody } from '../lib/orders-store.js';
 import { getSupabaseAdmin } from '../lib/supabase-auth.js';
 
 export const ordersRouter = Router();
@@ -398,6 +400,21 @@ ordersRouter.patch('/admin/:id', requireAdmin, async (req, res, next) => {
   }
 });
 
+ordersRouter.post('/admin', requireAdmin, async (req, res, next) => {
+  try {
+    const order = await createStoreOrderFromBody(req.body ?? {});
+    res.status(201).json({ order });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('requiere')) {
+      return res.status(400).json({ error: error.message });
+    }
+    if (error instanceof Error && (error.message.includes('obligator') || error.message.includes('producto'))) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+
 ordersRouter.delete('/admin/:id', requireAdmin, async (req, res, next) => {
   try {
     const supabase = getSupabaseAdmin();
@@ -412,6 +429,7 @@ ordersRouter.delete('/admin/:id', requireAdmin, async (req, res, next) => {
       return res.status(500).json({ error: 'No se pudo eliminar la venta' });
     }
 
+    notifyHaiSupportChange('orders', 'delete', { id: req.params.id });
     res.json({ ok: true });
   } catch (error) {
     next(error);

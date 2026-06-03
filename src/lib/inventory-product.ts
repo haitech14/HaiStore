@@ -1,4 +1,5 @@
 import { optimizeImageDataUrl, optimizeImageFile } from '@/lib/optimize-image-for-web';
+import { randomId } from '@/lib/random-id';
 import { normalizeAttributes } from '@/lib/inventory-attributes';
 import { normalizeAttachments } from '@/lib/inventory-attachments';
 import { normalizeSuppliers, resolvePurchasePriceUsd } from '@/lib/inventory-suppliers';
@@ -39,7 +40,7 @@ export async function prepareInventoryPayloadForApi(
   product: InventoryProduct,
   options?: { isCreate?: boolean },
 ): Promise<InventoryProduct> {
-  const id = product.id?.trim() || (options?.isCreate ? crypto.randomUUID() : product.id);
+  const id = product.id?.trim() || (options?.isCreate ? randomId() : product.id);
   const prices = ensureFullPrices(product.prices) as ProductRolePrices;
 
   const suppliers = normalizeSuppliers(product.suppliers, product.purchase_price_usd);

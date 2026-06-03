@@ -7,4 +7,5 @@ export interface StoreCustomerSearchResult {
   tax_id: string | null;
   profile_role: string | null;
   default_billing?: Record<string, unknown> | null;
+  source?: 'haistore' | 'haisupport';
 }

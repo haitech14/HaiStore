@@ -2,6 +2,14 @@ import fs from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
 
+import { shouldUseSharedSupabaseData } from './data-source.js';
+import { notifyHaiSupportChange } from './haisupport-sync.js';
+import {
+  deleteProformaFromSupabase,
+  readProformasFromSupabase,
+  upsertProformaInSupabase,
+  writeProformasToSupabase,
+} from './proformas-supabase.js';
 import { getProformasPath } from './server-paths.js';
 
 function proformasPath() {
@@ -81,6 +89,11 @@ function normalizeProforma(raw) {
 }
 
 export async function readProformas() {
+  if (shouldUseSharedSupabaseData()) {
+    const remote = await readProformasFromSupabase();
+    if (remote) return remote;
+  }
+
   await ensureFile();
   const raw = await fs.readFile(proformasPath(), 'utf-8');
   const data = JSON.parse(raw);
@@ -91,10 +104,52 @@ export async function readProformas() {
 }
 
 export async function writeProformas(proformas) {
-  await ensureFile();
   const normalized = proformas.map(normalizeProforma);
+
+  if (shouldUseSharedSupabaseData()) {
+    await writeProformasToSupabase(normalized);
+    for (const proforma of normalized) {
+      notifyHaiSupportChange('proformas', 'upsert', proforma);
+    }
+    return normalized;
+  }
+
+  await ensureFile();
   await fs.writeFile(proformasPath(), JSON.stringify({ proformas: normalized }, null, 2));
   return normalized;
+}
+
+export async function saveProforma(proforma, action = 'upsert') {
+  const normalized = normalizeProforma(proforma);
+
+  if (shouldUseSharedSupabaseData()) {
+    await upsertProformaInSupabase(normalized);
+  } else {
+    const { proformas } = await readProformas();
+    const index = proformas.findIndex((entry) => entry.id === normalized.id);
+    const next =
+      index >= 0
+        ? proformas.map((entry, i) => (i === index ? normalized : entry))
+        : [normalized, ...proformas];
+    await ensureFile();
+    await fs.writeFile(proformasPath(), JSON.stringify({ proformas: next }, null, 2));
+  }
+
+  notifyHaiSupportChange('proformas', action, normalized);
+  return normalized;
+}
+
+export async function removeProforma(id) {
+  if (shouldUseSharedSupabaseData()) {
+    await deleteProformaFromSupabase(id);
+  } else {
+    const { proformas } = await readProformas();
+    const filtered = proformas.filter((entry) => entry.id !== id);
+    await ensureFile();
+    await fs.writeFile(proformasPath(), JSON.stringify({ proformas: filtered }, null, 2));
+  }
+
+  notifyHaiSupportChange('proformas', 'delete', { id });
 }
 
 export function sellerFromRequest(req) {

@@ -16,6 +16,7 @@ export function useAdminProformas() {
     queryFn: () => apiFetch<{ proformas: ProformaRecord[] }>('/api/proformas'),
     enabled: isAdmin,
     select: (data) => data.proformas,
+    refetchInterval: isAdmin ? 8000 : false,
   });
 }
 
@@ -29,6 +30,15 @@ export function useProformaMutations() {
   const createProforma = useMutation({
     mutationFn: (payload: CreateProformaPayload) =>
       apiFetch<{ proforma: ProformaRecord }>('/api/proformas', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: invalidate,
+  });
+
+  const registerProductQuote = useMutation({
+    mutationFn: (payload: CreateProformaPayload) =>
+      apiFetch<{ proforma: ProformaRecord }>('/api/proformas/from-product', {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
@@ -50,5 +60,5 @@ export function useProformaMutations() {
     onSuccess: invalidate,
   });
 
-  return { createProforma, updateProforma, deleteProforma };
+  return { createProforma, registerProductQuote, updateProforma, deleteProforma };
 }

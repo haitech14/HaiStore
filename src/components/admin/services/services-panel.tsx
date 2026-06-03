@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { CalendarClock, Plus, Tags, Wrench } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
 import { NewServiceDialog } from '@/components/admin/services/new-service-dialog';
@@ -15,19 +16,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  deleteServiceOrder,
-  loadServiceCategories,
-  loadServiceOrders,
   loadServicePriceList,
-  updateServiceCategory,
-  updateServiceOrderStatus,
+  updateServiceCategory as updateLocalServiceCategory,
 } from '@/lib/services-storage';
+import {
+  useServiceCategories,
+  useServiceCategoryMutations,
+  useServiceRequestMutations,
+  useServiceRequests,
+} from '@/hooks/use-service-requests';
 import { cn } from '@/lib/utils';
-import type { ServiceCategory, ServiceOrder, ServiceOrderStatus } from '@/types/service';
+import type { ServiceCategory } from '@/types/service';
+import type { ServiceRequestStatus } from '@/types/haitech-domain';
 
 export type ServicesTab = 'servicios' | 'categorias' | 'precios';
 
-const STATUS_LABELS: Record<ServiceOrderStatus, string> = {
+const STATUS_LABELS: Record<ServiceRequestStatus, string> = {
   pending: 'Pendiente',
   scheduled: 'Programado',
   in_progress: 'En curso',
@@ -36,7 +40,7 @@ const STATUS_LABELS: Record<ServiceOrderStatus, string> = {
 };
 
 const STATUS_VARIANT: Record<
-  ServiceOrderStatus,
+  ServiceRequestStatus,
   'default' | 'secondary' | 'outline' | 'destructive'
 > = {
   pending: 'secondary',
@@ -46,7 +50,7 @@ const STATUS_VARIANT: Record<
   cancelled: 'destructive',
 };
 
-const NEXT_STATUS: Partial<Record<ServiceOrderStatus, ServiceOrderStatus>> = {
+const NEXT_STATUS: Partial<Record<ServiceRequestStatus, ServiceRequestStatus>> = {
   pending: 'scheduled',
   scheduled: 'in_progress',
   in_progress: 'completed',
@@ -83,11 +87,37 @@ function formatAgendaDate(iso: string): string {
 export function ServicesPanel() {
   const [searchParams] = useSearchParams();
   const tab = parseServicesTab(searchParams);
-  const [orders, setOrders] = useState<ServiceOrder[]>(() => loadServiceOrders());
-  const [categories, setCategories] = useState<ServiceCategory[]>(() => loadServiceCategories());
+  const { data: orders = [], isLoading: ordersLoading } = useServiceRequests();
+  const { data: apiCategories = [] } = useServiceCategories();
+  const { updateCategory } = useServiceCategoryMutations();
+  const { updateRequest, deleteRequest } = useServiceRequestMutations();
+  const [localCategories, setLocalCategories] = useState<ServiceCategory[]>([]);
   const [priceList, setPriceList] = useState(() => loadServicePriceList());
   const [newOpen, setNewOpen] = useState(false);
   const [savedHint, setSavedHint] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const usesApiCategories = apiCategories.length > 0;
+
+  const categories: ServiceCategory[] = useMemo(() => {
+    if (apiCategories.length > 0) {
+      return apiCategories.map((c) => ({
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        active: c.active,
+      }));
+    }
+    return localCategories;
+  }, [apiCategories, localCategories]);
+
+  useEffect(() => {
+    if (apiCategories.length === 0 && localCategories.length === 0) {
+      void import('@/data/services-defaults').then((m) => {
+        setLocalCategories(m.DEFAULT_SERVICE_CATEGORIES);
+      });
+    }
+  }, [apiCategories.length, localCategories.length]);
 
   const categoryName = useMemo(() => {
     const map = new Map(categories.map((c) => [c.id, c.name]));
@@ -110,26 +140,66 @@ export function ServicesPanel() {
     return () => window.clearTimeout(t);
   }, [savedHint]);
 
-  const advanceStatus = (id: string) => {
-    const row = orders.find((o) => o.id === id);
-    if (!row) return;
-    const next = NEXT_STATUS[row.status];
+  const advanceStatus = async (id: string, current: ServiceRequestStatus) => {
+    const next = NEXT_STATUS[current];
     if (!next) return;
-    setOrders(updateServiceOrderStatus(id, next));
-    setSavedHint('Estado actualizado.');
+    setBusyId(id);
+    try {
+      await updateRequest.mutateAsync({ id, payload: { status: next } });
+      setSavedHint('Estado actualizado.');
+    } catch {
+      toast.error('No se pudo actualizar el estado');
+    } finally {
+      setBusyId(null);
+    }
   };
 
-  const handleDelete = (id: string, code: string) => {
-    if (!window.confirm(`¿Eliminar el servicio ${code}?`)) return;
-    setOrders(deleteServiceOrder(id));
-    setSavedHint('Servicio eliminado.');
+  const handleDelete = async (id: string, code: string) => {
+    if (!window.confirm(`¿Eliminar la solicitud ${code}?`)) return;
+    setBusyId(id);
+    try {
+      await deleteRequest.mutateAsync(id);
+      setSavedHint('Solicitud eliminada.');
+    } catch {
+      toast.error('No se pudo eliminar');
+    } finally {
+      setBusyId(null);
+    }
   };
 
-  const toggleCategory = (id: string) => {
+  const toggleCategory = async (id: string) => {
     const row = categories.find((c) => c.id === id);
     if (!row) return;
-    setCategories(updateServiceCategory(id, { active: !row.active }));
-    setSavedHint('Categoría actualizada.');
+    if (usesApiCategories) {
+      try {
+        await updateCategory.mutateAsync({ id, payload: { active: !row.active } });
+        setSavedHint('Categoría actualizada.');
+      } catch {
+        toast.error('No se pudo actualizar la categoría');
+      }
+      return;
+    }
+    const next = updateLocalServiceCategory(id, { active: !row.active });
+    setLocalCategories(next);
+    setSavedHint('Categoría actualizada (local).');
+  };
+
+  const patchCategoryField = async (
+    id: string,
+    field: 'name' | 'description',
+    value: string,
+  ) => {
+    if (usesApiCategories) {
+      try {
+        await updateCategory.mutateAsync({ id, payload: { [field]: value } });
+        setSavedHint('Categoría actualizada.');
+      } catch {
+        toast.error('No se pudo actualizar la categoría');
+      }
+      return;
+    }
+    const next = updateLocalServiceCategory(id, { [field]: value });
+    setLocalCategories(next);
   };
 
   return (
@@ -157,15 +227,17 @@ export function ServicesPanel() {
       <NewServiceDialog
         open={newOpen}
         onOpenChange={setNewOpen}
-        categories={categories}
-        onCreated={(next) => {
-          setOrders(next);
-          setSavedHint('Servicio registrado.');
-        }}
+        categories={apiCategories.length ? apiCategories : categories.map((c, i) => ({ ...c, sortOrder: i }))}
+        onCreated={() => setSavedHint('Solicitud de servicio registrada.')}
       />
 
       {tab === 'servicios' && (
         <div className="space-y-6">
+          {ordersLoading ? (
+            <p className="text-sm text-muted-foreground" role="status">
+              Cargando solicitudes…
+            </p>
+          ) : null}
           {agendaOrders.length > 0 && (
             <section aria-labelledby="services-agenda-heading" className="space-y-3">
               <h2 id="services-agenda-heading" className="text-base font-semibold text-balance">
@@ -189,7 +261,7 @@ export function ServicesPanel() {
                           {categoryName(row.categoryId)}
                         </p>
                         <p className="mt-1 text-sm">
-                          <span className="font-medium">{row.customerName}</span>
+                          <span className="font-medium">{row.customerSnapshot.nombre}</span>
                           {row.technician ? ` · ${row.technician}` : ''}
                         </p>
                       </div>
@@ -203,13 +275,13 @@ export function ServicesPanel() {
             </section>
           )}
 
-          {orders.length === 0 ? (
+          {orders.length === 0 && !ordersLoading ? (
             <AdminEmptyState
-              title="Sin servicios registrados"
-              description="Crea la primera orden con el botón Nuevo."
+              title="Sin solicitudes de servicio"
+              description="Crea la primera solicitud con el botón Nuevo."
               icon={<Wrench className="size-5" aria-hidden="true" />}
             />
-          ) : (
+          ) : orders.length > 0 ? (
             <div className="overflow-hidden rounded-xl border bg-card">
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/40">
@@ -228,9 +300,11 @@ export function ServicesPanel() {
                   {orders.map((row) => (
                     <tr key={row.id} className="border-b last:border-0">
                       <td className="px-4 py-3 font-medium">{row.code}</td>
-                      <td className="hidden px-4 py-3 md:table-cell">{row.customerName}</td>
+                      <td className="hidden px-4 py-3 md:table-cell">
+                        {row.customerSnapshot.nombre}
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {categoryName(row.categoryId)}
+                        {row.categoryLabel || categoryName(row.categoryId)}
                       </td>
                       <td className="hidden px-4 py-3 lg:table-cell">
                         {formatDateTime(row.scheduledAt)}
@@ -248,7 +322,8 @@ export function ServicesPanel() {
                               variant="outline"
                               size="sm"
                               className="min-h-9"
-                              onClick={() => advanceStatus(row.id)}
+                              disabled={busyId === row.id}
+                              onClick={() => void advanceStatus(row.id, row.status)}
                             >
                               → {STATUS_LABELS[NEXT_STATUS[row.status]!]}
                             </Button>
@@ -258,7 +333,8 @@ export function ServicesPanel() {
                             variant="ghost"
                             size="sm"
                             className="min-h-9 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(row.id, row.code)}
+                            disabled={busyId === row.id}
+                            onClick={() => void handleDelete(row.id, row.code)}
                           >
                             Eliminar
                           </Button>
@@ -269,7 +345,7 @@ export function ServicesPanel() {
                 </tbody>
               </table>
             </div>
-          )}
+          ) : null}
         </div>
       )}
 
@@ -303,8 +379,7 @@ export function ServicesPanel() {
                         value={cat.name}
                         className="mb-2 font-semibold"
                         onChange={(e) => {
-                          const next = updateServiceCategory(cat.id, { name: e.target.value });
-                          setCategories(next);
+                          void patchCategoryField(cat.id, 'name', e.target.value);
                         }}
                       />
                       <Label htmlFor={`cat-desc-${cat.id}`} className="sr-only">
@@ -315,10 +390,7 @@ export function ServicesPanel() {
                         value={cat.description}
                         className="text-sm"
                         onChange={(e) => {
-                          const next = updateServiceCategory(cat.id, {
-                            description: e.target.value,
-                          });
-                          setCategories(next);
+                          void patchCategoryField(cat.id, 'description', e.target.value);
                         }}
                       />
                     </div>
@@ -331,7 +403,7 @@ export function ServicesPanel() {
                       'min-h-9',
                       cat.active && 'bg-[hsl(var(--admin-accent))]',
                     )}
-                    onClick={() => toggleCategory(cat.id)}
+                    onClick={() => void toggleCategory(cat.id)}
                   >
                     {cat.active ? 'Activa' : 'Inactiva'}
                   </Button>

@@ -3,6 +3,7 @@ import { CategoryStrip } from '@/components/category-strip';
 import { ClientsSection } from '@/components/clients-section';
 import { CatalogCategorySections } from '@/components/catalog-category-sections';
 import { FeaturedProducts } from '@/components/featured-products';
+import { FlashDealsSection } from '@/components/flash-deals-section';
 import { GuidesSection } from '@/components/guides-section';
 import { HeroBanner } from '@/components/hero-banner';
 import {
@@ -19,6 +20,7 @@ export function HomePage() {
 
       <div className="container flex flex-col gap-14 pb-6 pt-2 sm:gap-16 sm:pb-8 sm:pt-4">
         <FeaturedProducts />
+        <FlashDealsSection />
         <CatalogCategorySections sectionsConfig={HOME_CATALOG_EQUIPMENT_SECTIONS} />
       </div>
 

@@ -48,38 +48,69 @@ function loadLocalInventory() {
   return { products, warehouses };
 }
 
-async function checkSchema() {
-  const { error } = await supabase.from('products').select('gallery,sort_order,inventory_snapshot').limit(1);
-  if (!error) {
+async function checkCatalogSchema() {
+  const schema = { has005: false, has006: false };
+
+  const r005 = await supabase.from('products').select('gallery,sort_order,inventory_snapshot').limit(1);
+  if (!r005.error) {
+    schema.has005 = true;
     console.log('✓ Esquema de catálogo (migración 005) presente');
-    return true;
-  }
-  if (/column|schema cache|Could not find/i.test(error.message)) {
+  } else if (/column|schema cache|Could not find/i.test(r005.error.message)) {
     console.warn('⚠ Falta migración 005 (gallery, sort_order, inventory_snapshot).');
     console.warn('  En Supabase → SQL Editor, ejecuta:');
     console.warn('  supabase/migrations/005_products_catalog_fields.sql');
-    return false;
+  } else {
+    console.error('Error al comprobar migración 005:', r005.error.message);
   }
-  console.error('Error al comprobar esquema:', error.message);
-  return false;
+
+  const r006 = await supabase.from('products').select('is_featured,view_count').limit(1);
+  if (!r006.error) {
+    schema.has006 = true;
+    console.log('✓ Esquema de catálogo (migración 006) presente');
+  } else if (/column|schema cache|Could not find/i.test(r006.error.message)) {
+    console.warn('⚠ Falta migración 006 (is_featured, view_count).');
+    console.warn('  En Supabase → SQL Editor, ejecuta:');
+    console.warn('  supabase/migrations/006_products_featured_views.sql');
+  } else {
+    console.error('Error al comprobar migración 006:', r006.error.message);
+  }
+
+  return schema;
 }
 
-async function upsertBatch(rows, useLegacy) {
-  const payload = useLegacy
-    ? rows.map(({ gallery: _g, sort_order: _s, attributes: _a, inventory_snapshot: _i, updated_at: _u, ...legacy }) => legacy)
-    : rows;
+function projectRowForSchema(row, schema) {
+  let payload = { ...row };
+  if (!schema.has005) {
+    const {
+      gallery: _g,
+      sort_order: _s,
+      attributes: _a,
+      inventory_snapshot: _i,
+      updated_at: _u,
+      ...legacy
+    } = payload;
+    payload = legacy;
+  }
+  if (!schema.has006) {
+    const { is_featured: _f, view_count: _v, ...rest } = payload;
+    payload = rest;
+  }
+  return payload;
+}
 
+async function upsertBatch(rows, schema) {
+  const payload = rows.map((row) => projectRowForSchema(row, schema));
   const { error } = await supabase.from('products').upsert(payload, { onConflict: 'id' });
   if (error) throw new Error(error.message);
 }
 
-async function syncProducts(products, useLegacy) {
+async function syncProducts(products, schema) {
   const withMedia = await persistProductsMedia(products);
   const rows = withMedia.map((p) => buildSupabaseProductRow(p));
   let done = 0;
   for (let i = 0; i < rows.length; i += BATCH) {
     const chunk = rows.slice(i, i + BATCH);
-    await upsertBatch(chunk, useLegacy);
+    await upsertBatch(chunk, schema);
     done += chunk.length;
     process.stdout.write(`\r  Productos: ${done}/${rows.length}`);
   }
@@ -126,11 +157,11 @@ async function tryApplyMigration005() {
 async function main() {
   console.log('HaiStore — sincronización local → Supabase\n');
 
-  let hasFullSchema = await checkSchema();
-  if (!hasFullSchema) {
+  let schema = await checkCatalogSchema();
+  if (!schema.has005) {
     console.log('Intentando aplicar migración 005…');
     if (await tryApplyMigration005()) {
-      hasFullSchema = await checkSchema();
+      schema = await checkCatalogSchema();
     }
   }
   const { products } = loadLocalInventory();
@@ -139,7 +170,7 @@ async function main() {
   const before = await countRemote();
   console.log(`Supabase antes: ${before} productos\n`);
 
-  await syncProducts(products, !hasFullSchema);
+  await syncProducts(products, schema);
 
   const after = await countRemote();
   console.log(`Supabase después: ${after} productos`);

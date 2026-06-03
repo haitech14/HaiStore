@@ -11,6 +11,7 @@ import { ProductDetailPurchaseBox } from '@/components/product-detail/product-de
 import { ProductDetailRentalOption } from '@/components/product-detail/product-detail-rental-option';
 import { ProductDetailResources } from '@/components/product-detail/product-detail-resources';
 import { buildProductDetail } from '@/lib/build-product-detail';
+import { useRentalPlans } from '@/hooks/use-rental-plans';
 import { cn } from '@/lib/utils';
 import type { FeaturedProduct } from '@/data/featured-products';
 import type { ProductSpecRow } from '@/types/product-detail';
@@ -57,7 +58,12 @@ function BulletList({ bullets }: { bullets: string[] }) {
 }
 
 export function ProductDetailView({ product, featuredMeta }: ProductDetailViewProps) {
-  const detail = buildProductDetail(product, featuredMeta);
+  const { data: rentalPlansRaw = [] } = useRentalPlans({ activeOnly: true });
+  const rentalPlansFromApi = rentalPlansRaw.map((plan) => ({
+    pagesPerMonth: plan.pagesPerMonth,
+    monthlyPricePen: plan.monthlyPricePen,
+  }));
+  const detail = buildProductDetail(product, featuredMeta, rentalPlansFromApi);
   const [activeTab, setActiveTab] = useState<DetailTab>('description');
 
   const tabs = [

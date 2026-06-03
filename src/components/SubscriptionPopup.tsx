@@ -28,6 +28,7 @@ import {
   getPremioByIndex,
   pickRandomPremioIndex,
 } from '@/config/subscription-ruleta-premios';
+import { submitSupportTicket, SupportTicketError } from '@/lib/support-ticket';
 import { cn } from '@/lib/utils';
 
 const SESSION_KEY = 'subscription_popup_shown';
@@ -159,34 +160,18 @@ export function SubscriptionPopup() {
     setOpen(false);
   }, [phase]);
 
-  const runSpin = useCallback((values: SubscriptionFormValues) => {
-    const prizeIndex = pickRandomPremioIndex();
-    const premio = getPremioByIndex(prizeIndex);
+  const runSpin = useCallback((prizeIndex: number, premioLabel: string) => {
     const delta = computeRuletaSpinDeltaDeg(prizeIndex);
     const idleSnapshot = idleDiskRef.current;
-    const dial =
-      countryOptions.find((country) => country.code === values.country)?.dial ?? '+51';
 
     setPhase('spinning');
     setSpinRotation((current) => current + idleSnapshot + delta);
     setIdleDiskRotation(0);
     idleDiskRef.current = 0;
 
-    void fetch('/api/support/tickets', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: values.name,
-        email: values.email,
-        message: `[Ruleta del Color] ${dial} ${values.phone ?? '—'} · Premio: ${formatPremioLabel(premio)}`,
-      }),
-    }).catch(() => {
-      /* demo: continúa aunque el API no responda */
-    });
-
     spinTimerRef.current = window.setTimeout(() => {
       toast.success('¡Felicidades!', {
-        description: `Ganaste: ${formatPremioLabel(premio)}. Revisa tu correo en 48–72 h.`,
+        description: `Ganaste: ${premioLabel}. Revisa tu correo en 48–72 h.`,
         duration: CLOSE_AFTER_TOAST_MS,
       });
 
@@ -197,11 +182,48 @@ export function SubscriptionPopup() {
     }, SPIN_DURATION_MS);
   }, []);
 
-  const onSubmit = (values: SubscriptionFormValues) => {
+  const onSubmit = async (values: SubscriptionFormValues) => {
     setPhase('submitting');
-    window.requestAnimationFrame(() => {
-      runSpin(values);
-    });
+    const dial =
+      countryOptions.find((country) => country.code === values.country)?.dial ?? '+51';
+    const prizeIndex = pickRandomPremioIndex();
+    const premio = getPremioByIndex(prizeIndex);
+    const premioLabel = formatPremioLabel(premio);
+
+    try {
+      const ticket = await submitSupportTicket({
+        name: values.name,
+        email: values.email,
+        message: `Suscripción Ruleta del Color — premio asignado: ${premioLabel}`,
+        ...(values.phone?.trim() ? { phone: `${dial} ${values.phone.trim()}` } : {}),
+        country: values.country,
+        type: 'subscription_ruleta',
+        metadata: {
+          campaign: 'ruleta-del-color',
+          countryCode: values.country,
+          phoneDial: dial,
+          prizeLabel: premioLabel,
+        },
+      });
+
+      if (ticket.demo) {
+        toast.warning('Modo demo HaiSupport', {
+          description: 'El registro no llegó a soporte real. Configura HAISUPPORT_API_URL en el servidor.',
+        });
+      }
+
+      window.requestAnimationFrame(() => {
+        runSpin(prizeIndex, premioLabel);
+      });
+    } catch (error) {
+      setPhase('idle');
+      toast.error('No se pudo registrar tu participación', {
+        description:
+          error instanceof SupportTicketError
+            ? error.message
+            : 'Comprueba tu conexión e intenta de nuevo.',
+      });
+    }
   };
 
   if (!onStorePage) return null;
@@ -217,7 +239,7 @@ export function SubscriptionPopup() {
       <DialogContent
         overlayClassName="z-[100] bg-black/60 backdrop-blur-sm"
         className={cn(
-          'z-[101] max-h-[95dvh] w-[calc(100%-1rem)] max-w-[960px] overflow-y-auto border-0 p-0',
+          'z-[101] max-h-[95dvh] w-[calc(100%-1rem)] max-w-[960px] overflow-y-auto border-0 bg-[#F5F5F5] p-0',
           'data-[state=open]:animate-in data-[state=closed]:animate-out',
           'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',
           'data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95',
@@ -265,7 +287,7 @@ export function SubscriptionPopup() {
           </div>
 
           {/* Columna derecha — formulario */}
-          <div className="relative flex-1 bg-background px-5 py-7 sm:px-8 sm:py-8">
+          <div className="relative flex-1 bg-[#F5F5F5] px-5 py-7 sm:px-8 sm:py-8">
             <button
               type="button"
               onClick={handleClose}

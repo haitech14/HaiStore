@@ -31,6 +31,7 @@ import {
 import {
   CUSTOMER_ROLE_SECTIONS,
   filterAndSortCustomers,
+  isHaiSupportOnlyCustomer,
   roleBadgeLabel,
   type CustomerRoleGroupKey,
   type CustomerSortKey,
@@ -48,7 +49,9 @@ interface RegisteredCustomersPanelProps {
 }
 
 export function RegisteredCustomersPanel({ variant = 'page' }: RegisteredCustomersPanelProps) {
-  const { data: customers = [], isLoading, isError } = useAdminStoreCustomers();
+  const { data, isLoading, isError } = useAdminStoreCustomers();
+  const customers = data?.customers ?? [];
+  const counts = data?.counts;
   const { updateCustomer } = useAdminStoreCustomersMutations();
 
   const [query, setQuery] = useState('');
@@ -79,6 +82,9 @@ export function RegisteredCustomersPanel({ variant = 'page' }: RegisteredCustome
         ? `${customers.length} cliente${customers.length === 1 ? '' : 's'}`
         : `${filtered.length} de ${customers.length} clientes`}
       {totalWithAccount > 0 ? ` · ${totalWithAccount} con cuenta` : ''}
+      {counts && counts.haisupport > 0
+        ? ` · ${counts.haisupport} HaiSupport`
+        : ''}
     </p>
   );
 
@@ -192,9 +198,16 @@ export function RegisteredCustomersPanel({ variant = 'page' }: RegisteredCustome
                   <p className="text-xs text-muted-foreground">{customer.email}</p>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="font-normal whitespace-nowrap">
-                    {roleBadgeLabel(customer)}
-                  </Badge>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant="outline" className="font-normal whitespace-nowrap">
+                      {roleBadgeLabel(customer)}
+                    </Badge>
+                    {isHaiSupportOnlyCustomer(customer) ? (
+                      <Badge variant="secondary" className="font-normal whitespace-nowrap text-xs">
+                        HaiSupport
+                      </Badge>
+                    ) : null}
+                  </div>
                 </TableCell>
                 <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
                   {customer.company_name ?? '—'}
@@ -206,16 +219,22 @@ export function RegisteredCustomersPanel({ variant = 'page' }: RegisteredCustome
                   {formatRegisteredAt(customer.created_at)}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="size-9"
-                    aria-label={`Editar ${customer.full_name ?? customer.email}`}
-                    onClick={() => setEditing(customer)}
-                  >
-                    <Pencil className="size-4" aria-hidden="true" />
-                  </Button>
+                  {isHaiSupportOnlyCustomer(customer) ? (
+                    <span className="text-xs text-muted-foreground" title="Editar en HaiSupport">
+                      —
+                    </span>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="size-9"
+                      aria-label={`Editar ${customer.full_name ?? customer.email}`}
+                      onClick={() => setEditing(customer)}
+                    >
+                      <Pencil className="size-4" aria-hidden="true" />
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

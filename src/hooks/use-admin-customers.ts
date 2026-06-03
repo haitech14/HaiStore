@@ -12,7 +12,8 @@ export function useAdminStoreCustomers() {
     queryKey: ['admin-store-customers'],
     queryFn: () => apiFetch<AdminStoreCustomersPayload>('/api/customers/admin/all'),
     enabled: isAdmin,
-    select: (data) => data.customers,
+    select: (data) => data,
+    refetchInterval: isAdmin ? 8000 : false,
   });
 }
 

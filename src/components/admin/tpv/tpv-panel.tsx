@@ -19,8 +19,12 @@ import { Input } from '@/components/ui/input';
 import { useAdminProductsQuery } from '@/hooks/use-admin-dashboard';
 import { useCompanySettings } from '@/hooks/use-company-settings';
 import { useProformaMutations } from '@/hooks/use-admin-proformas';
+import { useCreateStoreOrder } from '@/hooks/use-create-store-order';
 import { buildProformaPayloadFromTpv } from '@/lib/build-proforma-payload';
 import { buildTpvDocumentPdf } from '@/lib/generate-tpv-document-pdf';
+import { getUsdToPenSaleRate } from '@/lib/exchange-rate';
+import { getEffectivePrice } from '@/lib/pricing';
+import { haitechFormToClient, tpvCustomerToHaitechForm } from '@/lib/haitech-client-mappers';
 import { nextTpvDocumentNumber, peekTpvDocumentNumber } from '@/lib/tpv-document-serial';
 import { formatTpvMoney, unitPriceForTpv } from '@/lib/tpv-pricing';
 import { cn } from '@/lib/utils';
@@ -39,6 +43,7 @@ const EMPTY_CUSTOMER: TpvCustomer = {
   atencion: '',
   celular: '',
   direccion: 'Lima',
+  ciudad: 'Lima',
   priceList: 'public',
   currency: 'PEN',
   storeCustomerId: null,
@@ -78,6 +83,7 @@ export function TpvPanel() {
   const { data: products = [], isLoading } = useAdminProductsQuery();
   const { data: companySettings } = useCompanySettings();
   const { createProforma } = useProformaMutations();
+  const createStoreOrder = useCreateStoreOrder();
 
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState<TpvLineItem[]>([]);
@@ -182,7 +188,37 @@ export function TpvPanel() {
               buildProformaPayloadFromTpv(documentNumber, customer, cart, totals.subtotal),
             );
           } catch {
-            setError('PDF generado, pero no se pudo registrar la proforma para seguimiento.');
+            setError('PDF generado, pero no se pudo registrar la cotización para seguimiento.');
+          }
+        }
+
+        if (type === 'factura' || type === 'boleta') {
+          try {
+            const exchangeRate = getUsdToPenSaleRate();
+            await createStoreOrder.mutateAsync({
+              customer: haitechFormToClient(tpvCustomerToHaitechForm(customer)),
+              lineItems: cart.map((line) => {
+                const product = products.find((p) => p.id === line.productId);
+                const unitPriceUsd = product
+                  ? getEffectivePrice(product, customer.priceList)
+                  : line.unitPricePen / exchangeRate;
+                return {
+                  productId: line.productId,
+                  name: line.name,
+                  quantity: line.quantity,
+                  unitPriceUsd,
+                  imageUrl: line.imageUrl ?? null,
+                };
+              }),
+              currency: customer.currency === 'USD' ? 'USD' : 'PEN',
+              paymentMethod: type === 'factura' ? 'Factura TPV' : 'Boleta TPV',
+              paymentStatus: 'paid',
+              status: 'confirmed',
+              exchangeRate,
+              notes: `${meta.label} ${documentNumber}`,
+            });
+          } catch {
+            setError('PDF generado, pero no se pudo registrar la venta en el panel.');
           }
         }
       } catch {
@@ -191,7 +227,7 @@ export function TpvPanel() {
         setGenerating(null);
       }
     },
-    [cart, customer, companySettings, createProforma, totals.subtotal],
+    [cart, customer, companySettings, createProforma, createStoreOrder, products, totals.subtotal],
   );
 
   return (

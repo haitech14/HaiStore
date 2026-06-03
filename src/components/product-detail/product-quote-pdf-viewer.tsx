@@ -39,7 +39,7 @@ export function ProductQuotePdfViewer({ preview, onOpenChange }: ProductQuotePdf
             </DialogTitle>
             <DialogDescription>
               {preview?.quoteNumber
-                ? `Proforma ${preview.quoteNumber}. Revise el documento antes de descargarlo.`
+                ? `Cotización ${preview.quoteNumber}. Revise el documento antes de descargarlo.`
                 : 'Revise el PDF generado antes de descargarlo o compartirlo con el cliente.'}
             </DialogDescription>
           </DialogHeader>

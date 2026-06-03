@@ -11,6 +11,10 @@ import { customersRouter } from './routes/customers.js';
 import { categoriesRouter } from './routes/categories.js';
 import { warehousesRouter } from './routes/warehouses.js';
 import { proformasRouter } from './routes/proformas.js';
+import { rentalPlansRouter } from './routes/rental-plans.js';
+import { rentalRequestsRouter } from './routes/rental-requests.js';
+import { serviceRequestsRouter } from './routes/service-requests.js';
+import { integrationsRouter } from './routes/integrations.js';
 
 const corsOrigins = getCorsOrigins();
 
@@ -55,6 +59,7 @@ app.get('/', (_req, res) => {
 });
 
 app.use('/api/support', supportRouter);
+app.use('/api/integrations', integrationsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/settings', settingsRouter);
@@ -63,6 +68,9 @@ app.use('/api/customers', customersRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/warehouses', warehousesRouter);
 app.use('/api/proformas', proformasRouter);
+app.use('/api/rental-plans', rentalPlansRouter);
+app.use('/api/rental-requests', rentalRequestsRouter);
+app.use('/api/service-requests', serviceRequestsRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Recurso no encontrado' });

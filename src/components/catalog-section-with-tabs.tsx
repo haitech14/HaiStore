@@ -1,10 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 
 import { ProductCarouselSection } from '@/components/product-carousel-section';
 import { ProductConditionTabList } from '@/components/product-condition-tab-list';
 import type { FeaturedProduct } from '@/data/featured-products';
-import { categoryPathWithCondition } from '@/lib/category-path';
 import type { HomeCatalogSectionConfig } from '@/lib/home-catalog-sections';
 import {
   PRODUCT_CONDITIONS,
@@ -71,38 +69,27 @@ export function CatalogSectionWithTabs({
 
   return (
     <section aria-labelledby={titleId}>
-      <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-start sm:justify-between sm:gap-4 lg:gap-6">
-        <div className="flex min-w-0 flex-col gap-3">
-          <div>
-            <h2
-              id={titleId}
-              className="text-2xl font-bold tracking-tight text-neutral-900 sm:text-[1.75rem]"
-            >
-              {section.title}
-            </h2>
-            <p className="mt-1 text-sm text-neutral-500 sm:mt-2 sm:text-[0.95rem]">
-              {section.subtitle}
-            </p>
-          </div>
-
-          <ProductConditionTabList
-            idPrefix={section.id}
-            activeCondition={activeCondition}
-            onSelect={setActiveCondition}
-            counts={tabCounts}
-            ariaLabel={`Filtrar ${section.title} por condición`}
-            className="w-full sm:w-fit"
-          />
-        </div>
-
-        <Link
-          to={categoryPathWithCondition(section.categoryPathSlug, activeCondition)}
-          className="inline-flex shrink-0 items-center gap-1 self-start text-sm font-semibold text-red-600 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 sm:pt-1"
+      <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <h2
+          id={titleId}
+          className="text-balance text-xl font-bold tracking-tight text-neutral-900 sm:text-2xl"
         >
-          Ver {section.title.toLowerCase()}
-          <span aria-hidden="true">→</span>
-        </Link>
+          {section.title}
+        </h2>
+
+        <ProductConditionTabList
+          idPrefix={section.id}
+          activeCondition={activeCondition}
+          onSelect={setActiveCondition}
+          counts={tabCounts}
+          ariaLabel={`Filtrar ${section.title} por condición`}
+          className="w-full sm:w-auto"
+        />
       </div>
+
+      {section.subtitle ? (
+        <p className="mb-5 text-sm text-neutral-500 sm:mb-6 sm:text-[0.95rem]">{section.subtitle}</p>
+      ) : null}
 
       <div
         role="tabpanel"

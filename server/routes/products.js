@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { randomUUID } from 'crypto';
 
 import { requireAdmin, resolveRequestRole } from '../lib/auth-store.js';
+import { notifyHaiSupportChange } from '../lib/haisupport-sync.js';
 import {
   applyOrderedIds,
   assignProductSortOrders,
@@ -270,6 +271,7 @@ productsRouter.post('/', requireAdmin, async (req, res, next) => {
 
     await syncProductsToSupabase([product]);
 
+    notifyHaiSupportChange('products', 'create', product);
     res.status(201).json(product);
   } catch (error) {
     next(error);
@@ -300,6 +302,7 @@ productsRouter.patch('/:id', requireAdmin, async (req, res, next) => {
 
     await syncProductsToSupabase([updated]);
 
+    notifyHaiSupportChange('products', 'update', updated);
     res.json(updated);
   } catch (error) {
     next(error);
@@ -325,6 +328,7 @@ productsRouter.delete('/:id', requireAdmin, async (req, res, next) => {
       await supabase.from('products').delete().eq('id', removed.id);
     }
 
+    notifyHaiSupportChange('products', 'delete', { id: removed.id });
     res.json({ ok: true, id: removed.id });
   } catch (error) {
     next(error);

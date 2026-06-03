@@ -73,7 +73,7 @@ export function ProformaEditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Editar proforma {proforma.documentNumber}</DialogTitle>
+          <DialogTitle>Editar cotización {proforma.documentNumber}</DialogTitle>
           <DialogDescription>
             Vendedor: {proforma.sellerName}
             {proforma.sellerEmail ? ` · ${proforma.sellerEmail}` : ''}

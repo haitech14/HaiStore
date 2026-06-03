@@ -21,6 +21,7 @@ export interface TpvCustomer {
   atencion: string;
   celular: string;
   direccion: string;
+  ciudad?: string;
   /** Lista de precios del inventario a aplicar al carrito. */
   priceList: PriceRole;
   /** Moneda de visualización y del comprobante. */
@@ -44,9 +45,9 @@ export interface TpvDocumentMeta {
 export const TPV_DOCUMENT_META: Record<TpvDocumentType, TpvDocumentMeta> = {
   proforma: {
     type: 'proforma',
-    label: 'Proforma',
-    badgeTitle: 'PROFORMA',
-    detailSectionTitle: 'DETALLE DE LA PROFORMA',
+    label: 'Cotización',
+    badgeTitle: 'COTIZACIÓN',
+    detailSectionTitle: 'DETALLE DE LA COTIZACIÓN',
     seriesPrefix: 'PRF',
     requiresRuc: false,
     documentFieldLabel: 'RUC / DNI',

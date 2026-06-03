@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 
 import { AddToCartButton } from '@/components/cart/add-to-cart-button';
+import { AdminRolePricesTooltip } from '@/components/admin/admin-role-prices-tooltip';
 import { ProductAttributeBadges } from '@/components/product-attribute-badges';
-import { DualPrice } from '@/components/product-showcase-card';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -76,7 +76,10 @@ export function ProductQuickViewDialog({
             <h2 className="text-balance text-lg font-bold">{displayName}</h2>
             <ProductAttributeBadges product={badgeSource} />
             <p className="text-xl font-bold">
-              <DualPrice usd={displayPrice} />
+              <AdminRolePricesTooltip
+                productId={snapshot?.id ?? product?.id ?? ''}
+                displayUsd={displayPrice}
+              />
             </p>
             {product?.description ? (
               <p className="line-clamp-4 text-sm text-muted-foreground">{product.description}</p>
