@@ -20,9 +20,13 @@ import type { PriceRole, ProductRolePrices } from '@/lib/roles';
 
 export interface Product {
   id: string;
+  /** Código de inventario (EDP / SKU) cuando está disponible en catálogo público. */
+  code?: string | null;
   name: string;
   description: string | null;
   price: number;
+  /** Precios por tier (mayorista, técnico, distribuidor, público). */
+  prices?: ProductRolePrices;
   currency: string;
   image_url: string | null;
   /** Galería del inventario (la principal suele coincidir con image_url). */

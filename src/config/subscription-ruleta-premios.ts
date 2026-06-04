@@ -15,6 +15,8 @@ export interface RuletaPremio {
   id: string;
   sectorColor: string;
   textColor: string;
+  /** Color del icono (misma familia que el sector). */
+  iconColor: string;
   label: string;
   sublabel: string;
   icon: LucideIcon;
@@ -31,6 +33,7 @@ export const SUBSCRIPTION_RULETA_PREMIOS: RuletaPremio[] = [
     id: 'rental-5',
     sectorColor: '#14b8a6',
     textColor: '#0f766e',
+    iconColor: '#0d9488',
     label: '5% 1.er mes',
     sublabel: 'Alquiler',
     icon: CalendarDays,
@@ -39,6 +42,7 @@ export const SUBSCRIPTION_RULETA_PREMIOS: RuletaPremio[] = [
     id: 'parts-10',
     sectorColor: '#ef4444',
     textColor: '#b91c1c',
+    iconColor: '#dc2626',
     label: '10%',
     sublabel: 'Repuestos',
     icon: Settings,
@@ -47,6 +51,7 @@ export const SUBSCRIPTION_RULETA_PREMIOS: RuletaPremio[] = [
     id: 'copy-50',
     sectorColor: '#f97316',
     textColor: '#c2410c',
+    iconColor: '#ea580c',
     label: 'S/ 50 dto.',
     sublabel: 'Fotocopia',
     icon: FileText,
@@ -55,6 +60,7 @@ export const SUBSCRIPTION_RULETA_PREMIOS: RuletaPremio[] = [
     id: 'free-shipping',
     sectorColor: '#eab308',
     textColor: '#a16207',
+    iconColor: '#ca8a04',
     label: 'Envío',
     sublabel: 'Gratis',
     icon: Truck,
@@ -63,6 +69,7 @@ export const SUBSCRIPTION_RULETA_PREMIOS: RuletaPremio[] = [
     id: 'surprise',
     sectorColor: '#22c55e',
     textColor: '#15803d',
+    iconColor: '#16a34a',
     label: 'Regalo',
     sublabel: 'Sorpresa',
     icon: Gift,
@@ -71,6 +78,7 @@ export const SUBSCRIPTION_RULETA_PREMIOS: RuletaPremio[] = [
     id: 'extra-spin',
     sectorColor: '#06b6d4',
     textColor: '#0e7490',
+    iconColor: '#0891b2',
     label: 'Otro',
     sublabel: 'Giro',
     icon: RefreshCw,
@@ -80,6 +88,7 @@ export const SUBSCRIPTION_RULETA_PREMIOS: RuletaPremio[] = [
     id: 'toner-5',
     sectorColor: '#3b82f6',
     textColor: '#1d4ed8',
+    iconColor: '#2563eb',
     label: '$5 USD',
     sublabel: 'Tóner',
     icon: Droplet,
@@ -88,6 +97,7 @@ export const SUBSCRIPTION_RULETA_PREMIOS: RuletaPremio[] = [
     id: 'points-20',
     sectorColor: '#8b5cf6',
     textColor: '#6d28d9',
+    iconColor: '#7c3aed',
     label: '+20',
     sublabel: 'Puntos',
     icon: Star,
@@ -96,6 +106,7 @@ export const SUBSCRIPTION_RULETA_PREMIOS: RuletaPremio[] = [
     id: 'points-x2',
     sectorColor: '#ec4899',
     textColor: '#be185d',
+    iconColor: '#db2777',
     label: '×2 puntos',
     sublabel: 'Compra',
     icon: ShoppingCart,

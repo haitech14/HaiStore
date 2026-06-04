@@ -1,6 +1,11 @@
+import {
+  HAITECH_ADMIN_PANEL_EMAILS,
+  HAITECH_BOOTSTRAP_ADMIN_EMAILS,
+} from './haitech-auth-credentials.js';
+
 /** @typedef {{ email?: string; role?: string }} AuthLikeUser */
 
-export const ADMIN_PANEL_EMAILS = ['admin@haitech.pe', 'soporte@haitech.pe'];
+export const ADMIN_PANEL_EMAILS = HAITECH_ADMIN_PANEL_EMAILS;
 
 export function normalizeAuthEmail(email) {
   return (email ?? '').trim().toLowerCase();
@@ -31,7 +36,7 @@ export function hasAdminApiAccess(user) {
  */
 export function resolveBootstrapRole(email, profileRole) {
   const normalized = normalizeAuthEmail(email);
-  if (normalized === 'admin@haitech.pe' || normalized === 'soporte@haitech.pe') {
+  if (HAITECH_BOOTSTRAP_ADMIN_EMAILS.includes(normalized)) {
     return 'admin';
   }
   return profileRole;

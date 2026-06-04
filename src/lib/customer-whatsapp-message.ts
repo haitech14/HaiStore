@@ -1,4 +1,4 @@
-import { buildWhatsAppShareUrl } from '@/lib/proforma-whatsapp-message';
+import { buildWhatsAppShareUrl, WA_EMOJI } from '@/lib/whatsapp-encoding';
 import { getPersonaCellValue } from '@/lib/persona-report-columns';
 import type { StoreCustomerWithRole } from '@/types/store';
 
@@ -15,7 +15,7 @@ export function buildCustomerWhatsAppMessage(
     customer.full_name?.trim() ||
     'estimado cliente';
 
-  const lines = [`¡Hola ${name}! 👋`, '', 'Te escribimos desde HaiStore.'];
+  const lines = [`¡Hola ${name}! ${WA_EMOJI.wave}`, '', 'Te escribimos desde HaiStore.'];
 
   if (productNames.length > 0) {
     lines.push('', 'Productos de tu interés:', ...productNames.map((p) => `  • ${p}`));

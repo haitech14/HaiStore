@@ -69,7 +69,7 @@ export function ImportedSalesErpTable({ documents }: ImportedSalesErpTableProps)
       </Table>
       <p className="border-t px-4 py-2 text-xs text-muted-foreground">
         {documents.length} comprobante{documents.length === 1 ? '' : 's'} · columnas según Reporte
-        de Ventas ERP
+        de Ventas HaiSales
       </p>
     </div>
   );

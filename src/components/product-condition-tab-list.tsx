@@ -1,16 +1,18 @@
-import { Package, Recycle, Sparkles, type LucideIcon } from 'lucide-react';
+import { BadgeCheck, Cog, Package, Recycle, type LucideIcon } from 'lucide-react';
 
 import {
-  PRODUCT_CONDITION_LABELS,
+  getProductConditionLabel,
   PRODUCT_CONDITIONS,
+  type CatalogFamilySlug,
   type ProductCondition,
 } from '@/lib/product-condition';
 import { cn } from '@/lib/utils';
 
 const CONDITION_ICONS: Record<ProductCondition, LucideIcon> = {
-  nuevas: Sparkles,
-  seminuevas: Package,
-  remanufacturadas: Recycle,
+  originales: BadgeCheck,
+  compatibles: Package,
+  remanufacturados: Recycle,
+  partes: Cog,
 };
 
 interface ProductConditionTabListProps {
@@ -20,6 +22,9 @@ interface ProductConditionTabListProps {
   counts?: Partial<Record<ProductCondition, number>>;
   ariaLabel: string;
   className?: string;
+  /** Si se indica multifuncionales/impresoras: Nuevos, Seminuevos, Remanufacturados (3 tabs). */
+  catalogFamily?: CatalogFamilySlug | null;
+  conditions?: readonly ProductCondition[];
 }
 
 export function ProductConditionTabList({
@@ -29,6 +34,8 @@ export function ProductConditionTabList({
   counts,
   ariaLabel,
   className,
+  catalogFamily = null,
+  conditions = PRODUCT_CONDITIONS,
 }: ProductConditionTabListProps) {
   return (
     <div
@@ -40,10 +47,11 @@ export function ProductConditionTabList({
       role="tablist"
       aria-label={ariaLabel}
     >
-      {PRODUCT_CONDITIONS.map((condition) => {
+      {conditions.map((condition) => {
         const count = counts?.[condition];
         const isActive = activeCondition === condition;
         const Icon = CONDITION_ICONS[condition];
+        const label = getProductConditionLabel(condition, catalogFamily);
 
         return (
           <button
@@ -63,7 +71,7 @@ export function ProductConditionTabList({
             )}
           >
             <Icon className="size-4 shrink-0" aria-hidden="true" strokeWidth={2} />
-            {PRODUCT_CONDITION_LABELS[condition]}
+            {label}
             {count != null ? (
               <span className="sr-only">
                 {`, ${count} producto${count === 1 ? '' : 's'}`}

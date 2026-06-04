@@ -62,6 +62,86 @@ const DEFAULT_CATEGORIES = [
     image: '/categories/servicio-tecnico.png',
     tagline: 'Mantenimiento, instalación y soporte especializado',
   },
+  {
+    id: 'cat-alquiler',
+    name: 'Alquiler',
+    slug: 'alquiler',
+    parentId: null,
+    sortOrder: 5,
+    inventoryLabels: ['Alquiler'],
+    image: '/categories/alquiler.png',
+    tagline: 'Equipos de impresión y tecnología en modalidad de alquiler',
+  },
+  {
+    id: 'cat-alquiler-laptops',
+    name: 'Alquiler de Laptops',
+    slug: 'alquiler-laptops',
+    parentId: 'cat-alquiler',
+    sortOrder: 0,
+    inventoryLabels: ['Alquiler - Laptops'],
+    image: '/categories/alquiler/laptops.png',
+    tagline: 'Laptops para oficina, capacitaciones y eventos',
+  },
+  {
+    id: 'cat-alquiler-computadoras',
+    name: 'Alquiler de Computadoras',
+    slug: 'alquiler-computadoras',
+    parentId: 'cat-alquiler',
+    sortOrder: 1,
+    inventoryLabels: ['Alquiler - Computadoras'],
+    image: '/categories/alquiler/computadoras.png',
+    tagline: 'Equipos de escritorio para producción continua',
+  },
+  {
+    id: 'cat-alquiler-proyectores',
+    name: 'Alquiler de Proyectores',
+    slug: 'alquiler-proyectores',
+    parentId: 'cat-alquiler',
+    sortOrder: 2,
+    inventoryLabels: ['Alquiler - Proyectores'],
+    image: '/categories/alquiler/proyectores.png',
+    tagline: 'Proyección para salas y eventos corporativos',
+  },
+  {
+    id: 'cat-alquiler-impresoras',
+    name: 'Alquiler de Impresoras',
+    slug: 'alquiler-impresoras',
+    parentId: 'cat-alquiler',
+    sortOrder: 3,
+    inventoryLabels: ['Alquiler - Impresoras'],
+    image: '/categories/alquiler/impresoras.png',
+    tagline: 'Multifuncionales y equipos de oficina',
+  },
+  {
+    id: 'cat-alquiler-plotters',
+    name: 'Alquiler de Plotters',
+    slug: 'alquiler-plotters',
+    parentId: 'cat-alquiler',
+    sortOrder: 4,
+    inventoryLabels: ['Alquiler - Plotters'],
+    image: '/categories/alquiler/plotters.png',
+    tagline: 'Formato ancho para planos y diseño técnico',
+  },
+  {
+    id: 'cat-alquiler-escaneres',
+    name: 'Alquiler de Escáneres',
+    slug: 'alquiler-escaneres',
+    parentId: 'cat-alquiler',
+    sortOrder: 5,
+    inventoryLabels: ['Alquiler - Escáneres'],
+    image: '/categories/alquiler/escaneres.png',
+    tagline: 'Digitalización de documentos a gran velocidad',
+  },
+];
+
+const RENTAL_CATEGORY_IDS = [
+  'cat-alquiler',
+  'cat-alquiler-laptops',
+  'cat-alquiler-computadoras',
+  'cat-alquiler-proyectores',
+  'cat-alquiler-impresoras',
+  'cat-alquiler-plotters',
+  'cat-alquiler-escaneres',
 ];
 
 function slugify(value) {
@@ -106,11 +186,31 @@ async function ensureCategoriesFile() {
   }
 }
 
+function mergeMissingRentalCategories(categories) {
+  const byId = new Map(categories.map((row) => [row.id, row]));
+  let changed = false;
+
+  for (const seed of DEFAULT_CATEGORIES) {
+    if (!RENTAL_CATEGORY_IDS.includes(seed.id)) continue;
+    if (byId.has(seed.id)) continue;
+    byId.set(seed.id, normalizeCategory(seed));
+    changed = true;
+  }
+
+  return changed ? [...byId.values()] : categories;
+}
+
 export async function readStoreCategories() {
   await ensureCategoriesFile();
   const raw = await fs.readFile(categoriesPath(), 'utf-8');
   const data = JSON.parse(raw);
-  return (data.categories ?? []).map((row) => normalizeCategory(row));
+  let categories = (data.categories ?? []).map((row) => normalizeCategory(row));
+  const merged = mergeMissingRentalCategories(categories);
+  if (merged !== categories) {
+    categories = merged;
+    await writeStoreCategories(categories);
+  }
+  return categories;
 }
 
 export async function writeStoreCategories(categories) {

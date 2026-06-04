@@ -162,11 +162,11 @@ async function listFromInventory(role, adminView) {
   return products.map((product) => toPublicProduct(withResolvedMedia(product), role));
 }
 
+/**
+ * Lista productos desde inventario unificado (JSON local + Supabase cuando aplica).
+ * No usar solo Supabase: importaciones CLI (repuestos, tóner) viven en inventory.json.
+ */
 export async function listProducts({ role = 'public', adminView = false } = {}) {
-  if (shouldPreferSupabaseCatalog()) {
-    const fromDb = await listFromSupabase(role, adminView);
-    if (fromDb) return fromDb;
-  }
   return listFromInventory(role, adminView);
 }
 
@@ -202,32 +202,41 @@ export async function getPublicProductById(id, role = 'public') {
   return toPublicProduct(withResolvedMedia(product), role);
 }
 
+function toMinimalSupabaseRow(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? null,
+    price: row.price ?? row.prices?.public ?? 0,
+    prices: row.prices ?? ensureFullPrices({ public: row.price ?? 0 }),
+    currency: row.currency ?? 'USD',
+    image_url: row.image_url ?? null,
+    stock: row.stock ?? 0,
+    category: row.category ?? null,
+    brand: row.brand ?? null,
+  };
+}
+
 function toLegacySupabaseRow(row) {
-  const {
-    gallery: _g,
-    sort_order: _s,
-    attributes: _a,
-    inventory_snapshot: _i,
-    updated_at: _u,
-    ...legacy
-  } = row;
-  return legacy;
+  return toMinimalSupabaseRow(row);
+}
+
+function isMissingColumnError(message) {
+  return /column|schema cache|Could not find/i.test(message);
 }
 
 async function upsertProductRows(supabase, rows) {
   const { error } = await supabase.from('products').upsert(rows, { onConflict: 'id' });
   if (!error) return;
 
-  const missingColumn =
-    /column|schema cache|Could not find/i.test(error.message) &&
-    rows.some((row) => row.gallery !== undefined || row.inventory_snapshot !== undefined);
-
-  if (!missingColumn) {
+  if (!isMissingColumnError(error.message)) {
     console.error('[catalog] supabase upsert:', error.message);
     return;
   }
 
-  console.warn('[catalog] migración 005 pendiente; upsert sin gallery/snapshot');
+  console.warn(
+    '[catalog] migraciones 005/006 pendientes; upsert con columnas base (sin snapshot de inventario).',
+  );
   const legacyRows = rows.map(toLegacySupabaseRow);
   const { error: legacyError } = await supabase
     .from('products')
@@ -237,12 +246,40 @@ async function upsertProductRows(supabase, rows) {
   }
 }
 
+/** Lista inventario admin desde Supabase sin pasar por readInventory (evita ciclos). */
+export async function fetchInventoryProductsFromSupabase() {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [];
+
+  await ensureSupabaseCatalogSeeded();
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('[catalog] fetch inventario Supabase:', error.message);
+    return [];
+  }
+
+  return (data ?? []).map((row) => rowToInventoryProduct(row));
+}
+
 export async function syncProductsToSupabase(products) {
   const supabase = getSupabaseAdmin();
   if (!supabase || !Array.isArray(products) || products.length === 0) return;
 
-  const rows = products.map((product) => buildSupabaseProductRow(product));
-  await upsertProductRows(supabase, rows);
+  const byId = new Map();
+  for (const product of products) {
+    byId.set(product.id, buildSupabaseProductRow(product));
+  }
+  const rows = [...byId.values()];
+  const BATCH = 200;
+  for (let offset = 0; offset < rows.length; offset += BATCH) {
+    await upsertProductRows(supabase, rows.slice(offset, offset + BATCH));
+  }
 }
 
 export async function incrementProductViewCount(productId) {

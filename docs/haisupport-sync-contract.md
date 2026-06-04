@@ -74,6 +74,10 @@ Campos alineados a HaiSupport `clients`:
 
 Componente UI: `src/components/admin/shared/haitech-client-form.tsx`
 
+## Autenticación
+
+Usar el **mismo** proyecto Supabase que HaiStore (`SUPABASE_URL`). Cuentas: [`docs/haitech-auth-unified.md`](./haitech-auth-unified.md).
+
 ## Variables de entorno
 
 ```env

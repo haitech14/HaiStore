@@ -152,7 +152,7 @@ export function personaRowToHaitechClient(persona) {
     email: resolvePersonaEmail(persona),
     notas: persona.observaciones?.trim() || null,
     persona_data: sanitizePersonaData(persona),
-    source: 'haistore',
+    source: 'haisales',
   };
 }
 

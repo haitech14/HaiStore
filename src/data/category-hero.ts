@@ -1,11 +1,23 @@
+export type CategoryHeroFeatureIcon = 'badge-percent' | 'printer' | 'headset';
+
+export interface CategoryHeroFeature {
+  icon: CategoryHeroFeatureIcon;
+  label: string;
+}
+
+export interface CategoryHeroPromoCard {
+  title: string;
+  subtitle: string;
+}
+
 export interface CategoryHeroContent {
   badge?: string;
   title?: string;
   subtitle?: string;
-  ctaLabel?: string;
-  ctaHref?: string;
   image?: string;
   imageAlt?: string;
+  features?: CategoryHeroFeature[];
+  promoCard?: CategoryHeroPromoCard;
 }
 
 export interface ResolvedCategoryHero {
@@ -14,27 +26,32 @@ export interface ResolvedCategoryHero {
   image: string;
   imageAlt: string;
   badge?: string;
-  ctaLabel: string;
-  ctaHref: string;
+  features: CategoryHeroFeature[];
+  promoCard?: CategoryHeroPromoCard;
 }
 
 export const categoryHeroBySlug: Record<string, CategoryHeroContent> = {
   multifuncionales: {
-    badge: 'Hasta 21% dto.',
+    badge: 'HASTA 21% DTO.',
     title: 'Multifuncionales en promoción',
     subtitle:
       'Imprime, escanea y copia con equipos Ricoh y más. Precios corporativos desde la primera unidad.',
-    ctaLabel: 'Ver catálogo completo',
-    ctaHref: '/tienda',
     image: '/promotions/promo-hero-multifuncionales.png',
     imageAlt: 'Impresora multifuncional de oficina en promoción',
+    features: [
+      { icon: 'badge-percent', label: 'Precios corporativos' },
+      { icon: 'printer', label: 'Equipos profesionales' },
+      { icon: 'headset', label: 'Asesoría especializada' },
+    ],
+    promoCard: {
+      title: 'Ahorra más',
+      subtitle: 'Descuentos exclusivos por tiempo limitado.',
+    },
   },
   impresoras: {
     badge: 'Novedades',
     title: 'Impresoras para cada oficina',
     subtitle: 'Láser, inkjet y equipos de alto volumen con soporte técnico HaiStore.',
-    ctaLabel: 'Ver catálogo completo',
-    ctaHref: '/tienda',
     image: '/promotions/promo-hero-ofertas.png',
     imageAlt: 'Impresoras de oficina',
   },
@@ -42,10 +59,21 @@ export const categoryHeroBySlug: Record<string, CategoryHeroContent> = {
     badge: 'Stock disponible',
     title: 'Tóner y suministros',
     subtitle: 'Consumibles originales y compatibles para mantener tu flota operativa.',
-    ctaLabel: 'Ver catálogo completo',
-    ctaHref: '/tienda',
     image: '/promotions/promo-hero-ofertas.png',
     imageAlt: 'Suministros de impresión',
+  },
+  alquiler: {
+    badge: 'Planes flexibles',
+    title: 'Alquiler de equipos',
+    subtitle:
+      'Impresoras, plotters, laptops y más con mantenimiento incluido. Ideal para proyectos y operación temporal.',
+    image: '/categories/alquiler.png',
+    imageAlt: 'Equipos de oficina disponibles en modalidad de alquiler',
+    features: [
+      { icon: 'printer', label: 'Equipos Ricoh y aliados' },
+      { icon: 'headset', label: 'Instalación y soporte' },
+      { icon: 'badge-percent', label: 'Cotización a medida' },
+    ],
   },
 };
 
@@ -59,9 +87,9 @@ export function getCategoryHeroContent(
     subtitle: custom?.subtitle ?? fallback.tagline,
     image: custom?.image ?? fallback.image ?? '/promotions/promo-hero-ofertas.png',
     imageAlt: custom?.imageAlt ?? `Equipos y productos de ${fallback.name}`,
-    ctaLabel: custom?.ctaLabel ?? 'Ver catálogo completo',
-    ctaHref: custom?.ctaHref ?? '/tienda',
+    features: custom?.features ?? [],
   };
   if (custom?.badge) resolved.badge = custom.badge;
+  if (custom?.promoCard) resolved.promoCard = custom.promoCard;
   return resolved;
 }

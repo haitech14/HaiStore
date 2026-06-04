@@ -36,8 +36,8 @@ const teInformamosLinks = [
 const serviciosClienteLinks = [
   { label: 'Factura electrónica', to: '/contacto' },
   { label: 'Ventas corporativas', to: '/contacto' },
-  { label: 'Servicio técnico', to: '/contacto' },
-  { label: 'Alquiler de equipos', to: '/contacto' },
+  { label: 'Servicio técnico', to: '/servicios?seccion=servicio-tecnico' },
+  { label: 'Alquiler de equipos', to: '/servicios' },
 ] as const;
 
 const destacadosLinks = [
@@ -187,7 +187,7 @@ export function SiteFooter() {
                     className="inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
                     aria-label={`${companyName}, inicio`}
                   >
-                    <img src="/logo.png" alt={companyName} className="h-9 w-auto brightness-0 invert" />
+                    <img src="/logo.png" alt={companyName} className="h-9 w-auto" />
                   </Link>
 
                   <h2 className="mb-3 mt-6 text-sm font-bold text-white">Contáctanos</h2>

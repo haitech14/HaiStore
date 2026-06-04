@@ -18,6 +18,8 @@ export function normalizePeruWhatsAppMsisdn(phone: string | null | undefined): s
   return isPeruMobileWhatsAppMsisdn(withCountry) ? withCountry : HAITECH_WHATSAPP_MSISDN;
 }
 
+import { encodeWhatsAppText } from '@/lib/whatsapp-encoding';
+
 export function buildHaitechWhatsAppUrl(text: string): string {
-  return `${HAITECH_WHATSAPP_URL}?text=${encodeURIComponent(text)}`;
+  return `${HAITECH_WHATSAPP_URL}?text=${encodeWhatsAppText(text)}`;
 }

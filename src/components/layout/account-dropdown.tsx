@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/context/auth-context';
 import type { AuthUser } from '@/lib/auth-storage';
+import { ADMIN_PANEL_EMAILS, normalizeAuthEmail } from '@/lib/admin-access';
 import { ADMIN_ROUTES } from '@/lib/admin-routes';
 import { cn } from '@/lib/utils';
 import { USER_ROLE_LABELS, type UserRole } from '@/types/product';
@@ -42,7 +43,7 @@ function roleBadgeClass(role: UserRole | 'public'): string {
 
 /** Puntos de fidelidad (demo hasta integrar backend). */
 function getHaiPoints(user: AuthUser): number {
-  if (user.email === 'admin@haitech.pe' || user.email === 'soporte@haitech.pe') {
+  if (ADMIN_PANEL_EMAILS.includes(normalizeAuthEmail(user.email))) {
     return 2450;
   }
   const seed = user.id?.length ?? user.email.length;

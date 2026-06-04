@@ -11,6 +11,7 @@ import {
   resolveHomeSectionInventoryLabels,
 } from '@/lib/home-catalog-sections';
 import {
+  getConditionsForCatalogFamily,
   PRODUCT_CONDITIONS,
   type ProductCondition,
 } from '@/lib/product-condition';
@@ -24,9 +25,11 @@ interface CatalogCategorySectionsProps {
 }
 
 function sectionHasProducts(
+  section: HomeCatalogSectionConfig,
   productsByCondition: Record<ProductCondition, FeaturedProduct[]>,
 ): boolean {
-  return PRODUCT_CONDITIONS.some((condition) => productsByCondition[condition].length > 0);
+  const conditions = getConditionsForCatalogFamily(section.id);
+  return conditions.some((condition) => productsByCondition[condition].length > 0);
 }
 
 function buildSectionData(
@@ -60,7 +63,7 @@ function buildSectionData(
 
       return { section, productsByCondition };
     })
-    .filter(({ productsByCondition }) => sectionHasProducts(productsByCondition));
+    .filter(({ section, productsByCondition }) => sectionHasProducts(section, productsByCondition));
 }
 
 export function CatalogCategorySections({

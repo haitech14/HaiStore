@@ -1,6 +1,9 @@
 import type { CompanySettings } from '@/types/company-settings';
 import type { ProformaRecord } from '@/types/proforma';
 import { formatTpvMoney } from '@/lib/tpv-pricing';
+import { WA_EMOJI } from '@/lib/whatsapp-encoding';
+
+export { buildWhatsAppShareUrl } from '@/lib/whatsapp-encoding';
 
 function formatExpiryDate(createdAt: string, validityDays: number): string {
   const expiry = new Date(createdAt);
@@ -32,24 +35,24 @@ export function buildProformaWhatsAppMessage(
   }
 
   const contactParts = [
-    company.phone ? `📞 ${company.phone}` : null,
-    company.email ? `✉️ ${company.email}` : null,
+    company.phone ? `${WA_EMOJI.phone} ${company.phone}` : null,
+    company.email ? `${WA_EMOJI.email} ${company.email}` : null,
   ].filter(Boolean);
 
   return [
-    `¡Hola ${greeting}! 👋`,
+    `¡Hola ${greeting}! ${WA_EMOJI.wave}`,
     '',
     `Te comparto la *cotización ${proforma.documentNumber}* de *${company.legalName}*:`,
     '',
-    `📋 *Cliente:* ${proforma.customer.razonSocial}`,
-    proforma.customer.documento ? `🪪 *RUC/DNI:* ${proforma.customer.documento}` : null,
-    `💰 *Total:* ${total}`,
-    `📅 *Válida hasta:* ${validUntil}`,
+    `${WA_EMOJI.clipboard} *Cliente:* ${proforma.customer.razonSocial}`,
+    proforma.customer.documento ? `${WA_EMOJI.idCard} *RUC/DNI:* ${proforma.customer.documento}` : null,
+    `${WA_EMOJI.money} *Total:* ${total}`,
+    `${WA_EMOJI.calendar} *Válida hasta:* ${validUntil}`,
     '',
-    '🛒 *Detalle:*',
+    `${WA_EMOJI.cart} *Detalle:*`,
     ...lines,
     '',
-    '¿Te ayudo con alguna consulta o para confirmar tu pedido? 😊',
+    `¿Te ayudo con alguna consulta o para confirmar tu pedido? ${WA_EMOJI.smile}`,
     '',
     `Saludos cordiales,`,
     `*${proforma.sellerName}*`,
@@ -59,11 +62,4 @@ export function buildProformaWhatsAppMessage(
   ]
     .filter((line): line is string => line != null)
     .join('\n');
-}
-
-export function buildWhatsAppShareUrl(phone: string, text: string): string | null {
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length < 9) return null;
-  const normalized = digits.startsWith('51') ? digits : `51${digits}`;
-  return `https://wa.me/${normalized}?text=${encodeURIComponent(text)}`;
 }

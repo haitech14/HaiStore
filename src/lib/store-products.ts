@@ -1,10 +1,11 @@
 import type { FeaturedProduct } from '@/data/featured-products';
 import { productMatchesCategoryFilter } from '@/lib/inventory-categories';
 import { compareProductsBySortOrder } from '@/lib/inventory-product-order';
-import type { CatalogFamilySlug } from '@/lib/product-condition';
 import {
+  isPrinterEquipmentProduct,
   productMatchesCatalogFamily,
   productMatchesCondition,
+  type CatalogFamilySlug,
   type ProductCondition,
 } from '@/lib/product-condition';
 import { resolveProductImageUrl } from '@/lib/product-image-url';
@@ -49,10 +50,13 @@ export function filterStoreProductsForHomeSection(
 ): FeaturedProduct[] {
   return [...products]
     .filter((product) => {
+      if (family === 'repuestos' && isPrinterEquipmentProduct(product)) {
+        return false;
+      }
       const inFamily =
         productMatchesCatalogFamily(product, family) ||
         categoryLabels.some((label) => productMatchesCategoryFilter(product, label));
-      return inFamily && productMatchesCondition(product, condition);
+      return inFamily && productMatchesCondition(product, condition, family);
     })
     .sort(compareProductsBySortOrder)
     .slice(0, limit)

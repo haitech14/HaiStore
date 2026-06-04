@@ -1,4 +1,4 @@
-import { buildWhatsAppShareUrl } from '@/lib/proforma-whatsapp-message';
+import { buildWhatsAppShareUrl, WA_EMOJI } from '@/lib/whatsapp-encoding';
 import { formatOrderTotal, mapStoreOrderStatusToBadge } from '@/lib/admin-order-status';
 import type { StoreOrder } from '@/types/store';
 
@@ -60,23 +60,23 @@ export function buildSaleOrderWhatsAppMessage(order: StoreOrder): string {
   const phone = order.customer?.phone?.trim();
 
   return [
-    `¡Hola *${customerName(order)}*! 👋`,
+    `¡Hola *${customerName(order)}*! ${WA_EMOJI.wave}`,
     '',
-    'Te compartimos el resumen de tu *venta Haitech* 🛒',
+    `Te compartimos el resumen de tu *venta Haitech* ${WA_EMOJI.cart}`,
     '',
-    `📋 *Nº venta:* ${order.order_number}`,
-    `📅 *Fecha:* ${formatDate(order.created_at)}`,
-    `📦 *Estado:* ${status}`,
-    `💳 *Pago:* ${payment}${order.payment_method ? ` · ${order.payment_method}` : ''}`,
-    `💰 *Total:* ${total}`,
-  phone ? `📱 *Contacto:* ${phone}` : null,
+    `${WA_EMOJI.clipboard} *Nº venta:* ${order.order_number}`,
+    `${WA_EMOJI.calendar} *Fecha:* ${formatDate(order.created_at)}`,
+    `${WA_EMOJI.package} *Estado:* ${status}`,
+    `${WA_EMOJI.creditCard} *Pago:* ${payment}${order.payment_method ? ` · ${order.payment_method}` : ''}`,
+    `${WA_EMOJI.money} *Total:* ${total}`,
+    phone ? `${WA_EMOJI.mobile} *Contacto:* ${phone}` : null,
     '',
-    '🛍️ *Detalle:*',
+    `${WA_EMOJI.bags} *Detalle:*`,
     ...itemLines,
     '',
-    '¿Alguna consulta sobre tu pedido? Estamos para ayudarte 😊',
+    `¿Alguna consulta sobre tu pedido? Estamos para ayudarte ${WA_EMOJI.smile}`,
     '',
-    '*Equipo Haitech* 🖨️',
+    `*Equipo Haitech* ${WA_EMOJI.printer}`,
   ]
     .filter((line): line is string => line != null)
     .join('\n');

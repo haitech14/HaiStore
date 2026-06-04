@@ -8,9 +8,9 @@ import { chunkFeaturedProducts, FEATURED_PRODUCTS_PER_VIEW } from '@/lib/feature
 import { emblaShouldWatchDrag } from '@/lib/embla-interaction';
 import { cn } from '@/lib/utils';
 
-/** Cinco tarjetas por fila (gap-4 = 1rem × 4 huecos entre 5 columnas). */
+/** Cinco tarjetas por fila en desktop (gap-4 = 1rem × 4 huecos entre 5 columnas). */
 const FEATURED_PAGE_ITEM_CLASS =
-  'min-w-0 w-full sm:w-[calc((100%-1rem)/2)] md:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-4rem)/5)] lg:max-w-[calc((100%-4rem)/5)] lg:flex-[0_0_calc((100%-4rem)/5)]';
+  'min-w-0 w-full sm:w-[calc((100%-1rem)/2)] sm:max-w-[calc((100%-1rem)/2)] sm:flex-[0_0_calc((100%-1rem)/2)] md:w-[calc((100%-2rem)/3)] md:max-w-[calc((100%-2rem)/3)] md:flex-[0_0_calc((100%-2rem)/3)] lg:w-[calc((100%-4rem)/5)] lg:max-w-[calc((100%-4rem)/5)] lg:flex-[0_0_calc((100%-4rem)/5)]';
 
 export interface FeaturedProductsSectionProps {
   products: FeaturedProduct[];

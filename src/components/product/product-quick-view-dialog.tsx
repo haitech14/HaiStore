@@ -33,7 +33,6 @@ export function ProductQuickViewDialog({
 
   const displayName = product?.name ?? snapshot?.name ?? '';
   const displayImage = product?.image_url ?? snapshot?.image ?? null;
-  const outOfStock = product ? product.stock <= 0 : false;
   const detailHref = snapshot ? productPath(snapshot.id) : '#';
 
   const badgeSource = product ?? {
@@ -121,11 +120,8 @@ export function ProductQuickViewDialog({
               {product ? (
                 <AddToCartButton
                   product={product}
-                  disabled={outOfStock}
                   className="min-h-11 flex-1 bg-red-600 hover:bg-red-500"
-                >
-                  Añadir al carrito
-                </AddToCartButton>
+                />
               ) : (
                 <Button type="button" className="min-h-11 flex-1" disabled>
                   Añadir al carrito

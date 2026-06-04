@@ -34,6 +34,10 @@ export function resolveProductStockImagePath(product: {
 
   const haystack = `${product.category ?? ''} ${product.name ?? ''} ${product.brand ?? ''}`.toLowerCase();
 
+  if (product.category === 'Accesorios' || haystack.startsWith('accesorios ')) {
+    return '/categories/accesorios-impresoras.png';
+  }
+
   if (haystack.includes('multifuncional')) {
     if (haystack.includes('remanufactur') || haystack.includes('reacondicion')) {
       return '/promotions/promo-hero-multifuncionales.png';

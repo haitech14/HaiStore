@@ -1,8 +1,13 @@
-import { Link } from 'react-router-dom';
-import { ShoppingCart } from 'lucide-react';
+import { BadgePercent, Headphones, Printer, Sparkles } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
-import type { ResolvedCategoryHero } from '@/data/category-hero';
+import type { CategoryHeroFeatureIcon, ResolvedCategoryHero } from '@/data/category-hero';
+import { cn } from '@/lib/utils';
+
+const FEATURE_ICONS: Record<CategoryHeroFeatureIcon, typeof BadgePercent> = {
+  'badge-percent': BadgePercent,
+  printer: Printer,
+  headset: Headphones,
+};
 
 interface CategoryHeroBannerProps {
   content: ResolvedCategoryHero;
@@ -11,49 +16,72 @@ interface CategoryHeroBannerProps {
 export function CategoryHeroBanner({ content }: CategoryHeroBannerProps) {
   return (
     <div
-      className="relative overflow-hidden rounded-2xl border border-border shadow-sm"
+      className="relative overflow-hidden rounded-2xl border border-border shadow-md"
       role="region"
-      aria-label={`${content.title}`}
+      aria-label={content.title}
     >
-      <div className="relative flex min-h-[168px] flex-col justify-end sm:min-h-[212px] lg:min-h-[248px]">
+      <div className="relative flex min-h-[200px] flex-col justify-end sm:min-h-[240px] lg:min-h-[280px]">
         <img
           src={content.image}
           alt=""
-          className="absolute inset-0 size-full object-cover object-center"
+          className="absolute inset-0 size-full object-cover object-right-center lg:object-center"
           loading="eager"
           fetchPriority="high"
         />
         <div
-          className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/25 sm:via-black/60 sm:to-transparent"
+          className="absolute inset-0 bg-gradient-to-r from-neutral-950/95 via-neutral-900/80 to-neutral-900/20 lg:via-neutral-900/55 lg:to-transparent"
           aria-hidden="true"
         />
+        <div className="relative z-10 grid gap-4 p-4 sm:p-6 lg:grid-cols-[1fr_auto] lg:items-end lg:gap-6 lg:p-8">
+          <div className="flex max-w-2xl flex-col gap-2.5 sm:gap-3">
+            {content.badge ? (
+              <span className="inline-flex w-fit rounded-md bg-red-600 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-white sm:text-xs">
+                {content.badge}
+              </span>
+            ) : null}
+            <h1 className="text-balance text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl">
+              {content.title}
+            </h1>
+            <p className="max-w-xl text-pretty text-sm leading-relaxed text-white/90 sm:text-base">
+              {content.subtitle}
+            </p>
 
-        <div className="relative z-10 flex max-w-xl flex-col gap-2 p-4 sm:gap-2.5 sm:p-6 lg:p-7">
-          {content.badge && (
-            <span className="inline-flex w-fit rounded-md bg-red-600 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-white sm:px-2.5 sm:py-1 sm:text-xs">
-              {content.badge}
-            </span>
-          )}
-          <h1 className="text-balance text-xl font-bold tracking-tight text-white sm:text-2xl lg:text-3xl">
-            {content.title}
-          </h1>
-          <p className="text-pretty text-xs leading-snug text-white/85 sm:text-sm">
-            {content.subtitle}
-          </p>
-          {content.ctaLabel && content.ctaHref && (
-            <div className="pt-0.5">
-              <Button
-                asChild
-                className="h-10 gap-2 rounded-lg bg-red-600 px-5 text-sm font-semibold text-white hover:bg-red-500 focus-visible:ring-red-600"
-              >
-                <Link to={content.ctaHref}>
-                  <ShoppingCart className="size-4" aria-hidden="true" />
-                  {content.ctaLabel}
-                </Link>
-              </Button>
-            </div>
-          )}
-          <span className="sr-only">{content.imageAlt}</span>
+            {content.features.length > 0 ? (
+              <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-2 sm:gap-x-6">
+                {content.features.map((feature) => {
+                  const Icon = FEATURE_ICONS[feature.icon];
+                  return (
+                    <li
+                      key={feature.label}
+                      className="flex items-center gap-2 text-xs font-medium text-white/95 sm:text-sm"
+                    >
+                      <Icon className="size-4 shrink-0 text-red-400" aria-hidden="true" />
+                      {feature.label}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+            <span className="sr-only">{content.imageAlt}</span>
+          </div>
+
+          {content.promoCard ? (
+            <aside
+              className={cn(
+                'hidden max-w-[220px] rounded-xl border border-white/20 bg-white/95 p-4 shadow-lg backdrop-blur-sm',
+                'lg:block',
+              )}
+              aria-label={content.promoCard.title}
+            >
+              <div className="mb-2 flex size-9 items-center justify-center rounded-lg bg-red-50 text-red-600">
+                <Sparkles className="size-5" aria-hidden="true" />
+              </div>
+              <p className="text-sm font-bold text-foreground">{content.promoCard.title}</p>
+              <p className="mt-1 text-xs leading-snug text-muted-foreground">
+                {content.promoCard.subtitle}
+              </p>
+            </aside>
+          ) : null}
         </div>
       </div>
     </div>

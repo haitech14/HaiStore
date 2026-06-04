@@ -4,9 +4,26 @@ export interface Client {
   initials: string;
   logo: string;
   logoAlt: string;
+  /** Fondo del círculo interior cuando el logo lleva arte oscuro (p. ej. TECBEL). */
+  logoSurface?: 'light' | 'dark';
 }
 
 export const clients: Client[] = [
+  {
+    id: 'tecbel',
+    name: 'TECBEL',
+    initials: 'TB',
+    logo: '/clients/client-tecbel.png',
+    logoAlt: 'Logo de TECBEL',
+    logoSurface: 'dark',
+  },
+  {
+    id: 'copiadoras-import',
+    name: 'Copiadoras Import E.I.R.L.',
+    initials: 'CI',
+    logo: '/clients/client-copiadoras-import.png',
+    logoAlt: 'Logo de Copiadoras Import E.I.R.L.',
+  },
   {
     id: 'retail-peru-norte',
     name: 'Retail Perú Norte',

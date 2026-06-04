@@ -295,7 +295,7 @@ export function parseVentasWorkbook(buffer) {
  * @param {Record<string, unknown>} row
  * @param {{ sourceFilename?: string }} options
  */
-function rowToDbRecord(row, options = {}) {
+export function mapVentasRowToDbRecord(row, options = {}) {
   const documento = cellToString(row.documento);
   const serie = cellToString(row.serie);
   const numero = cellToString(row.numero);
@@ -378,7 +378,7 @@ export async function importVentasDocumentRows(rows, options = {}) {
 
   for (let index = 0; index < rows.length; index += 1) {
     try {
-      const dbRow = rowToDbRecord(rows[index], options);
+      const dbRow = mapVentasRowToDbRecord(rows[index], options);
       const customerId = await resolveCustomerId(dbRow.tax_id);
       const now = new Date().toISOString();
       const payload = {

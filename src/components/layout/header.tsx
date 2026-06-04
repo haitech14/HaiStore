@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import {
   Heart,
   ShoppingCart,
-  Search,
   Menu,
   X,
   Mail,
@@ -18,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AccountDropdown } from '@/components/layout/account-dropdown';
 import { CategoriesMegaMenu } from '@/components/layout/categories-mega-menu';
+import { SiteSearchForm } from '@/components/layout/site-search-form';
 import { useCart } from '@/context/cart-context';
 import { useWishlist } from '@/context/wishlist-context';
 import { cn } from '@/lib/utils';
@@ -26,12 +26,12 @@ const homeItem = { to: '/', label: 'Inicio', end: true } as const;
 
 const navItems = [
   { to: '/tienda', label: 'Tienda', end: false },
-  { to: '/tienda', label: 'Ofertas', end: false },
-  { to: '/tienda', label: 'Novedades', end: false },
-  { to: '/tienda', label: 'Marcas', end: false },
-  { to: '/tienda', label: 'Blog', end: false },
+  { to: '/servicios', label: 'Servicios', end: false },
+  { to: '/foro', label: 'Foro', end: false },
   { to: '/contacto', label: 'Contacto', end: false },
 ] as const;
+
+const distribuidoresHref = '/contacto?servicio=Programa%20distribuidores';
 
 const utilityLinksLeft = [
   {
@@ -140,37 +140,6 @@ const desktopLinkClass = ({ isActive }: { isActive: boolean }) =>
       : 'text-white/90',
   );
 
-function SearchForm({ className }: { className?: string }) {
-  const navigate = useNavigate();
-  return (
-    <form
-      role="search"
-      className={cn('flex w-full items-stretch', className)}
-      onSubmit={(event) => {
-        event.preventDefault();
-        void navigate('/tienda');
-      }}
-    >
-      <label htmlFor="site-search" className="sr-only">
-        Buscar productos
-      </label>
-      <input
-        id="site-search"
-        type="search"
-        placeholder="Buscar productos, marcas y más..."
-        className="h-11 w-full rounded-l-md border border-r-0 border-input bg-background px-4 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
-      />
-      <button
-        type="submit"
-        aria-label="Buscar"
-        className="flex h-11 w-12 shrink-0 items-center justify-center rounded-r-md bg-red-600 text-white transition-colors hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
-      >
-        <Search className="size-5" aria-hidden="true" />
-      </button>
-    </form>
-  );
-}
-
 function favoritesSubtitle(count: number): string {
   if (count === 0) return 'Vacío';
   return count === 1 ? '1 guardado' : `${count} guardados`;
@@ -245,7 +214,7 @@ export function Header() {
           className="flex shrink-0 items-center gap-2 sm:gap-2.5"
           aria-label="Haitech, inicio"
         >
-          <img src="/logo.png" alt="Haitech" className="h-10 w-auto" />
+          <img src="/logo.png" alt="Haitech Soluciones Tecnológicas" className="h-10 w-auto" />
           <img
             src="/ricohpartner.png"
             alt="Ricoh Alliance Partner"
@@ -256,7 +225,7 @@ export function Header() {
 
         {/* Buscador */}
         <div className="hidden flex-1 justify-center md:flex">
-          <SearchForm className="max-w-md" />
+          <SiteSearchForm className="max-w-xl" />
         </div>
 
         <AccountDropdown />
@@ -327,20 +296,30 @@ export function Header() {
         <div className="container flex h-10 items-stretch gap-2">
           <CategoriesMegaMenu />
 
-          <ul className="flex items-center gap-1">
-            <li>
+          <ul className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+            <li className="shrink-0">
               <NavLink to={homeItem.to} end={homeItem.end} className={desktopLinkClass}>
                 {homeItem.label}
               </NavLink>
             </li>
             {navItems.map((item) => (
-              <li key={item.label}>
+              <li key={item.label} className="shrink-0">
                 <NavLink to={item.to} end={item.end} className={desktopLinkClass}>
                   {item.label}
                 </NavLink>
               </li>
             ))}
           </ul>
+
+          <Link
+            to={distribuidoresHref}
+            className={cn(
+              'ml-auto inline-flex h-10 shrink-0 items-center rounded-md border border-white/80 px-3 text-sm font-semibold text-white',
+              'transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50',
+            )}
+          >
+            Distribuidores
+          </Link>
         </div>
       </nav>
 
@@ -348,7 +327,7 @@ export function Header() {
       {mobileOpen && (
         <div className="border-t lg:hidden">
           <div className="container flex flex-col gap-4 py-4">
-            <SearchForm />
+            <SiteSearchForm onNavigate={() => setMobileOpen(false)} />
             <nav aria-label="Navegación móvil">
               <ul className="flex flex-col">
                 {[homeItem, ...navItems].map((item) => (
@@ -368,6 +347,15 @@ export function Header() {
                     </NavLink>
                   </li>
                 ))}
+                <li>
+                  <Link
+                    to={distribuidoresHref}
+                    onClick={() => setMobileOpen(false)}
+                    className="block rounded-md border border-red-600/30 px-3 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
+                  >
+                    Distribuidores
+                  </Link>
+                </li>
               </ul>
             </nav>
           </div>

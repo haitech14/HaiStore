@@ -7,6 +7,9 @@ import type {
   StoreCategoryTreeNode,
 } from '@/types/store-category';
 
+/** Referencia estable para evitar bucles de render cuando la query aún no tiene datos. */
+export const EMPTY_STORE_CATEGORY_TREE: StoreCategoryTreeNode[] = [];
+
 export function useStoreCategoriesTree() {
   return useQuery({
     queryKey: ['store-categories'],

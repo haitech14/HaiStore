@@ -1,4 +1,4 @@
-/** Productos visibles por «página» del carrusel de destacados (cada bullet = una página). */
+/** Productos visibles por fila en desktop (carrusel destacados y grilla de catálogo). */
 export const FEATURED_PRODUCTS_PER_VIEW = 5;
 
 export function chunkFeaturedProducts<T>(items: readonly T[], size = FEATURED_PRODUCTS_PER_VIEW): T[][] {

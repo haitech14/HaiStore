@@ -2,6 +2,8 @@ import { Router } from 'express';
 
 import { hasAdminApiAccess } from '../lib/admin-access.js';
 import { authenticateDemo, destroyDemoSession, requireAuth } from '../lib/auth-store.js';
+import { getHaitechAuthCredentialsMeta } from '../lib/haitech-auth-credentials.js';
+import { getUnifiedAuthEnvStatus } from '../lib/haitech-auth-env.js';
 import {
   isSupabaseAuthEnabled,
   upsertProfileFromAuth,
@@ -10,6 +12,19 @@ import {
 } from '../lib/supabase-auth.js';
 
 export const authRouter = Router();
+
+/** Cuentas compartidas (sin contraseñas) + estado de unificación Supabase. */
+authRouter.get('/haitech-accounts', (_req, res) => {
+  res.json({
+    ...getHaitechAuthCredentialsMeta(),
+    env: getUnifiedAuthEnvStatus(),
+    passwordsHint: {
+      admin: 'admin123',
+      soporte: 'soporte123',
+      demo: 'demo123',
+    },
+  });
+});
 
 /** Login demo (fallback sin Supabase o para pruebas locales). */
 authRouter.post('/login-demo', (req, res) => {

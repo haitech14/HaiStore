@@ -1,4 +1,4 @@
-import { buildWhatsAppShareUrl } from '@/lib/proforma-whatsapp-message';
+import { buildWhatsAppShareUrl, WA_EMOJI } from '@/lib/whatsapp-encoding';
 import { formatLeadDealValueDual, formatLeadProductDisplay } from '@/lib/crm-pipeline-utils';
 import type { CrmNewLeadFormValues } from '@/types/crm-lead-form';
 import type { CrmPipelineLead } from '@/types/crm-pipeline';
@@ -50,21 +50,21 @@ export function buildLeadFollowUpWhatsAppMessage(
   const vendedor = lead.sellerName;
 
   const lines = [
-    `¡Hola ${saludo}! 👋`,
+    `¡Hola ${saludo}! ${WA_EMOJI.wave}`,
     '',
     `Te escribo de *${company?.legalName ?? 'NBN Tecnología Total S.A.C.'}* para dar seguimiento a tu pedido:`,
     '',
-    `📋 *${lead.title}*`,
-    empresa ? `🏢 ${empresa}` : null,
-    producto !== '—' ? `🖨️ *Producto:* ${producto}` : null,
-    `💰 *Valor referencial:* ${valor}`,
-    lead.followUpLabel !== 'Seguimiento: Sin fecha' ? `📅 ${lead.followUpLabel}` : null,
+    `${WA_EMOJI.clipboard} *${lead.title}*`,
+    empresa ? `${WA_EMOJI.building} ${empresa}` : null,
+    producto !== '—' ? `${WA_EMOJI.printer} *Producto:* ${producto}` : null,
+    `${WA_EMOJI.money} *Valor referencial:* ${valor}`,
+    lead.followUpLabel !== 'Seguimiento: Sin fecha' ? `${WA_EMOJI.calendar} ${lead.followUpLabel}` : null,
     '',
-    '¿En qué podemos ayudarte para avanzar con tu compra o cotización? 😊',
+    `¿En qué podemos ayudarte para avanzar con tu compra o cotización? ${WA_EMOJI.smile}`,
     '',
     `Saludos,`,
     `*${vendedor}*`,
-    company?.phone ? `📞 ${company.phone}` : null,
+    company?.phone ? `${WA_EMOJI.phone} ${company.phone}` : null,
   ].filter((line): line is string => line != null && line !== '');
 
   return lines.join('\n');

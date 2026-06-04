@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 
 import { hasAdminApiAccess } from './admin-access.js';
+import { getHaitechAuthUsers } from './haitech-auth-credentials.js';
 import { resolvePriceRole } from './roles.js';
 import { isSupabaseAuthEnabled, verifySupabaseToken } from './supabase-auth.js';
 
@@ -12,21 +13,7 @@ const DEMO_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 días
 const DEMO_TOKEN_SECRET =
   process.env.HAISTORE_DEMO_TOKEN_SECRET?.trim() || 'haistore-demo-token-dev-secret';
 
-const demoUsers = [
-  { email: 'admin@haitech.pe', password: 'admin123', name: 'Administrador', role: 'admin' },
-  { email: 'soporte@haitech.pe', password: 'demo123', name: 'Soporte Haitech', role: 'admin' },
-  { email: 'mayorista@haitech.pe', password: 'demo123', name: 'Cliente Mayorista', role: 'mayorista' },
-  {
-    email: 'distribuidor@haitech.pe',
-    password: 'demo123',
-    name: 'Cliente Distribuidor',
-    role: 'distribuidor',
-  },
-  { email: 'corporativo@haitech.pe', password: 'demo123', name: 'Cliente Corporativo', role: 'corporativo' },
-  { email: 'tecnico@haitech.pe', password: 'demo123', name: 'Cliente Técnico', role: 'tecnico' },
-  { email: 'vip@haitech.pe', password: 'demo123', name: 'Cliente VIP', role: 'vip' },
-  { email: 'publico@haitech.pe', password: 'demo123', name: 'Cliente Público', role: 'public' },
-];
+const demoUsers = getHaitechAuthUsers();
 
 export function authenticateDemo(email, password) {
   const user = demoUsers.find(

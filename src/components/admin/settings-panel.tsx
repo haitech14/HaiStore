@@ -1,6 +1,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Building2, Coins, Link2, Palette, Save } from 'lucide-react';
 
+import { HaiSalesIntegrationCard } from '@/components/admin/integrations/haisales-integration-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -395,7 +396,8 @@ export function SettingsPanel({ section }: SettingsPanelProps) {
             PDF.
           </p>
 
-          <div className="grid max-w-xl gap-4">
+          <div className="grid max-w-2xl gap-4">
+            <HaiSalesIntegrationCard />
             <div className="space-y-2">
               <Label htmlFor="supportUrl">URL de soporte (QR en PDF)</Label>
               <Input

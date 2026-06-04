@@ -1,5 +1,5 @@
 import { buildAgencyDisplay, buildShipmentCopyMessage } from '@/lib/shipment-copy-message';
-import { buildWhatsAppShareUrl } from '@/lib/proforma-whatsapp-message';
+import { buildWhatsAppShareUrl } from '@/lib/whatsapp-encoding';
 import type { ShipmentRecord } from '@/types/shipping';
 
 export interface ShipmentWhatsAppContext {

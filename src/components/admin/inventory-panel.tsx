@@ -8,6 +8,7 @@ import {
   Paperclip,
   Pencil,
   RefreshCw,
+  Search,
   SlidersHorizontal,
   Trash2,
 } from 'lucide-react';
@@ -16,19 +17,17 @@ import { InventoryAttachmentsDialog } from '@/components/admin/inventory/invento
 import { InventoryBulkEditDialog } from '@/components/admin/inventory/inventory-bulk-edit-dialog';
 import { InventoryDraggableHeader } from '@/components/admin/inventory/inventory-draggable-header';
 import { InventoryOrderCell } from '@/components/admin/inventory/inventory-order-cell';
+import {
+  ALL_INVENTORY_CATEGORIES,
+  InventoryCategoryFilterSelect,
+} from '@/components/admin/inventory/inventory-category-filter-select';
 import { InventoryProductFormDialog } from '@/components/admin/inventory/inventory-product-form-dialog';
 import { InventoryRowCells } from '@/components/admin/inventory/inventory-row-cells';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useInventoryColumnOrder } from '@/hooks/use-inventory-column-order';
 import { useStoreCategoriesTree } from '@/hooks/use-store-categories';
 import { useAdminInventory, useInventoryMutations } from '@/hooks/use-products';
@@ -40,17 +39,27 @@ import {
   isInventoryPriceColumn,
 } from '@/lib/inventory-table-columns';
 import { buildAttributeNameCatalog } from '@/lib/inventory-attributes';
-import {
-  buildInventoryCategoryOptions,
-  productMatchesCategoryFilter,
-} from '@/lib/inventory-categories';
+import { buildCategorySelectOptions } from '@/lib/inventory-category-options';
+import { productMatchesCategoryFilterTree } from '@/lib/inventory-categories';
 import { sortProductsByPublicPriceAsc } from '@/lib/inventory-product-order';
 import { cn } from '@/lib/utils';
 import type { InventoryBulkPatch } from '@/types/inventory-bulk';
 import type { InventoryProduct } from '@/types/product';
 
 const PAGE_SIZE = 20;
-const ALL_CATEGORIES = 'all';
+
+function productMatchesSearch(product: InventoryProduct, query: string): boolean {
+  const haystack = [
+    product.name,
+    product.id,
+    product.code,
+    product.brand ?? '',
+    product.category ?? '',
+  ]
+    .join(' ')
+    .toLowerCase();
+  return haystack.includes(query);
+}
 
 export function InventoryPanel() {
   const { data: products, isLoading, isError, error, refetch, isFetching } = useAdminInventory();
@@ -70,7 +79,8 @@ export function InventoryPanel() {
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryProduct | null>(null);
   const [page, setPage] = useState(1);
-  const [categoryFilter, setCategoryFilter] = useState(ALL_CATEGORIES);
+  const [categoryFilter, setCategoryFilter] = useState(ALL_INVENTORY_CATEGORIES);
+  const [searchQuery, setSearchQuery] = useState('');
   const [batchMode, setBatchMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -83,9 +93,14 @@ export function InventoryPanel() {
     [updateProduct],
   );
 
-  const categoryOptions = useMemo(
-    () => buildInventoryCategoryOptions(products ?? []),
+  const productCategoryLabels = useMemo(
+    () => (products ?? []).map((p) => p.category ?? '').filter(Boolean),
     [products],
+  );
+
+  const categoryOptions = useMemo(
+    () => buildCategorySelectOptions(categoryTree, productCategoryLabels).map((o) => o.value),
+    [categoryTree, productCategoryLabels],
   );
 
   const attributeNameOptions = useMemo(
@@ -93,12 +108,20 @@ export function InventoryPanel() {
     [products],
   );
 
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+
   const filteredProducts = useMemo(() => {
     if (!products) return [];
     return sortProductsByPublicPriceAsc(
-      products.filter((product) => productMatchesCategoryFilter(product, categoryFilter)),
+      products.filter((product) => {
+        if (!productMatchesCategoryFilterTree(product, categoryFilter, categoryTree)) {
+          return false;
+        }
+        if (normalizedSearch && !productMatchesSearch(product, normalizedSearch)) return false;
+        return true;
+      }),
     );
-  }, [products, categoryFilter]);
+  }, [products, categoryFilter, normalizedSearch, categoryTree]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
 
@@ -109,7 +132,7 @@ export function InventoryPanel() {
 
   useEffect(() => {
     setPage(1);
-  }, [categoryFilter]);
+  }, [categoryFilter, normalizedSearch]);
 
   useEffect(() => {
     if (page > totalPages) {
@@ -248,66 +271,71 @@ export function InventoryPanel() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          Administra stock y precios por rol. Usa Lotes para seleccionar varios productos y aplicar
-          acciones masivas.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => void handleSyncFromStore()}
-            disabled={bulkBusy || syncCatalog.isPending}
-            className="gap-2"
-          >
-            <RefreshCw className="size-4" aria-hidden="true" />
-            Sincronizar con tienda
-          </Button>
-          <Button onClick={openCreate} className="bg-red-600 hover:bg-red-500">
-            <PackagePlus aria-hidden="true" />
-            Nuevo producto
-          </Button>
-        </div>
-      </header>
-
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/20 p-4">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3">
-          <Label htmlFor="inv-category-filter" className="shrink-0 text-sm font-medium">
-            Categoría
-          </Label>
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger
+      <div className="rounded-lg border bg-muted/20 p-3 sm:p-4">
+        <div className="flex flex-row flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex min-w-0 items-center gap-2 lg:w-auto lg:shrink-0">
+            <Label htmlFor="inv-category-filter" className="shrink-0 text-sm font-medium">
+              Categoría
+            </Label>
+            <InventoryCategoryFilterSelect
               id="inv-category-filter"
-              className="h-10 min-w-[12rem] max-w-full flex-1 bg-background sm:max-w-xs"
-            >
-              <SelectValue placeholder="Todas las categorías" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_CATEGORIES}>Todas las categorías</SelectItem>
-              {categoryOptions.map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+              value={categoryFilter}
+              onValueChange={setCategoryFilter}
+              categoryTree={categoryTree}
+              productCategoryLabels={productCategoryLabels}
+              className="h-10 min-w-[10rem] bg-background sm:min-w-[12rem]"
+            />
+          </div>
 
-        <Button
-          type="button"
-          variant={batchMode ? 'default' : 'outline'}
-          size="sm"
-          onClick={toggleBatchMode}
-          className={cn(
-            'shrink-0 gap-1.5 min-h-10',
-            batchMode && 'bg-red-600 hover:bg-red-500 focus-visible:ring-red-600',
-          )}
-          aria-pressed={batchMode}
-        >
-          <Layers className="size-4" aria-hidden="true" />
-          Lotes
-        </Button>
+          <div className="relative min-w-0 flex-1">
+            <Label htmlFor="inv-search" className="sr-only">
+              Buscador
+            </Label>
+            <Search
+              className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              id="inv-search"
+              type="search"
+              placeholder="Buscador: código, nombre, marca…"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="h-10 bg-background pl-9"
+            />
+          </div>
+
+          <div className="flex shrink-0 flex-wrap items-center gap-2 lg:ml-0">
+            <Button
+              type="button"
+              variant={batchMode ? 'default' : 'outline'}
+              onClick={toggleBatchMode}
+              className={cn(
+                'h-10 gap-1.5',
+                batchMode && 'bg-red-600 hover:bg-red-500 focus-visible:ring-red-600',
+              )}
+              aria-pressed={batchMode}
+            >
+              <Layers className="size-4" aria-hidden="true" />
+              Lotes
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void handleSyncFromStore()}
+              disabled={bulkBusy || syncCatalog.isPending}
+              className="h-10 gap-2"
+            >
+              <RefreshCw className="size-4" aria-hidden="true" />
+              <span className="hidden xl:inline">Sincronizar con tienda</span>
+              <span className="xl:hidden">Sincronizar</span>
+            </Button>
+            <Button onClick={openCreate} className="h-10 bg-red-600 hover:bg-red-500">
+              <PackagePlus aria-hidden="true" />
+              Nuevo producto
+            </Button>
+          </div>
+        </div>
       </div>
 
       {batchMode && (
@@ -375,9 +403,9 @@ export function InventoryPanel() {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Los productos se muestran por precio público de menor a mayor. La columna Orden indica la
-        posición en ese listado. Los encabezados de columna se pueden reordenar (se guarda en este
-        navegador).
+        Administra stock y precios por rol. Usa Lotes para acciones masivas. Los productos se
+        muestran por precio público de menor a mayor; la columna Orden indica la posición. Los
+        encabezados se pueden reordenar (se guarda en este navegador).
       </p>
 
       {isError && (
@@ -453,9 +481,11 @@ export function InventoryPanel() {
             {!isLoading && pageProducts.length === 0 && (
               <tr>
                 <td colSpan={colCount} className="px-4 py-12 text-center text-muted-foreground">
-                  {categoryFilter === ALL_CATEGORIES
-                    ? 'No hay productos en el inventario.'
-                    : 'No hay productos en esta categoría.'}
+                  {normalizedSearch
+                    ? 'No hay productos que coincidan con la búsqueda.'
+                    : categoryFilter === ALL_INVENTORY_CATEGORIES
+                      ? 'No hay productos en el inventario.'
+                      : 'No hay productos en esta categoría.'}
                 </td>
               </tr>
             )}
@@ -573,7 +603,7 @@ export function InventoryPanel() {
           <p className="text-sm text-muted-foreground">
             {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredProducts.length)} de{' '}
             {filteredProducts.length} producto{filteredProducts.length === 1 ? '' : 's'}
-            {categoryFilter !== ALL_CATEGORIES && products
+            {(categoryFilter !== ALL_INVENTORY_CATEGORIES || normalizedSearch) && products
               ? ` (filtrado de ${products.length})`
               : ''}
           </p>

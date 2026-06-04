@@ -1,8 +1,9 @@
 import type { AuthUser } from '@/lib/auth-storage';
+import { HAITECH_ADMIN_PANEL_EMAILS } from '@/lib/haitech-auth-credentials';
 import type { UserRole } from '@/types/product';
 
 /** Cuentas con acceso al panel aunque el perfil aún diga «public». */
-export const ADMIN_PANEL_EMAILS = ['admin@haitech.pe', 'soporte@haitech.pe'] as const;
+export const ADMIN_PANEL_EMAILS = HAITECH_ADMIN_PANEL_EMAILS;
 
 export type AdminPanelEmail = (typeof ADMIN_PANEL_EMAILS)[number];
 

@@ -7,6 +7,22 @@ import type { AddToCartOptions } from '@/context/cart-context';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/types/product';
 
+export function isProductOutOfStock(product: Product): boolean {
+  return product.stock <= 0;
+}
+
+export function getAddToCartLabel(
+  product: Product,
+  variant: 'default' | 'short' | 'detail' = 'default',
+): string {
+  if (isProductOutOfStock(product)) {
+    return variant === 'short' ? 'A pedido' : 'Comprar a Pedido';
+  }
+  if (variant === 'short') return 'Añadir';
+  if (variant === 'detail') return 'Agregar al carrito';
+  return 'Añadir al carrito';
+}
+
 interface AddToCartButtonProps extends Omit<ButtonProps, 'onClick'> {
   product: Product;
   addOptions?: AddToCartOptions;
@@ -22,6 +38,8 @@ export function AddToCartButton({
 }: AddToCartButtonProps) {
   const { addItem } = useCart();
   const [justAdded, setJustAdded] = useState(false);
+  const outOfStock = isProductOutOfStock(product);
+  const defaultLabel = getAddToCartLabel(product);
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -41,7 +59,9 @@ export function AddToCartButton({
       aria-label={
         justAdded
           ? `${product.name} agregado al carrito`
-          : `Añadir ${product.name} al carrito`
+          : outOfStock
+            ? `Comprar ${product.name} a pedido`
+            : `Añadir ${product.name} al carrito`
       }
       onClick={handleClick}
       className={cn(
@@ -60,7 +80,7 @@ export function AddToCartButton({
         children ?? (
           <>
             <ShoppingCart className="size-4" aria-hidden="true" />
-            Añadir al carrito
+            {defaultLabel}
           </>
         )
       )}

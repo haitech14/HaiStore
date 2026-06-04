@@ -44,6 +44,15 @@ export function ContactPage() {
   });
 
   useEffect(() => {
+    const servicio = searchParams.get('servicio')?.trim();
+    if (servicio) {
+      setValue(
+        'message',
+        `Solicito cotización de alquiler: ${servicio}.\n\nDetalle del proyecto (duración, cantidad de equipos, ciudad): ___`,
+        { shouldDirty: true },
+      );
+      return;
+    }
     if (searchParams.get('tema') !== 'servicio') return;
     setValue('message', SERVICE_PREFILL_MESSAGE, { shouldDirty: true });
   }, [searchParams, setValue]);

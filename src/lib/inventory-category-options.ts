@@ -9,6 +9,20 @@ export interface InventorySelectOption {
   label: string;
 }
 
+export interface InventoryCategorySelectGroup {
+  /** Etiqueta del grupo (categoría raíz o «Otras etiquetas»). */
+  label: string;
+  options: InventorySelectOption[];
+}
+
+function indentLabel(depth: number, text: string): string {
+  if (depth <= 0) return text;
+  return `${'— '.repeat(depth)}${text}`;
+}
+
+/**
+ * Opciones en orden del árbol (sin orden alfabético global).
+ */
 export function buildCategorySelectOptions(
   tree: StoreCategoryTreeNode[],
   extraLabels: string[] = [],
@@ -25,8 +39,7 @@ export function buildCategorySelectOptions(
 
   for (const node of flattenCategoryTree(tree)) {
     const value = categoryInventoryLabel(node);
-    const prefix = node.depth > 0 ? `${'— '.repeat(node.depth)}` : '';
-    add(value, `${prefix}${value}`);
+    add(value, indentLabel(node.depth, value));
   }
 
   for (const category of categories) {
@@ -35,9 +48,84 @@ export function buildCategorySelectOptions(
 
   for (const label of extraLabels) {
     for (const part of parseInventoryTagList(label)) {
-      add(part, part);
+      if (!seen.has(part)) {
+        add(part, part);
+      }
     }
   }
 
-  return options.sort((a, b) => a.label.localeCompare(b.label, 'es'));
+  return options;
+}
+
+/**
+ * Grupos taxonómicos para selects (raíz → subcategorías).
+ */
+export function buildCategorySelectGroups(
+  tree: StoreCategoryTreeNode[],
+  extraLabels: string[] = [],
+): InventoryCategorySelectGroup[] {
+  const seen = new Set<string>();
+  const groups: InventoryCategorySelectGroup[] = [];
+
+  const addOption = (options: InventorySelectOption[], value: string, depth: number) => {
+    const key = value.trim();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    options.push({ value: key, label: indentLabel(depth, key) });
+  };
+
+  const walk = (node: StoreCategoryTreeNode, depth: number) => {
+    const children = node.children ?? [];
+    if (children.length === 0) {
+      const value = categoryInventoryLabel(node);
+      groups.push({
+        label: node.name,
+        options: [{ value, label: indentLabel(depth, value) }],
+      });
+      return;
+    }
+
+    const options: InventorySelectOption[] = [];
+    addOption(options, categoryInventoryLabel(node), 0);
+    for (const flat of flattenCategoryTree(children, 0)) {
+      addOption(options, categoryInventoryLabel(flat), flat.depth + 1);
+    }
+    groups.push({ label: node.name, options });
+  };
+
+  for (const root of tree) {
+    walk(root, 0);
+  }
+
+  const orphanOptions: InventorySelectOption[] = [];
+  for (const label of extraLabels) {
+    for (const part of parseInventoryTagList(label)) {
+      addOption(orphanOptions, part, 0);
+    }
+  }
+  for (const category of categories) {
+    addOption(orphanOptions, category.name, 0);
+  }
+  if (orphanOptions.length > 0) {
+    groups.push({ label: 'Otras etiquetas', options: orphanOptions });
+  }
+
+  return groups;
+}
+
+/** Etiquetas de productos que no están ya en el árbol. */
+export function collectOrphanCategoryLabels(
+  tree: StoreCategoryTreeNode[],
+  productLabels: string[],
+): string[] {
+  const known = new Set(buildCategorySelectOptions(tree).map((o) => o.value));
+  const orphans: string[] = [];
+  for (const raw of productLabels) {
+    for (const part of parseInventoryTagList(raw)) {
+      if (!known.has(part) && !orphans.includes(part)) {
+        orphans.push(part);
+      }
+    }
+  }
+  return orphans;
 }

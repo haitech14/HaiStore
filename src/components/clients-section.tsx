@@ -10,12 +10,20 @@ function ClientCard({ client }: { client: Client }) {
   return (
     <article className="flex h-full flex-col items-center rounded-lg bg-white px-2.5 py-4 shadow-[0_2px_16px_rgba(15,23,42,0.06)] sm:px-3 sm:py-5">
       <div className="flex size-12 items-center justify-center rounded-full bg-red-600 ring-2 ring-red-600/20 sm:size-14">
-        <div className="flex size-[calc(100%-4px)] items-center justify-center overflow-hidden rounded-full border border-white bg-white">
+        <div
+          className={cn(
+            'flex size-[calc(100%-4px)] items-center justify-center overflow-hidden rounded-full border border-white',
+            client.logoSurface === 'dark' ? 'bg-neutral-950' : 'bg-white',
+          )}
+        >
           {!logoError ? (
             <img
               src={client.logo}
               alt=""
-              className="size-full object-contain p-1"
+              className={cn(
+                'size-full object-contain',
+                client.logoSurface === 'dark' ? 'p-0.5' : 'p-1',
+              )}
               loading="lazy"
               onError={() => setLogoError(true)}
             />

@@ -27,14 +27,14 @@ export function ProductDetailPriceBlock({ product, detail }: ProductDetailPriceB
           <span className="text-sm font-bold text-red-600">-{detail.discountPercent}%</span>
         )}
       </div>
-      <p className="text-xs text-neutral-500">
+      <div className="text-xs text-neutral-500">
         {oldPriceUsd != null && (
           <span className="mr-2 line-through">{formatUsd(oldPriceUsd)}</span>
         )}
         <AdminRolePricesTooltip productId={product.id} displayUsd={product.price}>
           <span>{formatUsd(product.price)}</span>
         </AdminRolePricesTooltip>
-      </p>
+      </div>
     </div>
   );
 }

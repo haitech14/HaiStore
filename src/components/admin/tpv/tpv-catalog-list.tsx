@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Package } from 'lucide-react';
 
+import { useStoreCategoriesTree } from '@/hooks/use-store-categories';
 import { buildInventoryCategoryOptions } from '@/lib/inventory-categories';
 import { compareProductsBySortOrder } from '@/lib/inventory-product-order';
 import {
@@ -114,6 +115,7 @@ export function TpvCatalogList({
   currency,
   onAddProduct,
 }: TpvCatalogListProps) {
+  const { data: categoryTree = [] } = useStoreCategoriesTree();
   const catalogByCategory = useMemo(() => {
     const query = search.trim().toLowerCase();
     const list = query
@@ -128,14 +130,14 @@ export function TpvCatalogList({
       groups.set(categoryName, bucket);
     }
 
-    const preferredOrder = buildInventoryCategoryOptions(products);
+    const preferredOrder = buildInventoryCategoryOptions(products, categoryTree);
     const sortedNames = sortCategoryKeys([...groups.keys()], preferredOrder);
 
     return sortedNames.map((name) => ({
       name,
       products: (groups.get(name) ?? []).sort(compareProductsBySortOrder),
     }));
-  }, [products, search]);
+  }, [products, search, categoryTree]);
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 

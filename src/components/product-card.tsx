@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ShoppingCart } from 'lucide-react';
-import { AddToCartButton } from '@/components/cart/add-to-cart-button';
+import { AddToCartButton, getAddToCartLabel } from '@/components/cart/add-to-cart-button';
 import { ProductCardPricing } from '@/components/product/product-card-pricing';
 import { ProductCardTitle } from '@/components/product/product-card-title';
 import { ProductNuevoCornerBadge } from '@/components/product/product-nuevo-corner-badge';
@@ -29,11 +29,10 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
     <div className="flex items-stretch gap-2">
       <AddToCartButton
         product={product}
-        disabled={outOfStock}
         className="min-h-11 flex-1 rounded-lg bg-red-600 px-2 text-xs font-semibold hover:bg-red-500 sm:min-w-[10.5rem] sm:text-sm lg:px-2.5"
       >
         <ShoppingCart className="size-4 shrink-0" aria-hidden="true" />
-        Añadir al carrito
+        {getAddToCartLabel(product)}
       </AddToCartButton>
       <ProductWhatsAppButton
         className="size-11 shrink-0 rounded-lg"
@@ -140,7 +139,7 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
           </div>
         </div>
 
-        <div className="relative z-[2] flex flex-1 flex-col gap-1 px-4 pb-3 pt-2">
+        <div className="relative z-[2] flex flex-1 flex-col gap-0.5 px-3 pb-3 pt-1.5 sm:gap-1 sm:px-4 sm:pt-2">
           <Link
             to={detailHref}
             className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"

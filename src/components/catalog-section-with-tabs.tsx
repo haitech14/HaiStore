@@ -5,7 +5,7 @@ import { ProductConditionTabList } from '@/components/product-condition-tab-list
 import type { FeaturedProduct } from '@/data/featured-products';
 import type { HomeCatalogSectionConfig } from '@/lib/home-catalog-sections';
 import {
-  PRODUCT_CONDITIONS,
+  getConditionsForCatalogFamily,
   type ProductCondition,
 } from '@/lib/product-condition';
 
@@ -16,32 +16,37 @@ interface CatalogSectionWithTabsProps {
 
 function firstTabWithProducts(
   map: Record<ProductCondition, FeaturedProduct[]>,
+  conditions: readonly ProductCondition[],
 ): ProductCondition {
-  return PRODUCT_CONDITIONS.find((key) => map[key].length > 0) ?? 'nuevas';
+  return conditions.find((key) => map[key].length > 0) ?? conditions[0] ?? 'originales';
 }
 
 const EMPTY_TAB_MESSAGES_BY_SECTION: Partial<
   Record<HomeCatalogSectionConfig['id'], Record<ProductCondition, string>>
 > = {
   multifuncionales: {
-    nuevas: 'Aún no hay multifuncionales nuevos en esta categoría.',
-    seminuevas: 'Próximamente: multifuncionales seminuevos disponibles aquí.',
-    remanufacturadas: 'Próximamente: multifuncionales remanufacturados disponibles aquí.',
+    originales: 'Aún no hay multifuncionales nuevos en esta categoría.',
+    compatibles: 'Aún no hay multifuncionales seminuevos en esta categoría.',
+    remanufacturados: 'Aún no hay multifuncionales remanufacturados en esta categoría.',
+    partes: 'Próximamente: partes para multifuncionales aquí.',
   },
   impresoras: {
-    nuevas: 'Aún no hay impresoras nuevas en esta categoría.',
-    seminuevas: 'Próximamente: impresoras seminuevas disponibles aquí.',
-    remanufacturadas: 'Próximamente: impresoras remanufacturadas disponibles aquí.',
+    originales: 'Aún no hay impresoras nuevas en esta categoría.',
+    compatibles: 'Aún no hay impresoras seminuevas en esta categoría.',
+    remanufacturados: 'Aún no hay impresoras remanufacturadas en esta categoría.',
+    partes: 'Próximamente: partes para impresoras aquí.',
   },
   'toner-suministros': {
-    nuevas: 'Aún no hay tóner ni suministros nuevos en esta categoría.',
-    seminuevas: 'Próximamente: suministros seminuevos disponibles aquí.',
-    remanufacturadas: 'Próximamente: suministros remanufacturados disponibles aquí.',
+    originales: 'Aún no hay tóner ni consumibles originales en esta categoría.',
+    compatibles: 'Aún no hay tóner ni cartuchos compatibles en esta categoría.',
+    remanufacturados: 'Aún no hay tóner remanufacturado o recargas en esta categoría.',
+    partes: 'Aún no hay partes de consumibles en esta categoría.',
   },
   repuestos: {
-    nuevas: 'Aún no hay repuestos nuevos en esta categoría.',
-    seminuevas: 'Próximamente: repuestos seminuevos disponibles aquí.',
-    remanufacturadas: 'Próximamente: repuestos remanufacturados disponibles aquí.',
+    originales: 'Aún no hay repuestos originales en esta categoría.',
+    compatibles: 'Aún no hay repuestos compatibles en esta categoría.',
+    remanufacturados: 'Aún no hay repuestos remanufacturados en esta categoría.',
+    partes: 'Aún no hay partes y componentes en esta categoría.',
   },
 };
 
@@ -49,17 +54,22 @@ export function CatalogSectionWithTabs({
   section,
   productsByCondition,
 }: CatalogSectionWithTabsProps) {
+  const sectionConditions = useMemo(
+    () => getConditionsForCatalogFamily(section.id),
+    [section.id],
+  );
+
   const [activeCondition, setActiveCondition] = useState<ProductCondition>(() =>
-    firstTabWithProducts(productsByCondition),
+    firstTabWithProducts(productsByCondition, sectionConditions),
   );
 
   const activeProducts = productsByCondition[activeCondition];
   const tabCounts = useMemo(
     () =>
       Object.fromEntries(
-        PRODUCT_CONDITIONS.map((key) => [key, productsByCondition[key].length]),
+        sectionConditions.map((key) => [key, productsByCondition[key].length]),
       ) as Record<ProductCondition, number>,
-    [productsByCondition],
+    [productsByCondition, sectionConditions],
   );
 
   const titleId = `${section.id}-titulo`;
@@ -82,6 +92,8 @@ export function CatalogSectionWithTabs({
           activeCondition={activeCondition}
           onSelect={setActiveCondition}
           counts={tabCounts}
+          catalogFamily={section.id}
+          conditions={sectionConditions}
           ariaLabel={`Filtrar ${section.title} por condición`}
           className="w-full sm:w-auto"
         />

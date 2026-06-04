@@ -1,32 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import {
-  Briefcase,
-  Copy,
-  Cog,
-  Droplets,
-  Headphones,
-  Laptop,
-  Monitor,
-  Package,
-  Printer,
-  Ruler,
-  ScanLine,
-  Star,
-  Video,
-} from 'lucide-react';
-
-export interface MegaMenuLink {
-  slug: string;
-  name: string;
-  icon: LucideIcon;
-  href: string;
-}
-
-export interface MegaMenuColumn {
-  id: MegaMenuSectionId;
-  title: string;
-  items: MegaMenuLink[];
-}
+import { Laptop, Package, Printer, Star } from 'lucide-react';
 
 export type MegaMenuSectionId = 'impresion' | 'suministros' | 'tecnologia' | 'destacados';
 
@@ -39,64 +12,6 @@ export const megaMenuSidebar: {
   { id: 'suministros', label: 'Suministros', icon: Package },
   { id: 'tecnologia', label: 'Tecnología', icon: Laptop },
   { id: 'destacados', label: 'Destacados', icon: Star },
-];
-
-export const megaMenuColumns: MegaMenuColumn[] = [
-  {
-    id: 'impresion',
-    title: 'Impresión',
-    items: [
-      { slug: 'multifuncionales', name: 'Multifuncionales', icon: Copy, href: '/tienda' },
-      { slug: 'impresoras', name: 'Impresoras', icon: Printer, href: '/tienda' },
-      { slug: 'formato-ancho', name: 'Formato Ancho', icon: Ruler, href: '/tienda' },
-      { slug: 'escaneres', name: 'Escáneres', icon: ScanLine, href: '/tienda?categoria=escaneres' },
-    ],
-  },
-  {
-    id: 'suministros',
-    title: 'Suministros',
-    items: [
-      {
-        slug: 'toner-suministros',
-        name: 'Tóner y Suministros',
-        icon: Package,
-        href: '/tienda',
-      },
-      { slug: 'repuestos', name: 'Repuestos', icon: Cog, href: '/tienda' },
-      {
-        slug: 'consumibles-originales',
-        name: 'Consumibles Originales',
-        icon: Droplets,
-        href: '/tienda',
-      },
-    ],
-  },
-  {
-    id: 'tecnologia',
-    title: 'Tecnología',
-    items: [
-      {
-        slug: 'computadoras-laptop',
-        name: 'Computadoras y Laptop',
-        icon: Laptop,
-        href: '/tienda',
-      },
-      { slug: 'monitores', name: 'Monitores', icon: Monitor, href: '/tienda' },
-      {
-        slug: 'soluciones-colaboracion',
-        name: 'Soluciones de Colaboración',
-        icon: Video,
-        href: '/tienda?categoria=soluciones-colaboracion',
-      },
-      {
-        slug: 'soluciones-negocio',
-        name: 'Soluciones de Negocio',
-        icon: Briefcase,
-        href: '/tienda?categoria=soluciones-negocio',
-      },
-      { slug: 'accesorios', name: 'Accesorios', icon: Headphones, href: '/tienda' },
-    ],
-  },
 ];
 
 export const megaMenuFeatured = {

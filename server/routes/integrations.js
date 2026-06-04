@@ -25,8 +25,11 @@ import {
 } from '../lib/service-requests-store.js';
 import { syncProductFromHaiSupport, deleteProductFromHaiSupport } from '../lib/haisupport-inbound.js';
 import { getSupabaseAdmin } from '../lib/supabase-auth.js';
+import { haisalesIntegrationRouter } from './haisales-integration.js';
 
 export const integrationsRouter = Router();
+
+integrationsRouter.use('/haisales', haisalesIntegrationRouter);
 
 async function syncCustomerFromHaiSupport(action, payload) {
   const supabase = getSupabaseAdmin();
@@ -143,6 +146,10 @@ integrationsRouter.get('/haisupport/status', requireAdmin, (_req, res) => {
       service_requests: { outbound: true, inbound: true },
       rental_requests: { outbound: true, inbound: true },
       orders: { outbound: true, inbound: true },
+    },
+    haisales: {
+      statusUrl: '/api/integrations/haisales/status',
+      syncSeedsUrl: '/api/integrations/haisales/sync-seeds',
     },
   });
 });

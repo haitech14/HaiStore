@@ -7,7 +7,7 @@ import { ProductCardPricing } from '@/components/product/product-card-pricing';
 import { ProductCardTitle } from '@/components/product/product-card-title';
 import { ProductNuevoCornerBadge } from '@/components/product/product-nuevo-corner-badge';
 import { ProductQuickViewDialog } from '@/components/product/product-quick-view-dialog';
-import { AddToCartButton } from '@/components/cart/add-to-cart-button';
+import { AddToCartButton, getAddToCartLabel } from '@/components/cart/add-to-cart-button';
 import { ProductWhatsAppButton } from '@/components/product-whatsapp-button';
 import { useProductCompare } from '@/context/product-compare-context';
 import { useWishlist } from '@/context/wishlist-context';
@@ -169,14 +169,18 @@ export function ProductShowcaseCard({
         <div
           className={cn(
             'relative z-[2] flex flex-1 flex-col px-4',
-            isFeatured ? 'gap-1.5 pb-4 pt-2' : 'gap-1 pb-3 pt-2',
+            isFeatured ? 'gap-1 px-3 pb-4 pt-1.5 sm:gap-1.5 sm:px-4 sm:pt-2' : 'gap-0.5 px-3 pb-3 pt-1.5 sm:gap-1 sm:px-4 sm:pt-2',
           )}
         >
           <Link
             to={detailHref}
             className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
           >
-            <ProductCardTitle product={badgeSource} brandTone={brandTone} />
+            <ProductCardTitle
+              product={badgeSource}
+              brandTone={brandTone}
+              variant={isFeatured ? 'featured' : 'card'}
+            />
           </Link>
 
           {!isFeatured ? <Rating rating={product.rating} reviews={product.reviews} /> : null}
@@ -216,7 +220,7 @@ export function ProductShowcaseCard({
               className="h-10 min-h-11 flex-1 rounded-lg bg-red-600 px-2 text-xs font-semibold text-white hover:bg-red-500 focus-visible:ring-red-600 sm:text-sm lg:px-2.5"
             >
               <ShoppingCart className="size-4 shrink-0" aria-hidden="true" />
-              Añadir al carrito
+              {getAddToCartLabel(cartProduct)}
             </AddToCartButton>
             <ProductWhatsAppButton
               className="h-10 min-h-11 w-10 rounded-lg"

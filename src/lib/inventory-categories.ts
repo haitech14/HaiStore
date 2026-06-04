@@ -1,9 +1,24 @@
 import { categories } from '@/data/categories';
 import { normalizeCategoryName } from '@/lib/catalog-featured';
+import { buildCategorySelectOptions } from '@/lib/inventory-category-options';
+import { categoryInventoryLabel } from '@/lib/inventory-product-category';
+import { collectInventoryLabels } from '@/lib/store-category-display';
 import { parseInventoryTagList } from '@/lib/inventory-tags';
+import { flattenCategoryTree } from '@/lib/store-category-tree';
 import type { InventoryProduct } from '@/types/product';
+import type { StoreCategoryTreeNode } from '@/types/store-category';
 
-export function buildInventoryCategoryOptions(products: InventoryProduct[]): string[] {
+export function buildInventoryCategoryOptions(
+  products: InventoryProduct[],
+  tree: StoreCategoryTreeNode[] = [],
+): string[] {
+  if (tree.length > 0) {
+    const extra = products
+      .map((product) => product.category ?? '')
+      .filter((label) => label.trim().length > 0);
+    return buildCategorySelectOptions(tree, extra).map((option) => option.value);
+  }
+
   const names = new Set<string>();
   for (const category of categories) {
     names.add(category.name);
@@ -14,6 +29,48 @@ export function buildInventoryCategoryOptions(products: InventoryProduct[]): str
     }
   }
   return [...names].sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+/** Etiquetas de inventario que aplican al filtro (incluye subcategorías del árbol). */
+export function resolveCategoryFilterLabels(
+  tree: StoreCategoryTreeNode[],
+  filterValue: string,
+): string[] {
+  if (filterValue === 'all') return [];
+
+  const flat = flattenCategoryTree(tree);
+  const match = flat.find((node) => categoryInventoryLabel(node) === filterValue.trim());
+  if (match) {
+    const node = findNodeInTree(tree, match.id);
+    if (node && (node.children?.length ?? 0) > 0) {
+      return collectInventoryLabels(node);
+    }
+  }
+
+  return [filterValue.trim()];
+}
+
+function findNodeInTree(
+  nodes: StoreCategoryTreeNode[],
+  id: string,
+): StoreCategoryTreeNode | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    const nested = findNodeInTree(node.children ?? [], id);
+    if (nested) return nested;
+  }
+  return undefined;
+}
+
+export function productMatchesCategoryFilterTree(
+  product: { category?: string | null },
+  filterValue: string,
+  tree: StoreCategoryTreeNode[],
+): boolean {
+  if (filterValue === 'all') return true;
+  const labels = resolveCategoryFilterLabels(tree, filterValue);
+  const targets = new Set(labels.map((label) => normalizeCategoryName(label)));
+  return productCategoryTags(product).some((tag) => targets.has(normalizeCategoryName(tag)));
 }
 
 export function productCategoryTags(product: { category?: string | null }): string[] {

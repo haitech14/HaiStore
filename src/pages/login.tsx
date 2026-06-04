@@ -17,6 +17,8 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/auth-context';
+import { isAdminPanelEmail } from '@/lib/admin-access';
+import { formatHaitechAuthLoginHint } from '@/lib/haitech-auth-credentials';
 
 const heroFeatures = [
   { icon: Shield, label: 'Seguridad garantizada' },
@@ -55,7 +57,7 @@ export function LoginPage() {
     try {
       await login(email, password);
       const destination =
-        email.trim().toLowerCase() === 'admin@haitech.pe' ? '/admin' : from;
+        isAdminPanelEmail(email) ? '/admin' : from;
       navigate(destination, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo iniciar sesión');
@@ -226,8 +228,8 @@ export function LoginPage() {
             )}
 
             <p className="text-center text-xs text-gray-400">
-              Demo local: <span className="font-mono">admin@haitech.pe</span> /{' '}
-              <span className="font-mono">admin123</span>
+              Cuentas Haitech (HaiStore, HaiSupport, HaiSales):{' '}
+              <span className="font-mono">{formatHaitechAuthLoginHint()}</span>
             </p>
 
             <button

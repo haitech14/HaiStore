@@ -56,7 +56,12 @@ export function storeCustomerRowToHaitechClient(row) {
     notas: row.notes ? String(row.notes).trim() : null,
     persona_data:
       row.persona_data && typeof row.persona_data === 'object' ? row.persona_data : {},
-    source: row.source === 'haisupport' ? 'haisupport' : 'haistore',
+    source:
+      row.source === 'haisupport'
+        ? 'haisupport'
+        : row.source === 'haisales'
+          ? 'haisales'
+          : 'haistore',
   };
 }
 
@@ -80,7 +85,12 @@ export function haitechClientToStoreCustomerRow(client, existingId) {
     ciudad: client.ciudad || null,
     tipo_cliente: VALID_ROLES.has(role) ? role : 'public',
     notes: client.notas || null,
-    source: client.source === 'haisupport' ? 'haisupport' : 'haistore',
+    source:
+      client.source === 'haisupport'
+        ? 'haisupport'
+        : client.source === 'haisales'
+          ? 'haisales'
+          : 'haistore',
     haisupport_client_id: client.haisupportClientId ?? null,
     persona_data:
       client.persona_data && typeof client.persona_data === 'object'
@@ -200,6 +210,11 @@ export function inboundPayloadToHaitechClient(payload) {
         : payload.personaData && typeof payload.personaData === 'object'
           ? payload.personaData
           : {},
-    source: payload.source === 'haisupport' ? 'haisupport' : 'haistore',
+    source:
+      payload.source === 'haisupport'
+        ? 'haisupport'
+        : payload.source === 'haisales'
+          ? 'haisales'
+          : 'haistore',
   };
 }

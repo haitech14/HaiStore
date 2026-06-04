@@ -373,7 +373,7 @@ export function SalesUnifiedListPanel({
     <div className="space-y-4">
       {importedLoading ? (
         <p className="text-sm text-muted-foreground" role="status" aria-live="polite">
-          Cargando histórico ERP…
+          Cargando histórico HaiSales…
         </p>
       ) : null}
       <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-4">
@@ -444,7 +444,7 @@ export function SalesUnifiedListPanel({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL_TYPES}>Todos</SelectItem>
-              <SelectItem value="historico">Histórico (ERP)</SelectItem>
+              <SelectItem value="historico">Histórico (HaiSales)</SelectItem>
               <SelectItem value="venta">Ventas tienda</SelectItem>
               <SelectItem value="cotizacion">Cotizaciones</SelectItem>
             </SelectContent>
@@ -496,7 +496,7 @@ export function SalesUnifiedListPanel({
       {showErpReportTable ? (
         importedDocuments.length === 0 ? (
           <AdminEmptyState
-            title="Sin histórico ERP"
+            title="Sin histórico HaiSales"
             description="Importa un Reporte de Ventas (.xlsx) para ver las mismas columnas del Excel."
           />
         ) : filteredHistoricoDocs.length === 0 ? (
@@ -557,7 +557,7 @@ export function SalesUnifiedListPanel({
                       <TableCell className="text-sm">{doc.seller_name ?? '—'}</TableCell>
                       <TableCell>
                         <span className="text-xs text-muted-foreground">
-                          ERP
+                          HaiSales
                           {doc.related_doc?.trim() ? ` · ${doc.related_doc.trim()}` : ''}
                         </span>
                       </TableCell>

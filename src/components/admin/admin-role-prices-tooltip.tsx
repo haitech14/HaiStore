@@ -65,9 +65,9 @@ export function AdminRolePricesTooltip({
           'group-hover/role-prices:opacity-100 group-focus-within/role-prices:opacity-100',
         )}
       >
-        <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wide text-neutral-500">
+        <div className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wide text-neutral-500">
           Precios por rol
-        </p>
+        </div>
         {rolePrices ? (
           <ul className="space-y-2">
             {PRICE_ROLES_EDIT_ORDER.map((role: PriceRole) => (
@@ -80,11 +80,11 @@ export function AdminRolePricesTooltip({
             ))}
           </ul>
         ) : (
-          <p className="text-xs text-neutral-600">
+          <div className="text-xs text-neutral-600">
             {pricesLoading
               ? 'Cargando listas de precio…'
               : 'No hay precios por rol para este producto.'}
-          </p>
+          </div>
         )}
       </span>
     </span>

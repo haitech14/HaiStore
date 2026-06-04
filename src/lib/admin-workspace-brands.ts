@@ -13,14 +13,14 @@ export const ADMIN_WORKSPACE_BRANDS: Record<AdminWorkspaceBrandId, AdminWorkspac
     id: 'haitech',
     companyName: 'HAITECH',
     legalName: 'NBN TECNOLOGIA TOTAL S.A.C.',
-    logoUrl: '/logoclaro.png',
+    logoUrl: '/logo.png',
     logoAlt: 'Haitech',
   },
   printcore: {
     id: 'printcore',
     companyName: 'PRINTCORE',
     legalName: 'SOLUCIONES DE IMPRESIÓN',
-    logoUrl: '/logo.png',
+    logoUrl: '/logo-printcore.png',
     logoAlt: 'Printcore — Soluciones de impresión',
   },
 };

@@ -41,7 +41,7 @@ export function LoginRegisterPage() {
 
       <section className="login-card-glow relative z-10 w-full max-w-md rounded-2xl border border-red-600/40 p-6 sm:p-8">
         <Link to="/" className="mb-6 flex items-center justify-center" aria-label="Haitech, inicio">
-          <img src="/logo.png" alt="Haitech" className="h-10 w-auto" />
+          <img src="/logo.png" alt="Haitech Soluciones Tecnológicas" className="h-10 w-auto" />
         </Link>
 
         <div className="mb-4 flex justify-center">

@@ -60,7 +60,7 @@ export function CustomerCreateDialog({
         <DialogHeader>
           <DialogTitle>Nuevo cliente</DialogTitle>
           <DialogDescription>
-            Registra un cliente con los mismos campos del reporte Persona (Excel).
+            Registra un cliente con los mismos campos del reporte Persona (HaiSales).
           </DialogDescription>
         </DialogHeader>
 

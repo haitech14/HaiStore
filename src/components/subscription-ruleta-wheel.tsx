@@ -10,13 +10,13 @@ import { cn } from '@/lib/utils';
 const BULB_COUNT = 24;
 const SPIN_DURATION_MS = 4600;
 /** Radio de las bombillas sobre el marco (% desde el centro = eje del hub). */
-const BULB_RADIUS_PERCENT = 50;
+const BULB_RADIUS_PERCENT = 51.5;
 /** Diámetro del hub «Gira y gana» respecto al disco interior (%). Origen polar = centro del disco. */
-const HUB_DIAMETER_PERCENT = 32;
+const HUB_DIAMETER_PERCENT = 31;
 /** Borde interior del anillo de color (justo fuera del hub). */
 const SEGMENT_RING_INNER_PERCENT = HUB_DIAMETER_PERCENT / 2 + 2;
 /** Borde exterior del anillo de color (antes del marco dorado interior). */
-const SEGMENT_RING_OUTER_PERCENT = 46;
+const SEGMENT_RING_OUTER_PERCENT = 48.5;
 /** Centro del anillo de color: todos los iconos en la misma circunferencia. */
 const SEGMENT_ICON_RADIUS_PERCENT =
   (SEGMENT_RING_INNER_PERCENT + SEGMENT_RING_OUTER_PERCENT) / 2;
@@ -55,8 +55,8 @@ export function SubscriptionRuletaWheel({
   const diskRotation = isSpinning ? spinRotation : idleDiskRotation;
 
   return (
-    <div className={cn('relative mx-auto w-full max-w-[400px] px-1 pb-6 pt-1', className)}>
-      <div className="relative mx-auto aspect-square w-full max-w-[360px]">
+    <div className={cn('relative mx-auto w-full max-w-[430px] px-1 pb-6 pt-1', className)}>
+      <div className="relative mx-auto aspect-square w-full max-w-[392px]">
         {/* Puntero dorado fijo */}
         <div
           aria-hidden="true"
@@ -71,9 +71,9 @@ export function SubscriptionRuletaWheel({
         {/* Marco dorado exterior */}
         <div
           className={cn(
-            'absolute inset-0 rounded-full p-[9px]',
+            'absolute inset-0 rounded-full p-[11px]',
             'bg-gradient-to-b from-amber-200 via-yellow-500 to-amber-700',
-            'shadow-[0_0_35px_rgba(251,191,36,0.45),inset_0_2px_4px_rgba(255,255,255,0.35)]',
+            'shadow-[0_0_28px_8px_rgba(251,191,36,0.35),0_0_52px_14px_rgba(251,191,36,0.28),inset_0_2px_4px_rgba(255,255,255,0.35)]',
           )}
         >
           {/* Bombillas centradas en el borde dorado */}
@@ -87,7 +87,7 @@ export function SubscriptionRuletaWheel({
               return (
                 <span
                   key={`bulb-${index}`}
-                  className="absolute z-20 block size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-yellow-50 shadow-[0_0_9px_3px_rgba(255,255,255,0.95),0_0_16px_5px_rgba(250,204,21,0.6)]"
+                  className="absolute z-20 block size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-yellow-50 shadow-[0_0_10px_4px_rgba(255,255,255,0.98),0_0_20px_8px_rgba(250,204,21,0.75)]"
                   style={{ left, top }}
                 />
               );
@@ -134,10 +134,13 @@ export function SubscriptionRuletaWheel({
                         transform: `${WHEEL_PIVOT_TRANSFORM} rotate(${-diskRotation}deg)`,
                       }}
                     >
-                      <span className="flex size-8 shrink-0 items-center justify-center sm:size-9">
+                      <span
+                        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/95 shadow-[0_1px_4px_rgba(0,0,0,0.18)] sm:size-9"
+                        style={{ color: premio.iconColor }}
+                      >
                         <Icon
-                          className="wheel-segment-icon size-5 sm:size-6"
-                          strokeWidth={1.25}
+                          className="size-5 sm:size-6"
+                          strokeWidth={2}
                           aria-hidden="true"
                         />
                       </span>

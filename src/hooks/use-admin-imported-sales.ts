@@ -50,7 +50,7 @@ async function fetchImportedSales(monthParam: string): Promise<ImportedSalesList
   }
 
   if (!response.ok) {
-    throw new Error(body.error ?? `Error ${response.status} al cargar el histórico ERP`);
+    throw new Error(body.error ?? `Error ${response.status} al cargar el histórico HaiSales`);
   }
 
   return body;

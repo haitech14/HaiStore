@@ -103,7 +103,7 @@ export function ProductCarouselSection({
                   key={product.id}
                   className="min-w-0 shrink-0 flex-[0_0_85%] sm:flex-[0_0_calc((100%-1rem)/2)] md:flex-[0_0_calc((100%-2rem)/3)] lg:flex-[0_0_calc((100%-4rem)/5)]"
                 >
-                  <ProductShowcaseCard product={product} />
+                  <ProductShowcaseCard product={product} variant="featured" />
                 </li>
               ))}
             </ul>

@@ -8,7 +8,7 @@ import {
   Zap,
 } from 'lucide-react';
 
-import { AddToCartButton } from '@/components/cart/add-to-cart-button';
+import { AddToCartButton, getAddToCartLabel } from '@/components/cart/add-to-cart-button';
 import { ProductWhatsAppButton } from '@/components/product-whatsapp-button';
 import { Button } from '@/components/ui/button';
 import { ProductDetailPriceBlock } from '@/components/product-detail/product-detail-price-block';
@@ -221,12 +221,11 @@ export function ProductDetailPurchaseBox({ product, detail }: ProductDetailPurch
           <AddToCartButton
             product={product}
             addOptions={{ quantity }}
-            disabled={outOfStock}
             size="lg"
             className="h-11 min-h-11 flex-1 rounded-lg bg-red-600 text-sm font-semibold text-white hover:bg-red-500 focus-visible:ring-red-600"
           >
             <ShoppingCart className="size-4" aria-hidden="true" />
-            Agregar al carrito
+            {getAddToCartLabel(product, 'detail')}
           </AddToCartButton>
           <ProductWhatsAppButton
             className="size-11"
@@ -243,7 +242,6 @@ export function ProductDetailPurchaseBox({ product, detail }: ProductDetailPurch
         <AddToCartButton
           product={product}
           addOptions={{ quantity }}
-          disabled={outOfStock}
           size="lg"
           variant="outline"
           className="h-11 w-full rounded-lg border-red-200 bg-white text-sm font-semibold text-red-700 hover:bg-red-50 focus-visible:ring-red-600 hover:text-red-700"

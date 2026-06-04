@@ -246,26 +246,74 @@ export async function syncInventoryFromCatalog(options = {}) {
   };
 }
 
-async function readInventoryFromSupabase() {
-  const { listProducts } = await import('./product-catalog.js');
-  const products = await listProducts({ role: 'public', adminView: true });
-  let warehouses = normalizeWarehouses();
-  try {
-    const raw = await fs.readFile(inventoryPath(), 'utf-8');
-    warehouses = normalizeWarehouses(JSON.parse(raw).warehouses);
-  } catch {
-    // En Vercel no hay archivo persistente; almacenes por defecto.
+async function readInventoryFromLocalFile() {
+  await ensureInventoryFile();
+  const raw = await fs.readFile(inventoryPath(), 'utf-8');
+  const data = JSON.parse(raw);
+  const deletedProductIds = getDeletedProductIds(data);
+  const deleted = new Set(deletedProductIds);
+  const warehouses = normalizeWarehouses(data.warehouses);
+  const products = (data.products ?? [])
+    .filter((product) => !deleted.has(product.id))
+    .map((product) => migrateInventoryProduct(product, warehouses));
+
+  return { products, deletedProductIds, warehouses };
+}
+
+function mergeInventoryProductLists(supabaseProducts, fileProducts, warehouses) {
+  const byId = new Map();
+
+  for (const product of supabaseProducts) {
+    byId.set(product.id, migrateInventoryProduct(product, warehouses));
   }
+
+  for (const product of fileProducts) {
+    byId.set(product.id, migrateInventoryProduct(product, warehouses));
+  }
+
+  return [...byId.values()];
+}
+
+async function readInventoryFromSupabase() {
+  const { fetchInventoryProductsFromSupabase } = await import('./product-catalog.js');
+  const supabaseProducts = await fetchInventoryProductsFromSupabase();
+
+  let warehouses = normalizeWarehouses();
+  let deletedProductIds = [];
+  let fileProducts = [];
+
+  try {
+    const local = await readInventoryFromLocalFile();
+    warehouses = local.warehouses;
+    deletedProductIds = local.deletedProductIds;
+    fileProducts = local.products;
+  } catch {
+    // En Vercel no hay archivo persistente; solo Supabase.
+  }
+
+  const deleted = new Set(deletedProductIds);
+  const merged = mergeInventoryProductLists(supabaseProducts, fileProducts, warehouses).filter(
+    (product) => !deleted.has(product.id),
+  );
+
+  const { products, changed: sortChanged } = ensureProductSortOrders(merged);
+
   return {
-    products: Array.isArray(products) ? products : [],
-    deletedProductIds: [],
+    products,
+    deletedProductIds,
     warehouses,
+    ...(sortChanged ? { _sortChanged: true } : {}),
   };
 }
 
 export async function readInventory() {
   if (shouldPreferSupabaseCatalog()) {
-    return readInventoryFromSupabase();
+    const result = await readInventoryFromSupabase();
+    return {
+      products: result.products,
+      deletedProductIds: result.deletedProductIds,
+      warehouses: result.warehouses,
+    };
   }
 
   await ensureInventoryFile();
@@ -343,14 +391,17 @@ export function getEffectivePrice(product, role) {
 
 export function toPublicProduct(product, role) {
   const priceRole = resolvePriceRole(role);
+  const prices = ensureFullPrices(product.prices ?? { public: product.price ?? 0 });
   const image_url = resolveProductImageUrl(product);
   const gallery = resolveProductGallery(product);
 
   return {
     id: product.id,
+    code: product.code ?? null,
     name: product.name,
     description: product.description ?? null,
-    price: getEffectivePrice(product, role),
+    price: prices[priceRole] ?? prices.public ?? 0,
+    prices,
     currency: product.currency ?? 'USD',
     image_url,
     gallery,

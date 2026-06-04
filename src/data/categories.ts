@@ -5,6 +5,7 @@ import {
   Ruler,
   PackageOpen,
   Cog,
+  KeyRound,
   Laptop,
   Monitor,
   ScanLine,
@@ -52,7 +53,13 @@ export const categories: Category[] = [
     tagline: 'Consumibles originales y compatibles',
     icon: PackageOpen,
     image: '/categories/toner-suministros.png',
-    inventoryCategories: ['Toner y suministros', 'Tóner y Suministros'],
+    inventoryCategories: [
+      'Toner y suministros',
+      'Tóner y Suministros',
+      'Toner',
+      'Toner originales',
+      'Suministros',
+    ],
   },
   {
     slug: 'repuestos',
@@ -103,5 +110,13 @@ export const categories: Category[] = [
     tagline: 'Pantallas para oficina y productividad',
     icon: Monitor,
     image: '/categories/monitores.png',
+  },
+  {
+    slug: 'alquiler',
+    name: 'Alquiler',
+    tagline: 'Equipos de impresión y tecnología en modalidad de alquiler',
+    icon: KeyRound,
+    image: '/categories/alquiler.png',
+    inventoryCategories: ['Alquiler'],
   },
 ];

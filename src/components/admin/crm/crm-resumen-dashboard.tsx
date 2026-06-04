@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { useCrmPipeline } from '@/context/crm-pipeline-context';
+import { useHaiSalesResumen } from '@/hooks/use-haisales-integration';
 import { formatResumenPenAmount } from '@/lib/crm-lead-form';
 import {
   AlertTriangle,
@@ -9,6 +10,7 @@ import {
   CheckSquare,
   ClipboardList,
   Clock,
+  FileSpreadsheet,
   MessageCircle,
   MessageCircleMore,
   Trophy,
@@ -58,6 +60,7 @@ function LeadSourcesChart() {
 
 export function CrmResumenDashboard() {
   const { resumenMetrics, kpis } = useCrmPipeline();
+  const { data: haiSalesResumen } = useHaiSalesResumen('all');
   const [period, setPeriod] = useState<CrmResumenPeriod>('semana');
   const periodLabel = crmResumenPeriodFooter(period);
 
@@ -177,6 +180,34 @@ export function CrmResumenDashboard() {
           </div>
         </article>
       </div>
+
+      {haiSalesResumen?.available ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <CrmMetricCard
+            title="Comprobantes HaiSales"
+            value={haiSalesResumen.documents}
+            periodLabel="histórico importado"
+            icon={FileSpreadsheet}
+            tone="green"
+            secondaryValue={formatResumenPenAmount(haiSalesResumen.totalPen)}
+          />
+          <CrmMetricCard
+            title="Total USD (HaiSales)"
+            value={haiSalesResumen.totalUsd}
+            periodLabel="histórico"
+            icon={FileSpreadsheet}
+            tone="blue"
+          />
+          <div className="flex items-end">
+            <Link
+              to={ADMIN_ROUTES.VENTAS}
+              className="min-h-11 w-full rounded-md border border-border bg-card px-4 py-3 text-center text-sm font-medium text-[hsl(var(--admin-accent))] hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Ver histórico en Ventas
+            </Link>
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-8">

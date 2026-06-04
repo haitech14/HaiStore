@@ -40,6 +40,46 @@ const PrivacyPage = lazyWithRetry(
   () => import('@/pages/legal').then((m) => ({ default: m.PrivacyPage })),
   'privacidad',
 );
+const ServiciosPage = lazyWithRetry(
+  () => import('@/pages/servicios').then((m) => ({ default: m.ServiciosPage })),
+  'servicios',
+);
+const ForumLayout = lazyWithRetry(
+  () => import('@/components/forum/forum-layout').then((m) => ({ default: m.ForumLayout })),
+  'foro',
+);
+const ForumHomePage = lazyWithRetry(
+  () => import('@/pages/forum/forum-home-page').then((m) => ({ default: m.ForumHomePage })),
+  'foro',
+);
+const ForumThreadPage = lazyWithRetry(
+  () => import('@/pages/forum/forum-thread-page').then((m) => ({ default: m.ForumThreadPage })),
+  'foro-tema',
+);
+const ForumNewThreadPage = lazyWithRetry(
+  () => import('@/pages/forum/forum-new-thread-page').then((m) => ({ default: m.ForumNewThreadPage })),
+  'foro-nuevo',
+);
+const ForumCategoryPage = lazyWithRetry(
+  () => import('@/pages/forum/forum-category-page').then((m) => ({ default: m.ForumCategoryPage })),
+  'foro-categoria',
+);
+const ForumNovedadesPage = lazyWithRetry(
+  () => import('@/pages/forum/forum-novedades-page').then((m) => ({ default: m.ForumNovedadesPage })),
+  'foro-novedades',
+);
+const ForumMiembrosPage = lazyWithRetry(
+  () => import('@/pages/forum/forum-miembros-page').then((m) => ({ default: m.ForumMiembrosPage })),
+  'foro-miembros',
+);
+const ForumEventosPage = lazyWithRetry(
+  () => import('@/pages/forum/forum-eventos-page').then((m) => ({ default: m.ForumEventosPage })),
+  'foro-eventos',
+);
+const ForumRecursosPage = lazyWithRetry(
+  () => import('@/pages/forum/forum-recursos-page').then((m) => ({ default: m.ForumRecursosPage })),
+  'foro-recursos',
+);
 
 const AdminLayout = lazyWithRetry(
   () => import('@/pages/admin/AdminLayout').then((m) => ({ default: m.AdminLayout })),
@@ -272,11 +312,39 @@ export const router = createBrowserRouter([
   { path: '/panel/pedidos', element: <Navigate to="/admin/ventas" replace /> },
   { path: '/panel/ventas', element: <Navigate to="/admin/ventas" replace /> },
   {
+    path: '/foro',
+    element: withSuspense(<ForumLayout />),
+    children: [
+      { index: true, element: withSuspense(<ForumHomePage />) },
+      { path: 'tema/:slug', element: withSuspense(<ForumThreadPage />) },
+      { path: 'nuevo', element: withSuspense(<ForumNewThreadPage />) },
+      { path: 'categoria/:slug', element: withSuspense(<ForumCategoryPage />) },
+      { path: 'novedades', element: withSuspense(<ForumNovedadesPage />) },
+      { path: 'miembros', element: withSuspense(<ForumMiembrosPage />) },
+      { path: 'eventos', element: withSuspense(<ForumEventosPage />) },
+      { path: 'recursos', element: withSuspense(<ForumRecursosPage />) },
+    ],
+  },
+  {
     path: '/',
     element: <RootLayout />,
     children: [
       { index: true, element: withSuspense(<HomePage />) },
       { path: 'tienda', element: withSuspense(<StorePage />) },
+      { path: 'servicios', element: withSuspense(<ServiciosPage />) },
+      { path: 'alquiler', element: <Navigate to="/servicios" replace /> },
+      {
+        path: 'servicio-tecnico',
+        element: <Navigate to="/servicios?seccion=servicio-tecnico" replace />,
+      },
+      {
+        path: 'outsourcing',
+        element: <Navigate to="/servicios?seccion=outsourcing" replace />,
+      },
+      {
+        path: 'servicios-corporativos',
+        element: <Navigate to="/servicios?seccion=servicios-corporativos" replace />,
+      },
       { path: 'categoria/:slug', element: withSuspense(<CategoryPage />) },
       { path: 'tienda/producto/:id', element: withSuspense(<ProductDetailPage />) },
       { path: 'contacto', element: withSuspense(<ContactPage />) },

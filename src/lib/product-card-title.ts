@@ -1,16 +1,25 @@
 import { isPrinterProduct, type ProductBadgeSource } from '@/lib/product-detail-badges';
 
-export const PRODUCT_CARD_TITLE_SIZE = 'text-sm sm:text-[0.95rem]';
+/** Título en grilla de catálogo (5 columnas en desktop). */
+export const PRODUCT_CARD_TITLE_SIZE = 'text-[0.78rem] leading-[1.2] sm:text-[0.85rem]';
+
+/** Título en vitrina destacada / carrusel (fichas estrechas, 5 por fila; máx. 3 líneas). */
+export const PRODUCT_CARD_TITLE_FEATURED_CLASS =
+  'text-[0.75rem] font-semibold leading-[1.2] text-foreground sm:text-[0.8125rem]';
 
 export const PRODUCT_CARD_BRAND_CLASS =
-  'truncate text-[0.65rem] font-normal uppercase tracking-wider text-muted-foreground';
+  'truncate text-[0.62rem] font-normal uppercase tracking-wide text-muted-foreground sm:text-[0.65rem]';
 
 /** Marca en tarjetas de vitrina (rojo de marca, como el diseño de destacados). */
 export const PRODUCT_CARD_BRAND_ACCENT_CLASS =
-  'truncate text-[0.65rem] font-semibold uppercase tracking-wider text-red-600';
+  'truncate text-[0.62rem] font-semibold uppercase tracking-wide text-red-600 sm:text-[0.65rem]';
 
 /** Título principal en tarjetas de catálogo (nombre del producto tal cual en inventario). */
-export const PRODUCT_CARD_TITLE_MAIN_CLASS = `${PRODUCT_CARD_TITLE_SIZE} font-bold leading-snug text-foreground`;
+export const PRODUCT_CARD_TITLE_MAIN_CLASS = `${PRODUCT_CARD_TITLE_SIZE} font-semibold text-foreground`;
+
+/** Máximo 3 líneas en ficha de producto. */
+export const PRODUCT_CARD_TITLE_CLAMP_CLASS =
+  'line-clamp-3 break-words text-pretty hyphens-auto';
 
 /** Precio actual en tarjetas de catálogo (negrita, un poco más grande que el tachado). */
 export const PRODUCT_CARD_PRICE_MAIN_CLASS =
@@ -20,13 +29,13 @@ export const PRODUCT_CARD_PRICE_MAIN_CLASS =
 export const PRODUCT_CARD_PRICE_FEATURED_CLASS =
   'text-[0.95rem] font-bold tabular-nums text-foreground sm:text-base';
 
-/** Precio anterior tachado (precio «normal»). */
+/** Precio anterior tachado (debajo del precio actual). */
 export const PRODUCT_CARD_PRICE_COMPARE_CLASS =
-  'text-xs font-normal tabular-nums text-muted-foreground line-through decoration-muted-foreground decoration-solid';
+  'text-[0.65rem] font-normal tabular-nums text-muted-foreground line-through decoration-muted-foreground decoration-solid sm:text-xs';
 
 /** Badge de descuento (fondo verde claro, texto verde). */
 export const PRODUCT_CARD_DISCOUNT_CLASS =
-  'inline-flex shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold bg-green-50 text-green-700';
+  'inline-flex shrink-0 rounded px-1 py-px text-[0.6rem] font-semibold leading-none bg-green-50 text-green-700 sm:text-[0.65rem]';
 
 export interface ProductCardTitleContent {
   brand: string | null;

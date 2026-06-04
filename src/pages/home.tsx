@@ -1,5 +1,6 @@
 import { BusinessSolutionsSection } from '@/components/business-solutions-section';
 import { CategoryStrip } from '@/components/category-strip';
+import { ClientRecommendationsSection } from '@/components/client-recommendations-section';
 import { ClientsSection } from '@/components/clients-section';
 import { CatalogCategorySections } from '@/components/catalog-category-sections';
 import { FeaturedProducts } from '@/components/featured-products';
@@ -11,6 +12,7 @@ import {
   HOME_CATALOG_SUPPLIES_SECTIONS,
 } from '@/lib/home-catalog-sections';
 import { Newsletter } from '@/components/newsletter';
+import { RentalCategoriesSection } from '@/components/rental-categories-section';
 
 export function HomePage() {
   return (
@@ -25,19 +27,18 @@ export function HomePage() {
       </div>
 
       <BusinessSolutionsSection />
+      <RentalCategoriesSection />
 
       <div className="container flex flex-col gap-8 pb-6 pt-2 sm:gap-10 sm:pb-8 sm:pt-4">
         <CatalogCategorySections sectionsConfig={HOME_CATALOG_SUPPLIES_SECTIONS} />
       </div>
 
       <ClientsSection />
-
-      <div className="container py-10 sm:py-12">
-        <Newsletter />
-      </div>
+      <ClientRecommendationsSection />
 
       <div className="container flex flex-col gap-8 pb-12 sm:gap-10 sm:pb-16">
         <GuidesSection />
+        <Newsletter />
       </div>
     </div>
   );
