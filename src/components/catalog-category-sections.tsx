@@ -1,7 +1,6 @@
 import { Fragment, useMemo } from 'react';
 
 import { CatalogSectionWithTabs } from '@/components/catalog-section-with-tabs';
-import { PromotionsHeroBanner } from '@/components/promotions-hero-banner';
 import { useProducts } from '@/hooks/use-products';
 import { useStoreCategoriesTree } from '@/hooks/use-store-categories';
 import { collectInventoryLabels, findStoreCategoryBySlug } from '@/lib/store-category-display';
@@ -85,7 +84,6 @@ export function CatalogCategorySections({
     <div className="flex flex-col gap-14 sm:gap-16">
       {sections.map(({ section, productsByCondition }) => (
         <Fragment key={section.id}>
-          {section.id === 'multifuncionales' ? <PromotionsHeroBanner embedded /> : null}
           <CatalogSectionWithTabs section={section} productsByCondition={productsByCondition} />
         </Fragment>
       ))}

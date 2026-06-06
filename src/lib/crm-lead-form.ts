@@ -3,6 +3,11 @@ import {
   computeLeadLinesTotal,
   leadProductNameFromLines,
 } from '@/lib/crm-lead-products';
+import {
+  countPendingTasksForLeads,
+  leadHasPendingTasks,
+  normalizeLeadTasks,
+} from '@/lib/crm-lead-tasks';
 import { leadAmountsInBothCurrencies } from '@/lib/crm-pipeline-utils';
 import {
   CRM_PIPELINE_STAGE_AVATAR_CLASS,
@@ -92,7 +97,10 @@ export function createPipelineLeadFromForm(
     productName,
     lineItems,
     valueAmount: String(valueAmount),
+    tasks: normalizeLeadTasks(values.tasks),
   };
+
+  const tasks = normalizeLeadTasks(values.tasks);
 
   return {
     id,
@@ -110,6 +118,7 @@ export function createPipelineLeadFromForm(
     productName,
     lineItems,
     sellerName,
+    tasks,
     formSnapshot: snapshot,
   };
 }
@@ -127,6 +136,7 @@ export function duplicatePipelineLead(lead: CrmPipelineLead): CrmPipelineLead {
     currency: lead.currency,
     stageId: lead.stageId,
     ownerLabel: lead.sellerName,
+    tasks: lead.tasks ?? [],
   };
   return createPipelineLeadFromForm(snapshot, newId, {
     sellerName: lead.sellerName,
@@ -162,6 +172,7 @@ export function computeResumenMetricsFromLeads(
   const active = leads.filter((l) => l.stageId !== 'venta_completada');
   const sumPen = (items: CrmPipelineLead[]) =>
     items.reduce((sum, l) => sum + leadAmountInPen(l, usdToPenRate), 0);
+  const withoutTasks = active.filter((lead) => !leadHasPendingTasks(lead));
 
   return {
     wonCount: won.length,
@@ -170,26 +181,28 @@ export function computeResumenMetricsFromLeads(
     activeValuePen: sumPen(active),
     lostCount: 0,
     lostValuePen: 0,
-    withoutTasksCount: active.length,
-    withoutTasksValuePen: sumPen(active),
+    withoutTasksCount: withoutTasks.length,
+    withoutTasksValuePen: sumPen(withoutTasks),
   };
 }
 
 export function computePipelineKpisFromLeads(leads: CrmPipelineLead[], usdToPenRate: number) {
   const won = leads.filter((l) => l.stageId === 'venta_completada').length;
-  const openLeads = leads.filter((l) => l.stageId !== 'venta_completada').length;
-  const pipelineValuePen = leads
-    .filter((l) => l.stageId !== 'venta_completada')
-    .reduce((sum, l) => sum + leadAmountInPen(l, usdToPenRate), 0);
+  const openLeads = leads.filter((l) => l.stageId !== 'venta_completada');
+  const pipelineValuePen = openLeads.reduce(
+    (sum, l) => sum + leadAmountInPen(l, usdToPenRate),
+    0,
+  );
   const followUpsToday = leads.filter((l) => l.followUpLabel.includes('Hoy')).length;
+  const pendingTasks = countPendingTasksForLeads(openLeads);
   const conversionPercent =
     leads.length > 0 ? Math.round((won / leads.length) * 100) : 0;
 
   return {
     totalLeads: leads.length,
-    openLeads,
+    openLeads: openLeads.length,
     pipelineValuePen,
-    pendingTasks: 0,
+    pendingTasks,
     followUpsToday,
     conversionPercent,
   };

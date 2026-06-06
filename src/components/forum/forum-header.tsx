@@ -50,30 +50,34 @@ export function ForumHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-[hsl(var(--forum-border))] bg-[hsl(var(--forum-bg)/0.95)] backdrop-blur-md">
-      <div className="border-b border-[hsl(var(--forum-border))] px-4 py-2 sm:px-6">
-        <ForumBackLink />
-      </div>
+      <div className="container flex h-14 flex-nowrap items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:gap-4">
+        <ForumBackLink className="min-h-11" />
 
-      <div className="container flex flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:gap-6">
         <Link
           to="/foro"
-          className="flex shrink-0 items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--forum-accent))]"
+          className="flex shrink-0 items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--forum-accent))]"
         >
           <span
-            className="flex size-10 items-center justify-center rounded-lg bg-[hsl(var(--forum-accent)/0.15)] text-[hsl(var(--forum-accent))]"
+            className="flex size-9 items-center justify-center rounded-lg bg-[hsl(var(--forum-accent)/0.15)] text-[hsl(var(--forum-accent))] sm:size-10"
             aria-hidden="true"
           >
-            <Hexagon className="size-6" strokeWidth={1.75} />
+            <Hexagon className="size-5 sm:size-6" strokeWidth={1.75} />
           </span>
-          <span>
-            <span className="block text-base font-bold tracking-tight">Foro HaiStore</span>
-            <span className="block text-xs text-[hsl(var(--forum-muted))]">
+          <span className="hidden min-w-0 md:block">
+            <span className="block truncate text-sm font-bold tracking-tight lg:text-base">
+              Foro HaiStore
+            </span>
+            <span className="hidden truncate text-xs text-[hsl(var(--forum-muted))] xl:block">
               Conecta. Aprende. Innova.
             </span>
           </span>
         </Link>
 
-        <form onSubmit={handleSearch} className="relative min-w-0 flex-1 lg:max-w-xl" role="search">
+        <form
+          onSubmit={handleSearch}
+          className="relative min-w-0 flex-1 lg:max-w-sm xl:max-w-md"
+          role="search"
+        >
           <label htmlFor="forum-search" className="sr-only">
             Buscar temas, usuarios, etiquetas
           </label>
@@ -87,38 +91,41 @@ export function ForumHeader() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar temas, usuarios, etiquetas…"
-            className="h-11 w-full rounded-lg border border-[hsl(var(--forum-border))] bg-[hsl(var(--forum-card))] pl-10 pr-3 text-sm text-[hsl(var(--forum-fg))] placeholder:text-[hsl(var(--forum-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--forum-accent))]"
+            className="h-10 w-full rounded-lg border border-[hsl(var(--forum-border))] bg-[hsl(var(--forum-card))] pl-10 pr-3 text-sm text-[hsl(var(--forum-fg))] placeholder:text-[hsl(var(--forum-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--forum-accent))] sm:h-11"
           />
         </form>
 
-        <div className="flex items-center justify-between gap-2 lg:justify-end">
-          <nav className="hidden items-center gap-1 xl:flex" aria-label="Secciones del foro">
-            {FORUM_NAV_ITEMS.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  cn(
-                    'inline-flex min-h-10 items-center rounded-md px-3 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'border-b-2 border-[hsl(var(--forum-accent))] text-[hsl(var(--forum-accent))]'
-                      : 'text-[hsl(var(--forum-muted))] hover:text-[hsl(var(--forum-fg))]',
-                  )
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
+        <nav
+          className="hidden shrink-0 items-center gap-0.5 lg:flex"
+          aria-label="Secciones del foro"
+        >
+          {FORUM_NAV_ITEMS.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) =>
+                cn(
+                  'inline-flex min-h-10 items-center whitespace-nowrap rounded-md px-2.5 text-sm font-medium transition-colors xl:px-3',
+                  isActive
+                    ? 'border-b-2 border-[hsl(var(--forum-accent))] text-[hsl(var(--forum-accent))]'
+                    : 'text-[hsl(var(--forum-muted))] hover:text-[hsl(var(--forum-fg))]',
+                )
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
 
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           <Sheet>
             <SheetTrigger asChild>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-11 text-[hsl(var(--forum-fg))] hover:bg-[hsl(var(--forum-card))] xl:hidden"
+                className="size-10 text-[hsl(var(--forum-fg))] hover:bg-[hsl(var(--forum-card))] lg:hidden"
                 aria-label="Abrir menú del foro"
               >
                 <Menu className="size-5" />
@@ -126,10 +133,12 @@ export function ForumHeader() {
             </SheetTrigger>
             <SheetContent
               side="left"
-              className="border-[hsl(var(--forum-border))] bg-[hsl(var(--forum-bg))] text-[hsl(var(--forum-fg))] w-[min(100%,20rem)]"
+              className="w-[min(100%,20rem)] border-[hsl(var(--forum-border))] bg-[hsl(var(--forum-bg))] text-[hsl(var(--forum-fg))]"
             >
               <SheetHeader>
-                <SheetTitle className="text-left text-[hsl(var(--forum-fg))]">Foro HaiStore</SheetTitle>
+                <SheetTitle className="text-left text-[hsl(var(--forum-fg))]">
+                  Foro HaiStore
+                </SheetTitle>
               </SheetHeader>
               <nav className="mt-6 flex flex-col gap-1" aria-label="Secciones del foro móvil">
                 {FORUM_NAV_ITEMS.map((item) => (
@@ -153,67 +162,67 @@ export function ForumHeader() {
             </SheetContent>
           </Sheet>
 
-          <div className="flex items-center gap-1 sm:gap-2">
-            <button
-              type="button"
-              className="relative inline-flex size-11 items-center justify-center rounded-md text-[hsl(var(--forum-muted))] hover:bg-[hsl(var(--forum-card))] hover:text-[hsl(var(--forum-fg))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--forum-accent))]"
-              aria-label="Notificaciones (12 sin leer)"
-            >
-              <Bell className="size-5" aria-hidden="true" />
-              <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-red-500 text-[0.6rem] font-bold text-white">
-                12
-              </span>
-            </button>
-            <button
-              type="button"
-              className="relative hidden size-11 items-center justify-center rounded-md text-[hsl(var(--forum-muted))] hover:bg-[hsl(var(--forum-card))] sm:inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--forum-accent))]"
-              aria-label="Mensajes (5 sin leer)"
-            >
-              <Mail className="size-5" aria-hidden="true" />
-              <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-[hsl(var(--forum-accent))] text-[0.6rem] font-bold text-white">
-                5
-              </span>
-            </button>
+          <button
+            type="button"
+            className="relative inline-flex size-10 items-center justify-center rounded-md text-[hsl(var(--forum-muted))] hover:bg-[hsl(var(--forum-card))] hover:text-[hsl(var(--forum-fg))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--forum-accent))] sm:size-11"
+            aria-label="Notificaciones (12 sin leer)"
+          >
+            <Bell className="size-5" aria-hidden="true" />
+            <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-red-500 text-[0.6rem] font-bold text-white">
+              12
+            </span>
+          </button>
+          <button
+            type="button"
+            className="relative hidden size-11 items-center justify-center rounded-md text-[hsl(var(--forum-muted))] hover:bg-[hsl(var(--forum-card))] sm:inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--forum-accent))]"
+            aria-label="Mensajes (5 sin leer)"
+          >
+            <Mail className="size-5" aria-hidden="true" />
+            <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-[hsl(var(--forum-accent))] text-[0.6rem] font-bold text-white">
+              5
+            </span>
+          </button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="flex min-h-11 items-center gap-2 rounded-lg border border-[hsl(var(--forum-border))] bg-[hsl(var(--forum-card))] px-2 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--forum-accent))]"
-                  aria-label="Menú de usuario"
-                >
-                  <Avatar className="size-8">
-                    <AvatarFallback className="bg-[hsl(var(--forum-accent)/0.2)] text-xs font-semibold text-[hsl(var(--forum-accent))]">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden min-w-0 sm:block">
-                    <span className="block truncate text-sm font-semibold">{displayName}</span>
-                    <span className="block text-xs text-[hsl(var(--forum-muted))]">
-                      {user ? `Nivel ${authProvider === 'supabase' ? '—' : 'demo'}` : 'Sin sesión'}
-                    </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex min-h-10 items-center gap-1.5 rounded-lg border border-[hsl(var(--forum-border))] bg-[hsl(var(--forum-card))] px-1.5 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--forum-accent))] sm:min-h-11 sm:gap-2 sm:px-2 sm:py-1.5"
+                aria-label="Menú de usuario"
+              >
+                <Avatar className="size-8">
+                  <AvatarFallback className="bg-[hsl(var(--forum-accent)/0.2)] text-xs font-semibold text-[hsl(var(--forum-accent))]">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="hidden min-w-0 md:block">
+                  <span className="block max-w-[5.5rem] truncate text-sm font-semibold lg:max-w-[7rem]">
+                    {displayName}
                   </span>
-                  <ChevronDown className="hidden size-4 text-[hsl(var(--forum-muted))] sm:block" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[12rem]">
-                {user ? (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link to="/mi-cuenta">Mi cuenta</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/foro/nuevo">Nuevo tema</Link>
-                    </DropdownMenuItem>
-                  </>
-                ) : (
+                  <span className="block truncate text-xs text-[hsl(var(--forum-muted))]">
+                    {user ? `Nivel ${authProvider === 'supabase' ? '—' : 'demo'}` : 'Sin sesión'}
+                  </span>
+                </span>
+                <ChevronDown className="hidden size-4 text-[hsl(var(--forum-muted))] md:block" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[12rem]">
+              {user ? (
+                <>
                   <DropdownMenuItem asChild>
-                    <Link to="/login?redirect=/foro">Iniciar sesión</Link>
+                    <Link to="/mi-cuenta">Mi cuenta</Link>
                   </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                  <DropdownMenuItem asChild>
+                    <Link to="/foro/nuevo">Nuevo tema</Link>
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <DropdownMenuItem asChild>
+                  <Link to="/login?redirect=/foro">Iniciar sesión</Link>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

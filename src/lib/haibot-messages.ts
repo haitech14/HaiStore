@@ -22,4 +22,4 @@ export function buildHaibotWhatsAppUrl(intent: HaibotWhatsAppIntent): string {
 }
 
 export const HAIBOT_WELCOME_MESSAGE =
-  '¡Hola! Soy Haibot, tu asistente en HaiStore.\n\nPuedo ayudarte con precios, stock, servicios técnicos y seguimiento de pedidos. Escríbeme o elige una opción rápida.';
+  '¡Hola! Soy Haibot, tu asistente en HaiStore.\n\nPuedo ayudarte con precios, stock, servicios técnicos y seguimiento de pedidos. Escríbeme tu consulta.';

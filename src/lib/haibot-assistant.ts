@@ -42,18 +42,18 @@ export function getHaibotAssistantReply(userText: string): string {
     text.includes('repar') ||
     text.includes('manten')
   ) {
-    return 'Para programar servicio técnico, toca «Servicio técnico» abajo o escríbenos por WhatsApp con modelo y ciudad.';
+    return 'Para programar servicio técnico, visita la sección Contacto o escríbenos por WhatsApp al +51 915 149 290 con modelo y ciudad.';
   }
 
   if (
     text.includes('lista') &&
     (text.includes('precio') || text.includes('tarifa') || text.includes('catalogo'))
   ) {
-    return 'Toca «Lista de precios» en las opciones rápidas. Te atenderemos por WhatsApp con tu lista según tu perfil (retail, mayorista, etc.).';
+    return 'Podemos enviarte la lista de precios por WhatsApp al +51 915 149 290 según tu perfil comercial (retail, mayorista, etc.).';
   }
 
   if (text.includes('stock') || text.includes('disponib') || text.includes('inventario')) {
-    return 'Toca «Stock» en las opciones rápidas e indica marca y modelo (ej. Ricoh IM 5000).';
+    return 'Para consultar stock, escríbenos por WhatsApp al +51 915 149 290 indicando marca y modelo (ej. Ricoh IM 5000).';
   }
 
   if (
@@ -66,12 +66,12 @@ export function getHaibotAssistantReply(userText: string): string {
   }
 
   if (text.includes('precio') || text.includes('cotiz') || text.includes('cuanto')) {
-    return 'Los precios actualizados están en la tienda. Toca «Precios» abajo o pide cotización por WhatsApp.';
+    return 'Los precios actualizados están en la tienda. También puedes pedir cotización por WhatsApp al +51 915 149 290.';
   }
 
   if (text.includes('whatsapp') || text.includes('asesor') || text.includes('humano')) {
-    return 'Toca «WhatsApp» en las opciones rápidas para hablar con nuestro chatbot.';
+    return 'Escríbenos por WhatsApp al +51 915 149 290 y te atenderá nuestro equipo de ventas.';
   }
 
-  return 'Gracias por tu mensaje. Usa las opciones rápidas de abajo (precios, stock, servicio técnico o WhatsApp) o llama al +51 915 149 290.';
+  return 'Gracias por tu mensaje. Escríbenos por WhatsApp al +51 915 149 290 o visita la tienda para más información.';
 }

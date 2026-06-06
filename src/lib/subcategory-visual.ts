@@ -32,11 +32,20 @@ export function subcategoryInitials(name: string): string {
   return `${words[0][0] ?? ''}${words[1][0] ?? ''}`.toUpperCase();
 }
 
-export type SubcategoryVisualKind = 'all' | 'new' | 'refurbished' | 'supplies' | 'default';
+export type SubcategoryVisualKind =
+  | 'all'
+  | 'new'
+  | 'preowned'
+  | 'refurbished'
+  | 'supplies'
+  | 'default';
 
 export function subcategoryVisualKind(name: string): SubcategoryVisualKind {
   const norm = name.toLowerCase();
   if (norm.includes('ver todo') || norm === 'todos') return 'all';
+  if (norm.includes('seminueva') || norm.includes('seminuevo') || norm.includes('usad')) {
+    return 'preowned';
+  }
   if (norm.includes('nueva') || norm.includes('nuevo')) return 'new';
   if (norm.includes('remanufactur') || norm.includes('reacondicion')) return 'refurbished';
   if (norm.includes('tóner') || norm.includes('toner') || norm.includes('suministro')) {

@@ -21,6 +21,7 @@
     "import:ventas-reports": "node scripts/import-ventas-reports.mjs",
     "haisales:sync": "node scripts/haisales-sync-seeds.mjs",
     "import:toner": "node scripts/import-toner-products.mjs",
+    "import:toner-compatibles": "node scripts/import-compatible-toner-products.mjs",
     "import:ricoh-lp": "node scripts/import-ricoh-lp-web.mjs",
     "merge:toner-originales": "node scripts/merge-toner-originales-into-toner.mjs",
     "patch:accesorios-images": "node scripts/patch-accesorios-images.mjs",

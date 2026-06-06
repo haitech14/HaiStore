@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-import { ServiceHubTabList } from '@/components/service-landing/service-hub-tab-list';
+import { ServiceHubHeroBanners } from '@/components/service-landing/service-hub-hero-banners';
 import { ServiceLandingSection } from '@/components/service-landing/service-landing-section';
 import type { ServiceLandingSlug } from '@/data/service-landings';
 import {
@@ -52,23 +52,10 @@ export function ServicesHubPage() {
       />
 
       <div className="container relative flex flex-col gap-8 sm:gap-10">
-        <header className="mx-auto max-w-3xl text-center">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-sky-600 sm:text-xs">
-            HaiStore
-          </p>
-          <h1 className="mt-2 text-balance text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Servicios para tu empresa
-          </h1>
-          <p className="mt-3 text-pretty text-sm text-muted-foreground sm:text-base">
-            Elige una categoría para ver soluciones de alquiler, soporte técnico, outsourcing y
-            servicios corporativos.
-          </p>
-        </header>
-
-        <ServiceHubTabList
+        <ServiceHubHeroBanners
           activeSection={activeSection}
           onSelect={selectSection}
-          className="sticky top-16 z-20 -mx-1 rounded-xl border border-border/60 bg-background/95 px-2 py-3 backdrop-blur-sm sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none"
+          idPrefix="servicios-hub"
         />
 
         <ServiceLandingSection config={config} sectionIdPrefix="servicios-hub" />

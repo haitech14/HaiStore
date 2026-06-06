@@ -20,7 +20,7 @@ export function ServiceHubTabList({
       role="tablist"
       aria-label="Categorías de servicios"
       className={cn(
-        'flex max-w-full flex-wrap items-center justify-center gap-2 sm:justify-start',
+        'flex max-w-full flex-wrap items-center justify-center gap-2',
         className,
       )}
     >

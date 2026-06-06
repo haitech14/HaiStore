@@ -7,6 +7,7 @@ export interface ProductBadgeSource {
   name: string;
   category?: string | null;
   brand?: string | null;
+  code?: string | null;
   attributes?: ProductAttribute[];
 }
 

@@ -11,8 +11,26 @@ export const PRODUCT_TABLE_SPEC_COLUMNS = [
   { id: 'velocidad', label: 'Velocidad' },
   { id: 'adf', label: 'ADF' },
   { id: 'produccion', label: 'Producción' },
-  { id: 'anio', label: 'Año fabricación' },
+  { id: 'anio', label: 'Año fab.' },
 ] as const;
+
+const PRODUCTION_TABLE_LABELS: Record<string, string> = {
+  'Basico (>5000 páginas)': 'Básico',
+  'Mediano (15,000 páginas aprox)': 'Mediano',
+  'Alta Producción (50,000 páginas aprox)': 'Alta prod.',
+  'Producción (200,000 a 500,000 páginas aprox)': 'Producción',
+};
+
+export function formatProductTableCategory(category: string | null | undefined): string {
+  if (!category?.trim()) return '—';
+  const value = category.trim();
+  if (value === 'Multifuncionales Seminuevas') return 'Multif. seminuevas';
+  if (value === 'Multifuncionales Nuevas') return 'Multif. nuevas';
+  if (value.startsWith('Multifuncionales ')) {
+    return `Multif. ${value.slice('Multifuncionales '.length).toLowerCase()}`;
+  }
+  return value;
+}
 
 export type ProductTableSpecColumnId = (typeof PRODUCT_TABLE_SPEC_COLUMNS)[number]['id'];
 
@@ -36,13 +54,21 @@ function findAttributeValue(product: Product, needles: readonly string[]): strin
   return null;
 }
 
-function shortenProduccion(value: string): string {
+function shortenProduccion(value: string, forTable = false): string {
   const trimmed = value.trim();
   const option = PRODUCTION_FILTER_OPTIONS.find(
     (row) => row.value === trimmed || trimmed.startsWith(row.value.slice(0, 12)),
   );
-  if (option) return option.sidebarLabel;
+  if (option) {
+    if (forTable) {
+      return PRODUCTION_TABLE_LABELS[option.value] ?? option.sidebarLabel;
+    }
+    return option.sidebarLabel;
+  }
 
+  if (forTable && trimmed.length > 14) {
+    return `${trimmed.slice(0, 12)}…`;
+  }
   if (trimmed.length > 32) {
     return `${trimmed.slice(0, 30)}…`;
   }
@@ -75,18 +101,18 @@ function resolveAdf(product: Product): string {
   return adf ?? '—';
 }
 
-function resolveProduccion(product: Product): string {
+function resolveProduccion(product: Product, forTable = false): string {
   const stored = (product.attributes ?? []).find(
     (attr) => attr.name.trim() === PRODUCCION_ATTR,
   )?.value;
-  if (stored?.trim()) return shortenProduccion(stored);
+  if (stored?.trim()) return shortenProduccion(stored, forTable);
 
   if (/multifunc/i.test(product.category ?? '')) {
-    return shortenProduccion(inferProduccionTier(product));
+    return shortenProduccion(inferProduccionTier(product), forTable);
   }
 
   const generic = findAttributeValue(product, ['produccion', 'producción']);
-  return generic ? shortenProduccion(generic) : '—';
+  return generic ? shortenProduccion(generic, forTable) : '—';
 }
 
 function resolveAnioFabricacion(product: Product): string {
@@ -113,7 +139,7 @@ export function getProductTableSpecDisplay(
     case 'adf':
       return resolveAdf(product);
     case 'produccion':
-      return resolveProduccion(product);
+      return resolveProduccion(product, true);
     case 'anio':
       return resolveAnioFabricacion(product);
     default:

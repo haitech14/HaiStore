@@ -40,6 +40,7 @@ export function ProductQuickViewDialog({
     name: snapshot?.name ?? '',
     category: snapshot?.category ?? null,
     brand: snapshot?.brand ?? null,
+    code: snapshot?.code ?? null,
     attributes: snapshot?.attributes ?? [],
   };
 

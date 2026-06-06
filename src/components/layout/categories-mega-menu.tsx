@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Menu } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronRight, KeyRound, Menu } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -8,18 +8,107 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { megaMenuFeatured, megaMenuSidebar, type MegaMenuSectionId } from '@/data/mega-menu';
+import {
+  megaMenuFeatured,
+  megaMenuHighlightCategories,
+  megaMenuPlatforms,
+  megaMenuSectionMeta,
+  megaMenuServiceLinks,
+  megaMenuImageForSlug,
+  type MegaMenuSectionId,
+} from '@/data/mega-menu';
 import { useStoreCategoriesTree } from '@/hooks/use-store-categories';
 import { buildMegaMenuFromStoreCategories } from '@/lib/mega-menu-from-store-categories';
 import { cn } from '@/lib/utils';
 
 const HOVER_CLOSE_DELAY_MS = 180;
+const ICON_STROKE = 1.5;
 
-const MEGA_MENU_GRID_COLS: Record<number, string> = {
-  1: 'md:grid-cols-[1fr_220px]',
-  2: 'md:grid-cols-[1fr_1fr_220px]',
-  3: 'md:grid-cols-[1fr_1fr_1fr_220px]',
-};
+function MegaMenuLink({
+  to,
+  external,
+  onNavigate,
+  className,
+  children,
+}: {
+  to: string;
+  external?: boolean;
+  onNavigate: () => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  if (external) {
+    return (
+      <a
+        href={to}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={onNavigate}
+        className={className}
+      >
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <Link to={to} onClick={onNavigate} className={className}>
+      {children}
+    </Link>
+  );
+}
+
+function PlatformCard({
+  platform,
+  onNavigate,
+}: {
+  platform: (typeof megaMenuPlatforms)[number];
+  onNavigate: () => void;
+}) {
+  return (
+    <MegaMenuLink
+      to={platform.href}
+      external={platform.external ?? false}
+      onNavigate={onNavigate}
+      className={cn(
+        'group flex items-center gap-2.5 rounded-lg border border-border/60 bg-muted/20 p-2 transition-all',
+        'hover:border-red-600/30 hover:bg-red-600/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600',
+      )}
+    >
+      {platform.logoUrl ? (
+        <img
+          src={platform.logoUrl}
+          alt={platform.logoAlt}
+          className="h-7 w-auto max-w-[6.5rem] shrink-0 object-contain object-left"
+          loading="lazy"
+        />
+      ) : (
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-red-600/15 text-red-600">
+          {platform.icon ? (
+            <platform.icon className="size-3.5" aria-hidden="true" />
+          ) : (
+            <KeyRound className="size-3.5" aria-hidden="true" />
+          )}
+        </span>
+      )}
+      <span className="min-w-0 flex-1">
+        {!platform.logoUrl ? (
+          <span className="block text-xs font-bold text-foreground">
+            <span className="text-red-600">{platform.brandPrefix}</span>
+            {platform.brandSuffix}
+          </span>
+        ) : null}
+        <span className="line-clamp-1 text-[0.65rem] leading-snug text-muted-foreground">
+          {platform.description}
+        </span>
+      </span>
+      <ArrowRight
+        className="size-3 shrink-0 text-red-600/70 transition-transform group-hover:translate-x-0.5 group-hover:text-red-600"
+        aria-hidden="true"
+      />
+    </MegaMenuLink>
+  );
+}
 
 export function CategoriesMegaMenu() {
   const { data: categoryTree = [] } = useStoreCategoriesTree();
@@ -29,7 +118,11 @@ export function CategoriesMegaMenu() {
   );
 
   const sidebarItems = useMemo(
-    () => megaMenuSidebar.filter((item) => sidebarSectionIds.includes(item.id)),
+    () =>
+      sidebarSectionIds.map((id) => ({
+        id,
+        ...megaMenuSectionMeta[id],
+      })),
     [sidebarSectionIds],
   );
 
@@ -37,7 +130,23 @@ export function CategoriesMegaMenu() {
 
   const [open, setOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<MegaMenuSectionId>(defaultSection);
+  const [menuWidth, setMenuWidth] = useState<number | undefined>(undefined);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const updateMenuWidth = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    setMenuWidth(Math.max(720, window.innerWidth - rect.left - 8));
+  }, []);
+
+  const activeColumn = useMemo(
+    () => columns.find((column) => column.id === activeSection),
+    [columns, activeSection],
+  );
+
+  const activeMeta = megaMenuSectionMeta[activeSection];
 
   useEffect(() => {
     if (!sidebarSectionIds.includes(activeSection)) {
@@ -54,8 +163,16 @@ export function CategoriesMegaMenu() {
 
   const openMenu = useCallback(() => {
     clearCloseTimer();
+    updateMenuWidth();
     setOpen(true);
-  }, [clearCloseTimer]);
+  }, [clearCloseTimer, updateMenuWidth]);
+
+  useEffect(() => {
+    if (!open) return;
+    updateMenuWidth();
+    window.addEventListener('resize', updateMenuWidth);
+    return () => window.removeEventListener('resize', updateMenuWidth);
+  }, [open, updateMenuWidth]);
 
   const scheduleClose = useCallback(() => {
     clearCloseTimer();
@@ -66,12 +183,18 @@ export function CategoriesMegaMenu() {
 
   const closeMenu = () => setOpen(false);
 
-  const gridColsClass = MEGA_MENU_GRID_COLS[columns.length] ?? MEGA_MENU_GRID_COLS[3];
+  const sectionViewAllHref =
+    activeSection === 'servicios'
+      ? '/servicios'
+      : activeSection === 'destacados'
+        ? '/tienda'
+        : activeColumn?.items[0]?.href.split('?')[0]?.replace(/#.*$/, '') ?? '/tienda';
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
+          ref={triggerRef}
           aria-haspopup="true"
           aria-expanded={open}
           onMouseEnter={openMenu}
@@ -95,41 +218,51 @@ export function CategoriesMegaMenu() {
         onMouseLeave={scheduleClose}
         onCloseAutoFocus={(event) => event.preventDefault()}
         className={cn(
-          'z-50 w-[min(1040px,calc(100vw-1rem))] overflow-hidden rounded-none border border-border p-0 shadow-xl',
+          'z-50 max-w-none overflow-hidden rounded-none border border-border/60 p-0 shadow-xl',
           'data-[state=open]:animate-in data-[state=closed]:animate-out',
           'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
           'data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-100',
         )}
+        style={menuWidth ? { width: menuWidth } : undefined}
       >
-        <div className="flex min-h-[340px]">
-          <aside className="w-[230px] shrink-0 border-r bg-background py-5 pl-4 pr-2">
-            <p className="mb-4 px-2 text-base font-bold text-foreground">Explorar categorías</p>
-            <ul className="flex flex-col gap-0.5">
+        <div className="flex min-h-0 bg-muted/15">
+          <aside className="w-[10.5rem] shrink-0 border-r border-border/50 bg-background py-3 pl-2.5 pr-1.5 sm:w-[11.5rem]">
+            <p className="mb-2 px-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Explorar
+            </p>
+            <ul className="flex flex-col gap-0.5" role="tablist" aria-label="Secciones del catálogo">
               {sidebarItems.map((item) => {
                 const isActive = activeSection === item.id;
                 const Icon = item.icon;
 
                 return (
-                  <li key={item.id}>
+                  <li key={item.id} role="presentation">
                     <button
                       type="button"
+                      role="tab"
+                      aria-selected={isActive}
                       onMouseEnter={() => setActiveSection(item.id)}
                       onFocus={() => setActiveSection(item.id)}
                       onClick={() => setActiveSection(item.id)}
                       className={cn(
-                        'flex w-full min-h-11 items-center gap-3 rounded-r-md py-3 pl-3 pr-2 text-left text-base font-semibold transition-colors',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500',
+                        'flex w-full min-h-9 items-center gap-2 rounded-md px-2 py-1.5 text-left text-[0.8125rem] font-semibold transition-colors',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600',
                         isActive
-                          ? 'border-l-[3px] border-[#DC2626] bg-red-50 text-[#DC2626]'
-                          : 'border-l-[3px] border-transparent text-foreground hover:bg-muted/60',
+                          ? 'bg-red-600/10 text-red-700 shadow-sm'
+                          : 'text-foreground hover:bg-muted/70',
                       )}
                     >
-                      <Icon
-                        className={cn('size-5 shrink-0', isActive ? 'text-[#DC2626]' : 'text-foreground')}
-                        aria-hidden="true"
-                      />
-                      <span className="line-clamp-3 flex-1 text-pretty leading-snug">{item.label}</span>
-                      <ChevronRight className="size-4 shrink-0 opacity-40" aria-hidden="true" />
+                      <span
+                        className={cn(
+                          'flex size-7 shrink-0 items-center justify-center rounded-md transition-colors',
+                          isActive
+                            ? 'bg-red-600 text-white'
+                            : 'bg-muted text-muted-foreground',
+                        )}
+                      >
+                        <Icon className="size-3.5" strokeWidth={ICON_STROKE} aria-hidden="true" />
+                      </span>
+                      <span className="line-clamp-2 flex-1 text-pretty leading-snug">{item.label}</span>
                     </button>
                   </li>
                 );
@@ -137,106 +270,213 @@ export function CategoriesMegaMenu() {
             </ul>
           </aside>
 
-          <div className={cn('grid min-w-0 flex-1 grid-cols-1 gap-0 bg-background', gridColsClass)}>
-            {columns.map((column) => {
-              const isHighlighted = activeSection === column.id;
-
-              return (
-                <section
-                  key={column.id}
-                  aria-labelledby={`mega-col-${column.id}`}
-                  onMouseEnter={() => setActiveSection(column.id)}
-                  className={cn(
-                    'border-r px-5 py-5 transition-colors',
-                    isHighlighted ? 'bg-red-50/40' : 'bg-background',
-                  )}
+          <div
+            className="flex min-w-0 flex-1 flex-col bg-background"
+            role="tabpanel"
+            aria-label={activeMeta.label}
+          >
+            <div className="flex flex-1 flex-col px-3 py-3 sm:px-4 lg:px-5">
+              <div className="mb-2.5 flex flex-wrap items-start justify-between gap-2 border-b border-border/50 pb-2.5">
+                <div>
+                  <h3 className="text-base font-bold text-foreground">{activeMeta.label}</h3>
+                  <p className="mt-0.5 max-w-xl text-xs text-muted-foreground">{activeMeta.description}</p>
+                </div>
+                <Link
+                  to={sectionViewAllHref}
+                  onClick={closeMenu}
+                  className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md px-1.5 text-xs font-semibold text-red-600 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
                 >
-                  <h3
-                    id={`mega-col-${column.id}`}
-                    className="text-base font-bold text-foreground"
-                  >
-                    {column.title}
-                  </h3>
-                  <span
-                    className="mt-1.5 mb-4 block h-0.5 w-10 rounded-full bg-[#DC2626]"
-                    aria-hidden="true"
-                  />
+                  Ver todo
+                  <ChevronRight className="size-4" aria-hidden="true" />
+                </Link>
+              </div>
 
-                  <ul className="flex flex-col gap-3.5">
-                    {column.items.map((item) => {
-                      const Icon = item.icon;
+              {activeSection === 'destacados' ? (
+                <ul className="grid grid-cols-2 gap-1.5 lg:grid-cols-3 xl:grid-cols-4" role="list">
+                  {megaMenuHighlightCategories.map((category) => (
+                    <li key={category.slug}>
+                      <Link
+                        to={category.href}
+                        onClick={closeMenu}
+                        className={cn(
+                          'group flex min-h-[3.25rem] items-center gap-2 rounded-lg border border-border/60 bg-muted/10 p-2 transition-all',
+                          'hover:border-red-600/25 hover:bg-red-600/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600',
+                        )}
+                      >
+                        <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white p-1">
+                          <img
+                            src={category.image}
+                            alt=""
+                            className="max-h-full max-w-full object-contain transition-transform group-hover:scale-105"
+                            loading="lazy"
+                          />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-xs font-semibold text-foreground group-hover:text-red-700">
+                            {category.name}
+                          </span>
+                          <span className="line-clamp-1 text-[0.65rem] text-muted-foreground">
+                            {category.tagline}
+                          </span>
+                        </span>
+                        <ChevronRight
+                          className="size-4 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-red-600"
+                          aria-hidden="true"
+                        />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : activeSection === 'servicios' ? (
+                <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-4" role="list">
+                  {megaMenuServiceLinks.map((service) => {
+                    const Icon = service.icon;
+                    return (
+                      <li key={service.slug}>
+                        <Link
+                          to={service.href}
+                          onClick={closeMenu}
+                          className={cn(
+                            'group flex min-h-[3.5rem] items-center gap-2.5 rounded-lg border border-border/60 bg-muted/10 p-2 transition-all',
+                            'hover:border-red-600/25 hover:bg-red-600/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600',
+                          )}
+                        >
+                          <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-red-600/10 text-red-600">
+                            <Icon className="size-3.5" strokeWidth={ICON_STROKE} aria-hidden="true" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-xs font-semibold text-foreground group-hover:text-red-700">
+                              {service.label}
+                            </span>
+                            <span className="line-clamp-1 text-[0.65rem] leading-snug text-muted-foreground">
+                              {service.description}
+                            </span>
+                          </span>
+                          <ChevronRight
+                            className="size-3 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-red-600"
+                            aria-hidden="true"
+                          />
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : activeColumn ? (
+                <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-3" role="list">
+                  {activeColumn.items.map((item) => {
+                    const Icon = item.icon;
+                    const image = megaMenuImageForSlug(item.slug);
 
-                      return (
-                        <li key={`${column.id}-${item.slug}`}>
-                          <Link
-                            to={item.href}
-                            onClick={closeMenu}
-                            className="group flex min-h-11 items-start gap-3 rounded-md py-1 text-base text-foreground transition-colors hover:text-[#DC2626] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-                          >
-                            <Icon
-                              className="mt-0.5 size-5 shrink-0 text-[#DC2626]"
-                              aria-hidden="true"
-                              strokeWidth={1.75}
-                            />
-                            <span className="line-clamp-3 flex-1 font-semibold leading-snug text-pretty group-hover:underline">
+                    return (
+                      <li key={`${activeColumn.id}-${item.slug}`}>
+                        <Link
+                          to={item.href}
+                          onClick={closeMenu}
+                          className={cn(
+                            'group flex min-h-[2.75rem] items-center gap-2.5 rounded-lg border border-border/50 px-2 py-1.5 transition-all',
+                            'hover:border-red-600/25 hover:bg-red-600/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600',
+                          )}
+                        >
+                          {image ? (
+                            <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white p-0.5">
+                              <img
+                                src={image}
+                                alt=""
+                                className="max-h-full max-w-full object-contain"
+                                loading="lazy"
+                              />
+                            </span>
+                          ) : (
+                            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-red-600/10 text-red-600">
+                              <Icon className="size-3.5" strokeWidth={ICON_STROKE} aria-hidden="true" />
+                            </span>
+                          )}
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-xs font-semibold leading-snug text-foreground group-hover:text-red-700">
                               {item.name}
                             </span>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </section>
-              );
-            })}
-
-            <section
-              aria-labelledby="mega-featured-title"
-              onMouseEnter={() => setActiveSection('destacados')}
-              className={cn(
-                'flex flex-col px-4 py-5 transition-colors',
-                activeSection === 'destacados' ? 'bg-red-50/40' : 'bg-background',
+                            {item.productCount > 0 && (
+                              <span className="text-[0.65rem] text-muted-foreground">
+                                {item.productCount} producto{item.productCount === 1 ? '' : 's'}
+                              </span>
+                            )}
+                          </span>
+                          <ChevronRight
+                            className="size-3 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-red-600"
+                            aria-hidden="true"
+                          />
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">No hay categorías disponibles.</p>
               )}
-            >
-              <h3 id="mega-featured-title" className="text-base font-bold text-foreground">
-                Destacados
-              </h3>
+            </div>
 
-              <div className="mt-3 flex flex-1 flex-col overflow-hidden rounded-xl border border-border/80 bg-muted/30">
-                <div className="p-4">
-                  <p className="text-base font-bold leading-snug text-foreground">
-                    {megaMenuFeatured.title}
-                  </p>
-                  <span
-                    className="mt-2 mb-2 block h-0.5 w-10 rounded-full bg-[#DC2626]"
-                    aria-hidden="true"
+            <div className="border-t border-border/50 bg-muted/20 px-3 py-2 sm:px-4">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <Link
+                  to="/tienda"
+                  onClick={closeMenu}
+                  className="font-semibold text-foreground transition-colors hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+                >
+                  Ver tienda completa
+                </Link>
+                <span aria-hidden="true">·</span>
+                <Link
+                  to="/servicios"
+                  onClick={closeMenu}
+                  className="font-semibold text-foreground transition-colors hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+                >
+                  Servicios empresariales
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <aside
+            className="hidden w-[12.5rem] shrink-0 flex-col gap-2 border-l border-border/50 bg-muted/10 p-2.5 md:flex xl:w-[13.5rem]"
+            aria-label="Plataformas Haitech"
+          >
+            <p className="px-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Plataformas
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {megaMenuPlatforms.map((platform) => (
+                <PlatformCard key={platform.id} platform={platform} onNavigate={closeMenu} />
+              ))}
+            </div>
+
+            <div className="overflow-hidden rounded-lg border border-border/50 bg-background shadow-sm">
+              <div className="relative flex items-center gap-2 p-2">
+                <div className="relative size-14 shrink-0 overflow-hidden rounded-md">
+                  <img
+                    src={megaMenuFeatured.image}
+                    alt=""
+                    className="size-full object-cover object-center"
+                    loading="lazy"
                   />
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    {megaMenuFeatured.description}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[0.7rem] font-bold leading-snug text-foreground">
+                    {megaMenuFeatured.title}
                   </p>
                   <Button
                     asChild
                     size="sm"
-                    className="mt-3 h-10 bg-[#DC2626] px-4 text-sm text-white hover:bg-red-700 focus-visible:ring-red-500"
+                    className="mt-1.5 h-7 w-full bg-red-600 px-2 text-[0.65rem] font-semibold text-white hover:bg-red-500"
                   >
                     <Link to={megaMenuFeatured.href} onClick={closeMenu}>
                       {megaMenuFeatured.cta}
-                      <ChevronRight className="size-4" aria-hidden="true" />
                     </Link>
                   </Button>
                 </div>
-
-                <div className="relative mt-auto h-28 overflow-hidden bg-gradient-to-t from-muted to-background">
-                  <img
-                    src={megaMenuFeatured.image}
-                    alt={megaMenuFeatured.imageAlt}
-                    className="h-full w-full object-cover object-center opacity-90"
-                    loading="lazy"
-                  />
-                </div>
+                <span className="sr-only">{megaMenuFeatured.imageAlt}</span>
               </div>
-            </section>
-          </div>
+            </div>
+          </aside>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -27,7 +27,7 @@ export function InventoryAttributesFieldset({
   }, [products, attributes]);
 
   return (
-    <fieldset className="rounded-lg border p-3">
+    <fieldset id="inv-attributes-fieldset" className="rounded-lg border p-3 outline-none" tabIndex={-1}>
       <legend className="px-1 text-sm font-medium">Atributos</legend>
       <p className="mt-1 text-xs text-muted-foreground">
         Especificaciones del producto (color, velocidad, formato, etc.) visibles en inventario y

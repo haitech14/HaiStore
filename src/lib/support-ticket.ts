@@ -14,6 +14,7 @@ export interface SupportTicketResponse {
   id: string;
   status?: string;
   demo?: boolean;
+  local?: boolean;
 }
 
 export class SupportTicketError extends Error {
@@ -37,6 +38,7 @@ export async function submitSupportTicket(
     id?: string;
     status?: string;
     demo?: boolean;
+    local?: boolean;
   };
 
   if (!response.ok) {
@@ -56,5 +58,6 @@ export async function submitSupportTicket(
     id: body.id,
     ...(body.status ? { status: body.status } : {}),
     ...(body.demo === true ? { demo: true } : {}),
+    ...(body.local === true ? { local: true } : {}),
   };
 }

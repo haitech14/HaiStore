@@ -1,6 +1,5 @@
 import { subcategoryStockImage } from '@/data/subcategory-images';
 import { productMatchesCategoryFilter } from '@/lib/inventory-categories';
-import { subcategoryVisualKind } from '@/lib/subcategory-visual';
 import type { Product } from '@/types/product';
 
 interface SubcategoryImageSource {
@@ -57,9 +56,13 @@ export function resolveSubcategoryImage(
   sub: SubcategoryImageSource,
   products: Product[],
   parentImage?: string | null,
+  options?: { preferStock?: boolean },
 ): string | null {
   const configured = sub.image?.trim();
   if (configured) return configured;
+
+  const stock = subcategoryStockImage(sub.name, sub.slug);
+  if (options?.preferStock && stock) return stock;
 
   const ranked = products
     .filter((product) => Boolean(product.image_url))
@@ -70,11 +73,21 @@ export function resolveSubcategoryImage(
   const best = ranked[0]?.product.image_url;
   if (best) return best;
 
-  const kind = subcategoryVisualKind(sub.name);
-  if (kind === 'new' || kind === 'refurbished') {
-    const stock = subcategoryStockImage(sub.name, sub.slug);
-    if (stock) return stock;
-  }
+  if (stock) return stock;
 
-  return subcategoryStockImage(sub.name, sub.slug) ?? parentImage ?? null;
+  return parentImage ?? null;
+}
+
+/** Imagen para banners hero: prioriza fotos curadas por subcategoría. */
+export function resolveSubcategoryHeroImage(
+  sub: SubcategoryImageSource,
+  products: Product[],
+  parentImage?: string | null,
+): string {
+  return (
+    resolveSubcategoryImage(sub, products, parentImage, { preferStock: true }) ??
+    subcategoryStockImage(sub.name, sub.slug) ??
+    parentImage ??
+    '/promo-cards/b2b-printer.png'
+  );
 }

@@ -39,19 +39,38 @@ import type {
   ProductRolePrices,
 } from '@/types/product';
 
+export type InventoryProductFormFocusSection =
+  | 'title'
+  | 'image'
+  | 'attributes'
+  | 'category';
+
 interface InventoryProductFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initial?: InventoryProduct | null;
   /** Tras crear un producto (no en edición). */
   onCreated?: (product: InventoryProduct) => void;
+  /** Desplaza el foco a una sección al abrir (edición rápida desde tabla). */
+  focusSection?: InventoryProductFormFocusSection | null;
 }
+
+const FOCUS_SECTION_TARGETS: Record<
+  InventoryProductFormFocusSection,
+  { id: string; focusInput?: boolean }
+> = {
+  title: { id: 'inv-name', focusInput: true },
+  image: { id: 'inv-photos-fieldset' },
+  attributes: { id: 'inv-attributes-fieldset' },
+  category: { id: 'inv-category' },
+};
 
 export function InventoryProductFormDialog({
   open,
   onOpenChange,
   initial,
   onCreated,
+  focusSection = null,
 }: InventoryProductFormDialogProps) {
   const isEdit = Boolean(initial?.id);
   const { createProduct, updateProduct } = useInventoryMutations();
@@ -85,6 +104,28 @@ export function InventoryProductFormDialog({
       setError(null);
     }
   }, [open, initial, warehouses]);
+
+  useEffect(() => {
+    if (!open || !focusSection) return;
+
+    const target = FOCUS_SECTION_TARGETS[focusSection];
+    const timer = window.setTimeout(() => {
+      const element = document.getElementById(target.id);
+      if (!element) return;
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.classList.add('ring-2', 'ring-red-500', 'ring-offset-2');
+      window.setTimeout(() => {
+        element.classList.remove('ring-2', 'ring-red-500', 'ring-offset-2');
+      }, 1800);
+      if (target.focusInput && element instanceof HTMLInputElement) {
+        element.focus();
+      } else if (element instanceof HTMLElement) {
+        element.focus({ preventScroll: true });
+      }
+    }, 120);
+
+    return () => window.clearTimeout(timer);
+  }, [open, focusSection, initial?.id]);
 
   const handleSuppliersChange = (suppliers: InventorySupplier[]) => {
     setForm((prev) => ({
@@ -264,6 +305,7 @@ export function InventoryProductFormDialog({
           </div>
 
           <fieldset
+            id="inv-photos-fieldset"
             className="rounded-lg border p-4 outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
             tabIndex={0}
             onPaste={(event) => void handlePhotosPaste(event)}
@@ -290,6 +332,11 @@ export function InventoryProductFormDialog({
                       src={form.image_url}
                       alt="Vista previa de la foto principal"
                       className="max-h-32 w-auto max-w-full rounded-md border object-contain"
+                      onError={() =>
+                        setError(
+                          'No se pudo mostrar la vista previa. Vuelve a subir la imagen o guarda el producto.',
+                        )
+                      }
                     />
                     <button
                       type="button"

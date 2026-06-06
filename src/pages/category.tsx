@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 
 import { CatalogFilterOption } from '@/components/catalog-filter-option';
 import { CatalogSidebarNav } from '@/components/catalog-sidebar-nav';
@@ -11,6 +12,7 @@ import {
 import { CategoryQuickFilters } from '@/components/category/category-quick-filters';
 import { CategoryHeroBanner } from '@/components/category-hero-banner';
 import { RentalCategoryGrid } from '@/components/rental-category-grid';
+import { SubcategoryHeroBanners } from '@/components/subcategory-hero-banners';
 import {
   CategoryProductsTable,
   CategoryProductsTableSkeleton,
@@ -24,6 +26,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { useAuth } from '@/context/auth-context';
 import { getCategoryHeroContent } from '@/data/category-hero';
 import {
   EMPTY_STORE_CATEGORY_TREE,
@@ -51,6 +54,7 @@ import {
   findRentalCategoryBySlug,
   RENTAL_PARENT_SLUG,
 } from '@/data/rental-categories';
+import { catalogGridClassName, type CatalogGridColumns } from '@/lib/category-grid-layout';
 import {
   catalogFamilyForCategorySlug,
   isPrinterEquipmentProduct,
@@ -124,11 +128,18 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
   const [priceMax, setPriceMax] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<CategorySortValue>('price-asc');
   const [viewMode, setViewMode] = useState<CatalogViewMode>('table');
+  const [gridColumns, setGridColumns] = useState<CatalogGridColumns>(5);
   const [filtersPanelOpen, setFiltersPanelOpen] = useState(true);
   const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [inStockOnly, setInStockOnly] = useState(false);
   const filtersAsideRef = useRef<HTMLElement>(null);
+  const openCreateProductRef = useRef<(() => void) | null>(null);
+  const { isAdmin } = useAuth();
+
+  const bindOpenCreate = useCallback((openCreate: (() => void) | null) => {
+    openCreateProductRef.current = openCreate;
+  }, []);
 
   const storeCategory = useMemo(
     () => (slug ? findStoreCategoryBySlug(categoryTree, slug) : undefined),
@@ -313,15 +324,35 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     return () => window.clearTimeout(retry);
   }, [slug, location.hash, location.pathname]);
 
-  const heroContent = useMemo(() => {
+  const hasSubcategoryHeroes =
+    Boolean(storeCategory?.children.length) && !isRentalCategory && !isInventorySearch;
+
+  const parentHeroContent = useMemo(() => {
     if (!category) return null;
 
     const fallbackImage = storeCategory?.image ?? category.image;
-    const base = getCategoryHeroContent(category.slug, {
+    return getCategoryHeroContent(category.slug, {
       name: storeCategory?.name ?? category.name,
       tagline: storeCategory?.tagline ?? category.tagline,
       ...(fallbackImage ? { image: fallbackImage } : {}),
     });
+  }, [category, storeCategory]);
+
+  const heroContent = useMemo(() => {
+    if (!category) return null;
+
+    if (hasSubcategoryHeroes && !activeSubcategory) {
+      return parentHeroContent;
+    }
+
+    const fallbackImage = storeCategory?.image ?? category.image;
+    const base =
+      parentHeroContent ??
+      getCategoryHeroContent(category.slug, {
+        name: storeCategory?.name ?? category.name,
+        tagline: storeCategory?.tagline ?? category.tagline,
+        ...(fallbackImage ? { image: fallbackImage } : {}),
+      });
 
     if (activeSubcategory) {
       const subImage = activeSubcategory.image ?? base.image;
@@ -338,7 +369,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     }
 
     return base;
-  }, [category, storeCategory, activeSubcategory]);
+  }, [category, storeCategory, activeSubcategory, hasSubcategoryHeroes, parentHeroContent]);
 
   const inStockProductCount = useMemo(
     () => baseProducts.filter((product) => product.stock > 0).length,
@@ -604,11 +635,31 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
   return (
     <div className="flex flex-col gap-8 pb-12 pt-6 sm:gap-10 sm:pb-16 sm:pt-8">
       <div className="container flex flex-col gap-6 sm:gap-8">
-        {heroContent && (
+        {heroContent && !hasSubcategoryHeroes ? (
           <div id={CATEGORY_HERO_ID} className="scroll-mt-28 sm:scroll-mt-32">
             <CategoryHeroBanner content={heroContent} />
           </div>
-        )}
+        ) : null}
+
+        {hasSubcategoryHeroes && storeCategory && parentHeroContent ? (
+          <div id={CATEGORY_HERO_ID} className="scroll-mt-28 space-y-6 sm:scroll-mt-32">
+            {activeSubcategory && heroContent ? (
+              <CategoryHeroBanner content={heroContent} />
+            ) : null}
+
+            <SubcategoryHeroBanners
+              parentName={storeCategory.name}
+              parentSlug={slug}
+              parentTagline={storeCategory.tagline ?? category.tagline}
+              parentImage={storeCategory.image ?? null}
+              parentHero={parentHeroContent}
+              subcategories={storeCategory.children}
+              activeSubSlug={subSlug}
+              products={products ?? []}
+              onSelectSub={selectSubcategory}
+            />
+          </div>
+        ) : null}
 
         <div
           className={cn(
@@ -678,6 +729,8 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
               onSortChange={setSortBy}
               viewMode={viewMode}
               onViewModeChange={setViewMode}
+              gridColumns={gridColumns}
+              onGridColumnsChange={setGridColumns}
               filtersOpen={filtersPanelOpen}
               filtersSheetOpen={filtersSheetOpen}
               hasSidebarFilters={hasSidebarFilters}
@@ -693,6 +746,19 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
               }}
               onToggleAttribute={toggleAttribute}
               onToggleProduction={toggleProduction}
+              endAction={
+                isAdmin && viewMode === 'table' ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="min-h-10 gap-1.5 bg-red-600 font-semibold hover:bg-red-500"
+                    onClick={() => openCreateProductRef.current?.()}
+                  >
+                    <Plus className="size-4" aria-hidden="true" />
+                    Añadir producto
+                  </Button>
+                ) : null
+              }
             />
 
             <CategoryQuickFilters
@@ -717,7 +783,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
                   className={cn(
                     'grid gap-4',
                     viewMode === 'grid'
-                      ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5'
+                      ? catalogGridClassName(gridColumns)
                       : 'grid-cols-1',
                   )}
                 >
@@ -726,6 +792,12 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
                   ))}
                 </div>
               )
+            ) : !isRentalCategory && viewMode === 'table' ? (
+              <CategoryProductsTable
+                products={filteredProducts}
+                defaultCategory={defaultCategoryForNewProduct}
+                bindOpenCreate={bindOpenCreate}
+              />
             ) : !isRentalCategory && filteredProducts.length === 0 ? (
               <div className="rounded-lg border border-dashed px-6 py-10 text-center">
                 <p className="font-medium text-foreground">
@@ -735,16 +807,11 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
                   <Link to="/tienda">Explorar todo el catálogo</Link>
                 </Button>
               </div>
-            ) : !isRentalCategory && viewMode === 'table' ? (
-              <CategoryProductsTable
-                products={filteredProducts}
-                defaultCategory={defaultCategoryForNewProduct}
-              />
             ) : !isRentalCategory ? (
               <div
                 className={cn(
                   viewMode === 'grid'
-                    ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5'
+                    ? catalogGridClassName(gridColumns)
                     : 'flex flex-col gap-4',
                 )}
               >

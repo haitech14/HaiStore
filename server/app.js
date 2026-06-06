@@ -89,8 +89,13 @@ app.use((err, _req, res, _next) => {
     });
   }
   const message = typeof err.message === 'string' ? err.message : 'Error interno del servidor';
+  const isProductRoute = _req.path?.startsWith('/api/products');
   res.status(500).json({
-    error: message.includes('JSON') ? 'Datos del producto inválidos' : 'Error interno del servidor',
+    error: message.includes('JSON')
+      ? isProductRoute
+        ? 'Datos del producto inválidos'
+        : 'Datos de la solicitud inválidos'
+      : 'Error interno del servidor',
   });
 });
 

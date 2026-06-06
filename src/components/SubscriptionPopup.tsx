@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowRight, Gift, Mail, Phone, Shield, User, X } from 'lucide-react';
+import { ArrowRight, Gift, Mail, PartyPopper, Phone, Shield, User, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -22,19 +22,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { RuletaCouponCard } from '@/components/ruleta-coupon-card';
 import {
   computeRuletaSpinDeltaDeg,
   formatPremioLabel,
   getPremioByIndex,
   pickRandomPremioIndex,
+  type RuletaPremio,
 } from '@/config/subscription-ruleta-premios';
 import { submitSupportTicket, SupportTicketError } from '@/lib/support-ticket';
 import { cn } from '@/lib/utils';
 
 const SESSION_KEY = 'subscription_popup_shown';
 const OPEN_DELAY_MS = 2000;
-const CLOSE_AFTER_TOAST_MS = 2200;
-const IDLE_STEP_DEG = 0.38;
+/** Giro horario (hacia la derecha) en reposo. */
+const IDLE_STEP_DEG = 0.45;
 const IDLE_INTERVAL_MS = 32;
 
 const STORE_PATHS = ['/', '/tienda'] as const;
@@ -59,7 +61,7 @@ const subscriptionSchema = z.object({
 
 type SubscriptionFormValues = z.infer<typeof subscriptionSchema>;
 
-type FormPhase = 'idle' | 'submitting' | 'spinning';
+type FormPhase = 'idle' | 'submitting' | 'spinning' | 'won';
 
 function isStoreRoute(pathname: string): boolean {
   if (STORE_PATHS.includes(pathname as (typeof STORE_PATHS)[number])) return true;
@@ -85,7 +87,6 @@ function wasPopupShown(): boolean {
 export function SubscriptionPopup() {
   const { pathname } = useLocation();
   const titleId = useId();
-  const closeTimerRef = useRef<number | null>(null);
   const spinTimerRef = useRef<number | null>(null);
   const idleDiskRef = useRef(0);
 
@@ -94,6 +95,7 @@ export function SubscriptionPopup() {
   const [idleDiskRotation, setIdleDiskRotation] = useState(0);
   const [spinRotation, setSpinRotation] = useState(0);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [wonPremio, setWonPremio] = useState<RuletaPremio | null>(null);
 
   const {
     register,
@@ -149,7 +151,6 @@ export function SubscriptionPopup() {
 
   useEffect(
     () => () => {
-      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
       if (spinTimerRef.current) window.clearTimeout(spinTimerRef.current);
     },
     [],
@@ -158,9 +159,11 @@ export function SubscriptionPopup() {
   const handleClose = useCallback(() => {
     if (phase === 'spinning') return;
     setOpen(false);
+    setPhase('idle');
+    setWonPremio(null);
   }, [phase]);
 
-  const runSpin = useCallback((prizeIndex: number, premioLabel: string) => {
+  const runSpin = useCallback((prizeIndex: number, premio: RuletaPremio) => {
     const delta = computeRuletaSpinDeltaDeg(prizeIndex);
     const idleSnapshot = idleDiskRef.current;
 
@@ -170,15 +173,8 @@ export function SubscriptionPopup() {
     idleDiskRef.current = 0;
 
     spinTimerRef.current = window.setTimeout(() => {
-      toast.success('¡Felicidades!', {
-        description: `Ganaste: ${premioLabel}. Revisa tu correo en 48–72 h.`,
-        duration: CLOSE_AFTER_TOAST_MS,
-      });
-
-      closeTimerRef.current = window.setTimeout(() => {
-        setOpen(false);
-        setPhase('idle');
-      }, CLOSE_AFTER_TOAST_MS);
+      setWonPremio(premio);
+      setPhase('won');
     }, SPIN_DURATION_MS);
   }, []);
 
@@ -213,7 +209,7 @@ export function SubscriptionPopup() {
       }
 
       window.requestAnimationFrame(() => {
-        runSpin(prizeIndex, premioLabel);
+        runSpin(prizeIndex, premio);
       });
     } catch (error) {
       setPhase('idle');
@@ -249,7 +245,7 @@ export function SubscriptionPopup() {
         aria-describedby={undefined}
         aria-busy={isBusy}
         onInteractOutside={(event) => {
-          if (phase === 'spinning') event.preventDefault();
+          if (phase === 'spinning' || phase === 'won') event.preventDefault();
         }}
         onEscapeKeyDown={(event) => {
           if (phase === 'spinning') event.preventDefault();
@@ -257,6 +253,42 @@ export function SubscriptionPopup() {
       >
         <DialogTitle className="sr-only">Suscripción — Ruleta del Color</DialogTitle>
 
+        {phase === 'won' && wonPremio ? (
+          <div
+            className="relative flex min-h-[420px] flex-col items-center justify-center gap-6 px-6 py-10 sm:px-10 sm:py-12"
+            role="status"
+            aria-live="polite"
+          >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(220,38,38,0.12),transparent_55%)]"
+            />
+            <span className="flex size-16 items-center justify-center rounded-full bg-red-600/10 text-red-600">
+              <PartyPopper className="size-8" aria-hidden="true" />
+            </span>
+            <div className="relative z-10 text-center">
+              <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+                ¡Felicidades!
+              </h2>
+              <p className="mt-2 text-base text-muted-foreground sm:text-lg">
+                Has ganado un premio en la{' '}
+                <span className="font-semibold text-red-600">Ruleta del Color</span>
+              </p>
+            </div>
+            <RuletaCouponCard premio={wonPremio} className="relative z-10" />
+            <p className="relative z-10 max-w-sm text-center text-sm text-muted-foreground">
+              <Mail className="mb-1 inline size-4 text-blue-500" aria-hidden="true" />{' '}
+              Te enviaremos el cupón a tu correo en las próximas 48 a 72 horas.
+            </p>
+            <Button
+              type="button"
+              onClick={handleClose}
+              className="relative z-10 h-12 min-w-[200px] bg-red-600 text-base font-semibold text-white hover:bg-red-500 focus-visible:ring-red-600"
+            >
+              Entendido
+            </Button>
+          </div>
+        ) : (
         <div className="flex flex-col md:flex-row">
           {/* Columna izquierda — ruleta (~46%) */}
           <div
@@ -482,6 +514,7 @@ export function SubscriptionPopup() {
             </form>
           </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

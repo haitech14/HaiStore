@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 
 import { categories, type Category } from '@/data/categories';
+import { HaitechEcosystemBanners } from '@/components/haitech-ecosystem-banners';
 import { categoryPath } from '@/lib/category-path';
 import { cn } from '@/lib/utils';
 
@@ -81,6 +82,8 @@ export function CategoryStrip() {
             </li>
           ))}
         </ul>
+
+        <HaitechEcosystemBanners />
       </div>
     </section>
   );

@@ -12,6 +12,7 @@ import {
 import { CrmLeadAddressFields } from '@/components/admin/crm/crm-lead-address-fields';
 import { CrmLeadCustomerAutocompleteField } from '@/components/admin/crm/crm-lead-customer-autocomplete-field';
 import { CrmLeadProductsField } from '@/components/admin/crm/crm-lead-products-field';
+import { CrmLeadTasksField } from '@/components/admin/crm/crm-lead-tasks-field';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -175,6 +176,7 @@ export function CrmAddLeadDialog({
         city: snapshot.city ?? base.city,
         province: snapshot.province ?? base.province,
         lineItems: snapshot.lineItems ?? editingLead.lineItems ?? [],
+        tasks: snapshot.tasks ?? editingLead.tasks ?? [],
       });
     } else {
       persistRef.current = { mode: 'create', leadId: null };
@@ -236,6 +238,7 @@ export function CrmAddLeadDialog({
       return;
     }
     onSave(lead, mode);
+    isSubmittingRef.current = false;
     onOpenChange(false);
   };
 
@@ -531,6 +534,11 @@ export function CrmAddLeadDialog({
                     className="resize-y min-h-[4.5rem]"
                   />
                 </div>
+
+                <CrmLeadTasksField
+                  tasks={form.tasks}
+                  onChange={(tasks) => patch({ tasks })}
+                />
               </div>
 
               <div className="space-y-4 lg:border-l lg:border-border lg:pl-8">

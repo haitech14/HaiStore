@@ -58,6 +58,7 @@ export const categories: Category[] = [
       'Tóner y Suministros',
       'Toner',
       'Toner originales',
+      'Toner Compatibles',
       'Suministros',
     ],
   },

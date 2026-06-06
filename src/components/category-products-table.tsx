@@ -1,15 +1,18 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type SyntheticEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { Pencil, Plus, ShoppingCart, Trash2 } from 'lucide-react';
+import { Pencil, ShoppingCart, Trash2 } from 'lucide-react';
 
-import { InventoryProductFormDialog } from '@/components/admin/inventory/inventory-product-form-dialog';
+import {
+  InventoryProductFormDialog,
+  type InventoryProductFormFocusSection,
+} from '@/components/admin/inventory/inventory-product-form-dialog';
 import { AddToCartButton, getAddToCartLabel } from '@/components/cart/add-to-cart-button';
 import { CategoryTableDiscountBadge } from '@/components/category/category-table-pricing';
 import { CategoryTablePurchaseCell } from '@/components/category/category-table-purchase-cell';
 import { CategoryTableRolePricing } from '@/components/category/category-table-role-pricing';
+import { InventoryStockStatusBar } from '@/components/inventory-stock-status-bar';
 import { ProductCardTitle } from '@/components/product/product-card-title';
 import { ProductWhatsAppButton } from '@/components/product-whatsapp-button';
-import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -29,9 +32,14 @@ import {
   getCategoryTableVisiblePriceRoles,
 } from '@/lib/category-table-price-columns';
 import { createEmptyInventoryProduct } from '@/lib/inventory-product';
-import { resolveProductImageUrl } from '@/lib/product-image-url';
+import { getProductCardTitleContent } from '@/lib/product-card-title';
+import {
+  resolveProductImageUrl,
+  resolveProductStockImagePath,
+} from '@/lib/product-image-url';
 import { productPath } from '@/lib/product-path';
 import {
+  formatProductTableCategory,
   getProductTableSpecDisplay,
   PRODUCT_TABLE_SPEC_COLUMNS,
   type ProductTableSpecColumnId,
@@ -61,12 +69,13 @@ interface CategoryProductsTableProps {
   products: Product[];
   /** Categoría preseleccionada al crear producto (solo administrador). */
   defaultCategory?: string | null;
+  bindOpenCreate?: (openCreate: (() => void) | null) => void;
 }
 
 const tableHeadClass =
-  'h-8 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground';
+  'h-9 whitespace-nowrap px-2.5 py-1.5 text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground';
 
-const tableCellClass = 'px-2 py-1.5 align-middle';
+const tableCellClass = 'px-2.5 py-2 align-middle';
 
 const rolePriceHeadClass = cn(tableHeadClass, 'min-w-[5.5rem] text-right');
 
@@ -74,18 +83,78 @@ const rolePriceCellClass = cn(tableCellClass, 'text-right');
 
 const specHeadClass = cn(
   tableHeadClass,
-  'hidden min-w-[5.5rem] text-left lg:table-cell',
+  'hidden text-center lg:table-cell',
 );
 
 const specCellClass = cn(
   tableCellClass,
-  'hidden text-left text-[0.65rem] leading-tight text-muted-foreground lg:table-cell',
+  'hidden text-center text-xs leading-tight text-muted-foreground lg:table-cell',
 );
 
 const SPEC_COLUMN_MIN_WIDTH: Partial<Record<ProductTableSpecColumnId, string>> = {
-  produccion: 'min-w-[8.5rem]',
-  anio: 'min-w-[5rem]',
+  velocidad: 'min-w-[4.5rem]',
+  adf: 'min-w-[5rem]',
+  produccion: 'min-w-[5.5rem]',
+  anio: 'min-w-[4rem]',
 };
+
+type ProductTableImageSource = Pick<
+  Product,
+  'id' | 'name' | 'category' | 'brand' | 'image_url' | 'gallery'
+>;
+
+function ProductTableThumbnail({
+  product,
+  detailHref,
+  allowDataUrl,
+}: {
+  product: ProductTableImageSource;
+  detailHref: string;
+  allowDataUrl?: boolean;
+}) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const primarySrc = resolveProductImageUrl(
+    product,
+    allowDataUrl ? { allowDataUrl: true } : undefined,
+  );
+  const fallbackSrc = resolveProductStockImagePath(product);
+  const src =
+    failedSrc === primarySrc
+      ? fallbackSrc !== primarySrc
+        ? fallbackSrc
+        : null
+      : primarySrc;
+
+  const handleError = (event: SyntheticEvent<HTMLImageElement>) => {
+    const attempted = event.currentTarget.currentSrc || event.currentTarget.src;
+    setFailedSrc(attempted);
+  };
+
+  return (
+    <Link
+      to={detailHref}
+      className="relative block size-11 shrink-0 overflow-hidden rounded-md border border-border/70 bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1 sm:size-12"
+      aria-label={`Ver ficha de ${product.name}`}
+    >
+      {src ? (
+        <img
+          src={src}
+          alt=""
+          className="size-full object-contain p-1"
+          loading="lazy"
+          onError={handleError}
+        />
+      ) : (
+        <span
+          className="flex size-full items-center justify-center text-sm font-semibold text-muted-foreground"
+          aria-hidden="true"
+        >
+          {product.name.charAt(0)}
+        </span>
+      )}
+    </Link>
+  );
+}
 
 function ProductTableSpecCell({
   product,
@@ -95,16 +164,78 @@ function ProductTableSpecCell({
   columnId: ProductTableSpecColumnId;
 }) {
   const value = getProductTableSpecDisplay(product, columnId);
+  const compact = columnId === 'velocidad' || columnId === 'adf' || columnId === 'anio';
   return (
-    <span className="line-clamp-2 text-pretty leading-tight" title={value === '—' ? undefined : value}>
+    <span
+      className={cn(
+        'block leading-tight',
+        compact ? 'whitespace-nowrap' : 'text-pretty',
+      )}
+      title={value === '—' ? undefined : value}
+    >
       {value}
     </span>
+  );
+}
+
+function CategoryTableCategoryCell({
+  category,
+  canManage,
+  onEditCategory,
+}: {
+  category: string | null | undefined;
+  canManage: boolean;
+  onEditCategory: () => void;
+}) {
+  const label = formatProductTableCategory(category);
+  const hasCategory = Boolean(category?.trim());
+
+  if (!canManage) {
+    return (
+      <span
+        className="block truncate text-center text-xs leading-tight text-muted-foreground"
+        title={category ?? undefined}
+      >
+        {label}
+      </span>
+    );
+  }
+
+  return (
+    <div className="group/category relative flex min-h-8 items-center justify-center">
+      <span
+        className={cn(
+          'block max-w-full truncate px-5 text-center text-xs leading-tight text-muted-foreground',
+          'transition-opacity sm:group-hover/row:opacity-0',
+        )}
+        title={category ?? undefined}
+      >
+        {label || '—'}
+      </span>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onEditCategory();
+        }}
+        className={cn(
+          'absolute inset-0 inline-flex items-center justify-center rounded-md text-red-600 transition-opacity',
+          'opacity-100 sm:opacity-0 sm:group-hover/row:opacity-100',
+          'hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-1',
+        )}
+        aria-label={hasCategory ? 'Modificar categoría' : 'Agregar categoría'}
+      >
+        <Pencil className="size-3.5" aria-hidden="true" />
+      </button>
+    </div>
   );
 }
 
 export function CategoryProductsTable({
   products,
   defaultCategory = null,
+  bindOpenCreate,
 }: CategoryProductsTableProps) {
   const { isAdmin, role } = useAuth();
   const catalogMap = useAdminInventoryCatalogMap();
@@ -116,6 +247,8 @@ export function CategoryProductsTable({
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<InventoryProduct | null>(null);
+  const [dialogFocusSection, setDialogFocusSection] =
+    useState<InventoryProductFormFocusSection | null>(null);
   const { deleteProduct } = useInventoryMutations();
 
   const tableMinWidth = isAdmin ? '96rem' : '52rem';
@@ -126,17 +259,31 @@ export function CategoryProductsTable({
       empty.category = defaultCategory.trim();
     }
     setEditingProduct(empty);
+    setDialogFocusSection(null);
     setDialogOpen(true);
   }, [defaultCategory]);
 
-  const openEdit = useCallback((inventory: InventoryProduct) => {
-    setEditingProduct(inventory);
-    setDialogOpen(true);
-  }, []);
+  useEffect(() => {
+    if (!isAdmin || !bindOpenCreate) return;
+    bindOpenCreate(openCreate);
+    return () => bindOpenCreate(null);
+  }, [isAdmin, bindOpenCreate, openCreate]);
+
+  const openEdit = useCallback(
+    (inventory: InventoryProduct, focusSection?: InventoryProductFormFocusSection) => {
+      setEditingProduct(inventory);
+      setDialogFocusSection(focusSection ?? null);
+      setDialogOpen(true);
+    },
+    [],
+  );
 
   const handleDialogOpenChange = useCallback((open: boolean) => {
     setDialogOpen(open);
-    if (!open) setEditingProduct(null);
+    if (!open) {
+      setEditingProduct(null);
+      setDialogFocusSection(null);
+    }
   }, []);
 
   const handleDelete = useCallback(
@@ -149,31 +296,21 @@ export function CategoryProductsTable({
 
   return (
     <div className="space-y-3">
-      {isAdmin ? (
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button
-            type="button"
-            size="sm"
-            className="min-h-10 gap-1.5 bg-red-600 font-semibold hover:bg-red-500"
-            onClick={openCreate}
-          >
-            <Plus className="size-4" aria-hidden="true" />
-            Añadir producto
-          </Button>
-        </div>
-      ) : null}
-
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
         <Table className="border-collapse" style={{ minWidth: tableMinWidth }}>
           <TableHeader>
             <TableRow className="border-b bg-muted/40 hover:bg-muted/40">
               <TableHead
                 scope="col"
-                className={cn(tableHeadClass, 'hidden min-w-[9rem] text-left md:table-cell')}
+                className={cn(
+                  tableHeadClass,
+                  'hidden text-center md:table-cell',
+                  isAdmin ? 'min-w-[8.75rem]' : 'min-w-[7.5rem]',
+                )}
               >
                 Categoría
               </TableHead>
-            <TableHead scope="col" className={cn(tableHeadClass, 'min-w-[17rem] text-left')}>
+            <TableHead scope="col" className={cn(tableHeadClass, 'min-w-[18rem] text-left')}>
               Producto
             </TableHead>
               {PRODUCT_TABLE_SPEC_COLUMNS.map((column) => (
@@ -229,6 +366,7 @@ export function CategoryProductsTable({
           open={dialogOpen}
           onOpenChange={handleDialogOpenChange}
           initial={editingProduct}
+          focusSection={dialogFocusSection}
         />
       ) : null}
     </div>
@@ -251,12 +389,14 @@ function CategoryProductTableRow({
   discountPriceRole: PriceRole;
   isAdmin: boolean;
   striped: boolean;
-  onEdit: (inventory: InventoryProduct) => void;
+  onEdit: (inventory: InventoryProduct, focusSection?: InventoryProductFormFocusSection) => void;
   onDelete: (inventory: InventoryProduct) => void;
 }) {
-  const outOfStock = product.stock <= 0;
+  const stockQty = catalogEntry?.product.stock ?? product.stock;
+  const displayProduct: Product =
+    catalogEntry != null ? { ...product, stock: catalogEntry.product.stock } : product;
   const detailHref = productPath(product.id);
-  const imageUrl = resolveProductImageUrl(product);
+  const imageProduct = catalogEntry?.product ?? product;
   const rolePrices = resolveTableRolePrices(product, catalogEntry);
   const canManage = isAdmin && catalogEntry != null;
   const displayPriceUsd = product.price;
@@ -271,73 +411,52 @@ function CategoryProductTableRow({
       <TableCell
         className={cn(
           tableCellClass,
-          'hidden text-left text-xs text-muted-foreground md:table-cell',
+          'hidden md:table-cell',
+          isAdmin ? 'min-w-[8.75rem]' : 'max-w-[7.5rem]',
         )}
       >
-        <span className="line-clamp-2 text-pretty leading-tight">{product.category ?? '—'}</span>
+        <CategoryTableCategoryCell
+          category={product.category}
+          canManage={canManage}
+          onEditCategory={() => {
+            if (!catalogEntry) return;
+            onEdit(catalogEntry.product, 'category');
+          }}
+        />
       </TableCell>
       <TableCell className={tableCellClass}>
-        <div className="flex min-w-0 items-center gap-2">
-          <Link
-            to={detailHref}
-            className="relative block size-11 shrink-0 overflow-hidden rounded-md border border-border/70 bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1 sm:size-12"
-            aria-label={`Ver ficha de ${product.name}`}
-          >
-            {imageUrl ? (
-              <img
-                src={imageUrl}
-                alt=""
-                className="size-full object-contain p-1"
-                loading="lazy"
-              />
-            ) : (
-              <span
-                className="flex size-full items-center justify-center text-sm font-semibold text-muted-foreground"
-                aria-hidden="true"
-              >
-                {product.name.charAt(0)}
-              </span>
-            )}
-          </Link>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <ProductTableThumbnail
+            product={imageProduct}
+            detailHref={detailHref}
+            allowDataUrl={canManage}
+          />
           <Link
             to={detailHref}
             className="min-w-0 flex-1 rounded no-underline hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1"
+            title={getProductCardTitleContent(product).title}
           >
             <ProductCardTitle product={product} variant="table" />
           </Link>
           {canManage ? (
-            <div
+            <button
+              type="button"
               className={cn(
-                'flex shrink-0 items-center gap-0.5',
+                'inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors',
+                'hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-1',
                 'opacity-100 sm:opacity-0 sm:transition-opacity',
                 'sm:group-hover/row:opacity-100 sm:group-focus-within/row:opacity-100',
               )}
+              aria-label={`Eliminar ${product.name}`}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                void onDelete(catalogEntry.product);
+              }}
             >
-              <button
-                type="button"
-                className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-1"
-                aria-label={`Editar ${product.name}`}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  onEdit(catalogEntry.product);
-                }}
-              >
-                <Pencil className="size-3.5" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-1"
-                aria-label={`Eliminar ${product.name}`}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  void onDelete(catalogEntry.product);
-                }}
-              >
-                <Trash2 className="size-3.5" aria-hidden="true" />
-              </button>
-            </div>
+              <Trash2 className="size-3.5" aria-hidden="true" />
+            </button>
           ) : null}
         </div>
       </TableCell>
@@ -347,26 +466,7 @@ function CategoryProductTableRow({
         </TableCell>
       ))}
       <TableCell className={cn(tableCellClass, 'text-center')}>
-        <div className="flex flex-col items-center gap-0.5">
-          <span className="text-xs font-medium tabular-nums text-foreground">
-            {outOfStock ? '—' : `${product.stock} unidad${product.stock === 1 ? '' : 'es'}`}
-          </span>
-          <span
-            className={cn(
-              'inline-flex items-center gap-1 text-[0.65rem] font-medium',
-              outOfStock ? 'text-destructive' : 'text-green-700',
-            )}
-          >
-            <span
-              className={cn(
-                'size-2 shrink-0 rounded-full',
-                outOfStock ? 'bg-destructive' : 'bg-green-500',
-              )}
-              aria-hidden="true"
-            />
-            {outOfStock ? 'Sin stock' : 'En stock'}
-          </span>
-        </div>
+        <InventoryStockStatusBar stock={stockQty} compact />
       </TableCell>
       <TableCell className={cn(tableCellClass, 'text-center')}>
         <CategoryTableDiscountBadge
@@ -389,12 +489,12 @@ function CategoryProductTableRow({
       <TableCell className={tableCellClass}>
         <div className="flex items-center justify-center gap-1.5">
           <AddToCartButton
-            product={product}
+            product={displayProduct}
             size="sm"
             className="h-8 min-w-[5rem] gap-1 rounded-md bg-red-600 px-2 text-[0.65rem] font-semibold hover:bg-red-500"
           >
             <ShoppingCart className="size-3 shrink-0" aria-hidden="true" />
-            {getAddToCartLabel(product, 'short')}
+            {getAddToCartLabel(displayProduct, 'short')}
           </AddToCartButton>
           <ProductWhatsAppButton
             className="size-8 shrink-0 rounded-md"

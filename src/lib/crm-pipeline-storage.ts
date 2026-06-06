@@ -1,3 +1,4 @@
+import { normalizeLeadTasks } from '@/lib/crm-lead-tasks';
 import type { CrmPipelineLead, CrmPipelineStageId } from '@/types/crm-pipeline';
 
 const STORAGE_KEY = 'haistore-crm-pipeline-leads-v1';
@@ -47,17 +48,21 @@ export function normalizePipelineLead(lead: CrmPipelineLead): CrmPipelineLead {
       ? lead.createdAt
       : new Date().toISOString();
 
+  const tasks = normalizeLeadTasks(lead.tasks ?? snapshot.tasks);
+
   return {
     ...lead,
     createdAt,
     productName,
     lineItems,
     sellerName,
+    tasks,
     formSnapshot: {
       ...snapshot,
       productName: snapshot.productName ?? productName,
       lineItems: snapshot.lineItems ?? lineItems,
       ownerLabel: snapshot.ownerLabel ?? sellerName,
+      tasks,
     },
   };
 }

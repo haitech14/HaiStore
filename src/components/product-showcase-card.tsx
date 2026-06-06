@@ -98,6 +98,7 @@ export function ProductShowcaseCard({
     name: product.name,
     category: product.category,
     brand: product.brand ?? null,
+    code: product.code ?? null,
     attributes: product.attributes ?? [],
   };
   const cartProduct = {

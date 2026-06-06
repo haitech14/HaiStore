@@ -23,9 +23,10 @@ function exportDashboardCsv(
     `Clientes nuevos,${kpis.newCustomers.value}`,
     `Tasa conversión,${kpis.conversionRate.value ?? '—'}`,
     '',
-    'Inventario por categoría,Total,Stock bajo,% saludable',
+    'Inventario por categoría,Total,Sin stock,Bajo stock,En stock,% sin stock,% bajo stock,% en stock',
     ...inventory.map(
-      (row) => `${row.category},${row.total},${row.lowStock},${row.healthyPercent}%`,
+      (row) =>
+        `${row.category},${row.total},${row.out},${row.low},${row.healthy},${row.outPercent}%,${row.lowPercent}%,${row.healthyPercent}%`,
     ),
   ];
   const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });

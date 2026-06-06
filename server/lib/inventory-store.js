@@ -374,11 +374,12 @@ export async function writeInventory(data) {
       await fs.mkdir(path.dirname(inventoryPath()), { recursive: true });
       await fs.writeFile(inventoryPath(), JSON.stringify(normalized, null, 2));
     }
-    return;
+    return normalized;
   }
 
   await fs.mkdir(path.dirname(inventoryPath()), { recursive: true });
   await fs.writeFile(inventoryPath(), JSON.stringify(normalized, null, 2));
+  return normalized;
 }
 
 export { resolvePriceRole };

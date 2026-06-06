@@ -50,6 +50,7 @@ export function createInitialCrmLeadForm(
     phones: [newPhoneEntry()],
     emails: [newEmailEntry()],
     notes: '',
+    tasks: [],
     stageId,
   };
 }

@@ -8,6 +8,9 @@ import {
   rentalCategories,
   type RentalCategory,
 } from '@/data/rental-categories';
+import {
+  type EnterpriseServiceCarouselItem,
+} from '@/data/enterprise-services-carousel';
 import { categoryPath } from '@/lib/category-path';
 import { cn } from '@/lib/utils';
 
@@ -15,7 +18,20 @@ import { cn } from '@/lib/utils';
 export const RENTAL_CAROUSEL_SLIDE_CLASS =
   'min-w-0 flex-[0_0_100%] sm:flex-[0_0_calc((100%-1rem)/2)] lg:flex-[0_0_calc((100%-3rem)/4)]';
 
-export function RentalCategoryCard({ item }: { item: RentalCategory }) {
+function rentalCategoryToCarouselItem(item: RentalCategory): EnterpriseServiceCarouselItem {
+  return {
+    id: item.slug,
+    title: item.title,
+    description: item.description,
+    icon: item.icon,
+    image: item.image,
+    imageAlt: item.imageAlt,
+    imageBgClass: item.imageBgClass,
+    detailHref: categoryPath(RENTAL_PARENT_SLUG, item.slug),
+  };
+}
+
+export function ServiceCarouselCard({ item }: { item: EnterpriseServiceCarouselItem }) {
   const Icon = item.icon;
 
   return (
@@ -32,21 +48,21 @@ export function RentalCategoryCard({ item }: { item: RentalCategory }) {
           loading="lazy"
         />
         <span
-          className="absolute bottom-0 left-1/2 z-10 flex size-14 -translate-x-1/2 translate-y-1/2 items-center justify-center rounded-full border-2 border-primary bg-background shadow-md"
+          className="absolute bottom-0 left-1/2 z-10 flex size-14 -translate-x-1/2 translate-y-1/2 items-center justify-center rounded-full border-2 border-red-600 bg-background shadow-md"
           aria-hidden="true"
         >
-          <Icon className="size-7 text-primary" strokeWidth={1.75} />
+          <Icon className="size-7 text-red-600" strokeWidth={1.75} />
         </span>
       </div>
 
       <div className="flex flex-1 flex-col px-4 pb-5 pt-10 text-center">
         <Link
-          to={categoryPath(RENTAL_PARENT_SLUG, item.slug)}
+          to={item.detailHref}
           className={cn(
             'mx-auto inline-flex min-h-11 w-full max-w-[16rem] items-center justify-center rounded-lg px-4 py-2.5',
-            'bg-gradient-to-r from-sky-600 to-indigo-700 text-sm font-bold text-white shadow-sm',
-            'transition-opacity hover:opacity-95',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+            'bg-red-600 text-sm font-bold text-white shadow-sm',
+            'transition-colors hover:bg-red-700',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
           )}
         >
           {item.title}
@@ -56,7 +72,7 @@ export function RentalCategoryCard({ item }: { item: RentalCategory }) {
         </p>
         <Link
           to={`/contacto?servicio=${encodeURIComponent(item.title)}`}
-          className="mt-4 text-xs font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="mt-4 text-xs font-semibold text-foreground underline-offset-4 hover:text-red-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Solicitar cotización
         </Link>
@@ -69,11 +85,19 @@ interface RentalCategoriesCarouselProps {
   className?: string;
   /** Muestra flechas desde móvil (por defecto solo sm+). */
   showArrowsOnMobile?: boolean;
+  items?: EnterpriseServiceCarouselItem[];
+  ariaLabel?: string;
+}
+
+export function RentalCategoryCard({ item }: { item: RentalCategory }) {
+  return <ServiceCarouselCard item={rentalCategoryToCarouselItem(item)} />;
 }
 
 export function RentalCategoriesCarousel({
   className,
   showArrowsOnMobile = false,
+  items = rentalCategories.map(rentalCategoryToCarouselItem),
+  ariaLabel = 'Tipos de alquiler',
 }: RentalCategoriesCarouselProps) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: 'start',
@@ -123,10 +147,10 @@ export function RentalCategoriesCarousel({
       </button>
 
       <div ref={emblaRef} className="overflow-hidden px-0.5">
-        <ul className="flex gap-4" role="list" aria-label="Tipos de alquiler">
-          {rentalCategories.map((item) => (
-            <li key={item.slug} className={RENTAL_CAROUSEL_SLIDE_CLASS}>
-              <RentalCategoryCard item={item} />
+        <ul className="flex gap-4" role="list" aria-label={ariaLabel}>
+          {items.map((item) => (
+            <li key={item.id} className={RENTAL_CAROUSEL_SLIDE_CLASS}>
+              <ServiceCarouselCard item={item} />
             </li>
           ))}
         </ul>

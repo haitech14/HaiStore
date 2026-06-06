@@ -18,10 +18,10 @@ export function ForumHero({ stats, onMarkAllRead }: ForumHeroProps) {
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-30"
+        className="pointer-events-none absolute inset-0 opacity-100"
         style={{
           backgroundImage:
-            'radial-gradient(circle at 70% 40%, hsl(var(--forum-accent) / 0.35), transparent 55%)',
+            'radial-gradient(circle at 70% 40%, hsl(var(--forum-accent) / 0.08), transparent 55%)',
         }}
       />
       <div className="container relative grid gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-center lg:py-10">
@@ -56,7 +56,7 @@ export function ForumHero({ stats, onMarkAllRead }: ForumHeroProps) {
 
         <div className="flex flex-col items-start gap-3 sm:flex-row lg:flex-col lg:items-end">
           <span
-            className="hidden size-28 items-center justify-center rounded-2xl border border-[hsl(var(--forum-accent)/0.4)] bg-[hsl(var(--forum-accent)/0.1)] text-[hsl(var(--forum-accent))] shadow-[0_0_40px_hsl(var(--forum-accent)/0.25)] lg:flex"
+            className="hidden size-28 items-center justify-center rounded-2xl border border-[hsl(var(--forum-accent)/0.25)] bg-[hsl(var(--forum-accent)/0.08)] text-[hsl(var(--forum-accent))] shadow-sm lg:flex"
             aria-hidden="true"
           >
             <MessageCircle className="size-14" strokeWidth={1.25} />

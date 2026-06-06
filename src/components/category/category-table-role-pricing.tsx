@@ -11,8 +11,8 @@ export function CategoryTableRolePricing({ priceUsd, className }: CategoryTableR
 
   return (
     <div className={cn('space-y-0.5 text-right tabular-nums leading-tight', className)}>
-      <p className="text-[0.65rem] font-bold text-foreground">{formatUsd(usd)}</p>
-      <p className="text-[0.65rem] font-semibold text-foreground">
+      <p className="text-xs font-bold text-foreground">{formatUsd(usd)}</p>
+      <p className="text-[0.65rem] font-medium text-muted-foreground">
         {formatPenFromUsdPrecise(usd)}
       </p>
     </div>

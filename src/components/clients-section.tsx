@@ -8,34 +8,32 @@ function ClientCard({ client }: { client: Client }) {
   const [logoError, setLogoError] = useState(false);
 
   return (
-    <article className="flex h-full flex-col items-center rounded-lg bg-white px-2.5 py-4 shadow-[0_2px_16px_rgba(15,23,42,0.06)] sm:px-3 sm:py-5">
-      <div className="flex size-12 items-center justify-center rounded-full bg-red-600 ring-2 ring-red-600/20 sm:size-14">
-        <div
-          className={cn(
-            'flex size-[calc(100%-4px)] items-center justify-center overflow-hidden rounded-full border border-white',
-            client.logoSurface === 'dark' ? 'bg-neutral-950' : 'bg-white',
-          )}
-        >
-          {!logoError ? (
-            <img
-              src={client.logo}
-              alt=""
-              className={cn(
-                'size-full object-contain',
-                client.logoSurface === 'dark' ? 'p-0.5' : 'p-1',
-              )}
-              loading="lazy"
-              onError={() => setLogoError(true)}
-            />
-          ) : (
-            <span className="flex size-full items-center justify-center bg-red-600 text-xs font-bold text-white sm:text-sm">
-              {client.initials}
-            </span>
-          )}
-        </div>
+    <article className="flex h-full flex-col items-center justify-center rounded-xl border border-border/40 bg-card px-3 py-5 shadow-sm transition-shadow hover:shadow-md sm:px-4 sm:py-6">
+      <div
+        className={cn(
+          'flex h-16 w-full max-w-[9.5rem] items-center justify-center sm:h-20 sm:max-w-[11rem] lg:h-24',
+          client.logoSurface === 'dark' && 'rounded-lg bg-neutral-950 px-2',
+        )}
+      >
+        {!logoError ? (
+          <img
+            src={client.logo}
+            alt={client.logoAlt}
+            className="max-h-full w-full object-contain object-center"
+            loading="lazy"
+            onError={() => setLogoError(true)}
+          />
+        ) : (
+          <span
+            className="flex size-14 items-center justify-center rounded-lg bg-muted text-sm font-bold text-foreground sm:size-16"
+            aria-hidden="true"
+          >
+            {client.initials}
+          </span>
+        )}
       </div>
 
-      <h3 className="mt-2.5 line-clamp-2 text-center text-[0.7rem] font-bold leading-snug text-neutral-700 sm:mt-3 sm:text-xs">
+      <h3 className="mt-3 line-clamp-2 text-center text-xs font-semibold leading-snug text-foreground sm:mt-4 sm:text-sm">
         {client.name}
       </h3>
     </article>
@@ -75,7 +73,7 @@ export function ClientsSection() {
   return (
     <section
       aria-labelledby="clientes-titulo"
-      className="relative overflow-hidden bg-background py-12 sm:py-16"
+      className="relative overflow-hidden bg-background py-6 sm:py-8"
     >
       <div
         aria-hidden="true"
@@ -83,7 +81,7 @@ export function ClientsSection() {
       />
 
       <div className="container relative">
-        <header className="mx-auto mb-6 max-w-3xl text-center sm:mb-8">
+        <header className="mx-auto mb-4 max-w-3xl text-center sm:mb-5">
           <div className="flex items-center justify-center gap-3 sm:gap-4">
             <span className="h-px w-8 bg-sky-400 sm:w-12" aria-hidden="true" />
             <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-sky-500 sm:text-xs">
@@ -94,18 +92,18 @@ export function ClientsSection() {
 
           <h2
             id="clientes-titulo"
-            className="mt-4 text-balance text-2xl font-bold tracking-tight text-[#0f1f3d] sm:text-3xl lg:text-[2rem]"
+            className="mt-2 text-balance text-2xl font-bold tracking-tight text-[#0f1f3d] sm:mt-3 sm:text-3xl lg:text-[2rem]"
           >
             Algunos de nuestros clientes
           </h2>
 
-          <p className="mx-auto mt-4 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p className="mx-auto mt-2 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:mt-3 sm:text-base">
             Trabajamos junto a organizaciones líderes que confían en nuestro equipo para impulsar su
             crecimiento y transformación digital.
           </p>
         </header>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           <div className="overflow-hidden" ref={emblaRef}>
             <ul className="flex touch-pan-y gap-2 sm:gap-2.5 md:gap-3">
               {clients.map((client) => (

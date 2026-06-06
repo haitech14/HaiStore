@@ -73,7 +73,7 @@ export function ForumSidebar({
                   {member.forumTitle ?? 'Colaborador activo'}
                 </p>
               </div>
-              <span className="flex items-center gap-1 text-xs font-semibold text-amber-400">
+              <span className="flex items-center gap-1 text-xs font-semibold text-amber-600">
                 <Crown className="size-3.5" aria-hidden="true" />
                 {member.forumPoints}
               </span>

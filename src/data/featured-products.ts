@@ -6,6 +6,7 @@ export interface FeaturedProduct {
   name: string;
   category: string;
   brand?: string | null;
+  code?: string | null;
   attributes?: ProductAttribute[];
   price: number;
   oldPrice?: number;

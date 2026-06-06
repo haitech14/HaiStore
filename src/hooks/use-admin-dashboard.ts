@@ -9,6 +9,14 @@ import {
 } from '@/components/admin/AdminDateRangePicker';
 import { formatOrderTotal, mapStoreOrderStatusToBadge } from '@/lib/admin-order-status';
 import { apiFetch } from '@/lib/api';
+import { normalizeInventoryProduct } from '@/lib/inventory-product';
+import { DEFAULT_WAREHOUSES } from '@/lib/inventory-stock';
+import {
+  normalizeStockQuantity,
+  tallyInventoryCategoryStock,
+  toCategoryStockPercents,
+  type InventoryCategoryStockSnapshot,
+} from '@/lib/inventory-stock-status';
 import { formatPenFromUsd } from '@/lib/utils';
 import type { AdminDashboardOrdersPayload, StoreOrder } from '@/types/store';
 import type { InventoryProduct, UserProfile } from '@/types/product';
@@ -22,7 +30,15 @@ async function fetchProfiles(): Promise<UserProfile[]> {
 }
 
 async function fetchAdminProducts(): Promise<InventoryProduct[]> {
-  return apiFetch<InventoryProduct[]>('/api/products/admin/all');
+  const rows = await apiFetch<InventoryProduct[]>('/api/products/admin/all');
+  return rows.map((row) => {
+    try {
+      return normalizeInventoryProduct(row, DEFAULT_WAREHOUSES);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'dato inválido';
+      throw new Error(`Inventario con formato inválido (${row.id ?? 'sin id'}): ${message}`);
+    }
+  });
 }
 
 function toIsoDate(date: Date) {
@@ -314,33 +330,41 @@ export function useAdminTopProductsList(range: AdminDateRange) {
   };
 }
 
-const LOW_STOCK_THRESHOLD = 5;
+export interface AdminInventoryCategoryRow extends InventoryCategoryStockSnapshot {
+  category: string;
+  /** Productos sin stock + bajo stock (compatibilidad export CSV). */
+  lowStock: number;
+  outPercent: number;
+  lowPercent: number;
+  healthyPercent: number;
+}
 
 export function useAdminInventoryByCategory() {
   const productsQuery = useAdminProductsQuery();
 
-  const categories = new Map<
-    string,
-    { total: number; lowStock: number; inStock: number }
-  >();
+  const categories = new Map<string, InventoryCategoryStockSnapshot>();
 
   for (const product of productsQuery.data ?? []) {
     const category = product.category?.trim() || 'Sin categoría';
-    const entry = categories.get(category) ?? { total: 0, lowStock: 0, inStock: 0 };
+    const entry = categories.get(category) ?? { total: 0, out: 0, low: 0, healthy: 0 };
+    const tally = tallyInventoryCategoryStock(normalizeStockQuantity(product.stock));
     entry.total += 1;
-    if (product.stock <= LOW_STOCK_THRESHOLD) entry.lowStock += 1;
-    else entry.inStock += 1;
+    entry.out += tally.out;
+    entry.low += tally.low;
+    entry.healthy += tally.healthy;
     categories.set(category, entry);
   }
 
-  const data = Array.from(categories.entries())
-    .map(([category, stats]) => ({
-      category,
-      total: stats.total,
-      lowStock: stats.lowStock,
-      inStock: stats.inStock,
-      healthyPercent: stats.total > 0 ? Math.round((stats.inStock / stats.total) * 100) : 0,
-    }))
+  const data: AdminInventoryCategoryRow[] = Array.from(categories.entries())
+    .map(([category, stats]) => {
+      const percents = toCategoryStockPercents(stats);
+      return {
+        category,
+        ...stats,
+        lowStock: stats.out + stats.low,
+        ...percents,
+      };
+    })
     .sort((a, b) => b.total - a.total);
 
   return {

@@ -18,7 +18,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/auth-context';
 import { isAdminPanelEmail } from '@/lib/admin-access';
-import { formatHaitechAuthLoginHint } from '@/lib/haitech-auth-credentials';
 
 const heroFeatures = [
   { icon: Shield, label: 'Seguridad garantizada' },
@@ -226,11 +225,6 @@ export function LoginPage() {
                 {error}
               </p>
             )}
-
-            <p className="text-center text-xs text-gray-400">
-              Cuentas Haitech (HaiStore, HaiSupport, HaiSales):{' '}
-              <span className="font-mono">{formatHaitechAuthLoginHint()}</span>
-            </p>
 
             <button
               type="submit"

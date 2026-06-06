@@ -26,6 +26,15 @@ export interface CrmLeadLineItem {
   unitPrice: string;
 }
 
+export interface CrmLeadTask {
+  id: string;
+  title: string;
+  done: boolean;
+  /** Fecha límite opcional (YYYY-MM-DD). */
+  dueDate?: string;
+  createdAt: string;
+}
+
 export interface CrmNewLeadFormValues {
   contactName: string;
   organization: string;
@@ -53,5 +62,6 @@ export interface CrmNewLeadFormValues {
   phones: CrmLeadPhoneEntry[];
   emails: CrmLeadEmailEntry[];
   notes: string;
+  tasks: CrmLeadTask[];
   stageId: CrmPipelineStageId;
 }

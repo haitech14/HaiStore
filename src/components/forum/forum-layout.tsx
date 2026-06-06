@@ -1,6 +1,7 @@
 import { Link, Outlet, ScrollRestoration } from 'react-router-dom';
 
 import { ForumHeader } from '@/components/forum/forum-header';
+import { cn } from '@/lib/utils';
 import { ForumFeatureBar } from '@/components/forum/forum-feature-bar';
 
 export function ForumLayout() {
@@ -22,13 +23,20 @@ export function ForumLayout() {
   );
 }
 
-export function ForumBackLink() {
+export function ForumBackLink({ className }: { className?: string }) {
   return (
     <Link
       to="/"
-      className="inline-flex min-h-10 items-center text-sm font-medium text-[hsl(var(--forum-muted))] transition-colors hover:text-[hsl(var(--forum-accent))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--forum-accent))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--forum-bg))]"
+      className={cn(
+        'inline-flex shrink-0 items-center whitespace-nowrap text-xs font-medium text-[hsl(var(--forum-muted))] transition-colors hover:text-[hsl(var(--forum-accent))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--forum-accent))] sm:text-sm',
+        className,
+      )}
+      aria-label="Volver a HaiStore"
     >
-      ← Volver a HaiStore
+      <span className="sm:hidden" aria-hidden="true">
+        ←
+      </span>
+      <span className="hidden sm:inline">← Volver a HaiStore</span>
     </Link>
   );
 }

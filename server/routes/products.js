@@ -21,6 +21,7 @@ import {
   listProducts,
   syncProductsToSupabase,
 } from '../lib/product-catalog.js';
+import { shouldPreferSupabaseCatalog } from '../lib/catalog-source.js';
 import { getSupabaseAdmin } from '../lib/supabase-auth.js';
 
 export const productsRouter = Router();
@@ -263,16 +264,20 @@ productsRouter.post('/', requireAdmin, async (req, res, next) => {
     const sorted = sortProductsByOrder(inventory.products);
     const next = assignProductSortOrders([...sorted, { ...product, sort_order: sorted.length }]);
     inventory.products = next;
-    await writeInventory({
+    const normalized = await writeInventory({
       products: inventory.products,
       deletedProductIds,
       warehouses: inventory.warehouses,
     });
+    const saved =
+      normalized.products.find((entry) => entry.id === product.id) ?? product;
 
-    await syncProductsToSupabase([product]);
+    if (!shouldPreferSupabaseCatalog()) {
+      await syncProductsToSupabase([saved]);
+    }
 
-    notifyHaiSupportChange('products', 'create', product);
-    res.status(201).json(product);
+    notifyHaiSupportChange('products', 'create', saved);
+    res.status(201).json(saved);
   } catch (error) {
     next(error);
   }
@@ -294,16 +299,20 @@ productsRouter.patch('/:id', requireAdmin, async (req, res, next) => {
     }
 
     inventory.products[index] = updated;
-    await writeInventory({
+    const normalized = await writeInventory({
       products: inventory.products,
       deletedProductIds: inventory.deletedProductIds ?? [],
       warehouses: inventory.warehouses,
     });
+    const saved =
+      normalized.products.find((entry) => entry.id === req.params.id) ?? updated;
 
-    await syncProductsToSupabase([updated]);
+    if (!shouldPreferSupabaseCatalog()) {
+      await syncProductsToSupabase([saved]);
+    }
 
-    notifyHaiSupportChange('products', 'update', updated);
-    res.json(updated);
+    notifyHaiSupportChange('products', 'update', saved);
+    res.json(saved);
   } catch (error) {
     next(error);
   }

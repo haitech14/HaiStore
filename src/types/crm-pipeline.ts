@@ -1,4 +1,4 @@
-import type { CrmLeadLineItem, CrmNewLeadFormValues } from '@/types/crm-lead-form';
+import type { CrmLeadLineItem, CrmLeadTask, CrmNewLeadFormValues } from '@/types/crm-lead-form';
 
 export type CrmLeadPriority = 'alta' | 'media' | 'baja' | 'ganado';
 export type CrmLeadCurrency = 'PEN' | 'USD';
@@ -38,6 +38,8 @@ export interface CrmPipelineLead {
   lineItems: CrmLeadLineItem[];
   sellerName: string;
   formSnapshot: CrmNewLeadFormValues;
+  /** Tareas de seguimiento del lead. */
+  tasks: CrmLeadTask[];
 }
 
 export interface CrmPipelineKpis {

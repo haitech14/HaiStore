@@ -1,4 +1,5 @@
 import { LayoutGrid, List, Search, SlidersHorizontal, Table2 } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import { CategoryToolbarFiltersPopover } from '@/components/category/category-toolbar-filters-popover';
 import type { QuickFilterChip } from '@/components/category/category-quick-filters';
@@ -11,6 +12,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { MIN_PRODUCT_SEARCH_LENGTH } from '@/lib/product-search';
+import {
+  CATALOG_GRID_COLUMN_OPTIONS,
+  type CatalogGridColumns,
+} from '@/lib/category-grid-layout';
 import { cn } from '@/lib/utils';
 
 export type CategorySortValue = 'price-asc' | 'price-desc' | 'name-asc';
@@ -25,6 +30,8 @@ interface CategoryCatalogToolbarProps {
   onSortChange: (value: CategorySortValue) => void;
   viewMode: CatalogViewMode;
   onViewModeChange: (mode: CatalogViewMode) => void;
+  gridColumns: CatalogGridColumns;
+  onGridColumnsChange: (columns: CatalogGridColumns) => void;
   filtersOpen: boolean;
   filtersSheetOpen: boolean;
   hasSidebarFilters: boolean;
@@ -37,6 +44,7 @@ interface CategoryCatalogToolbarProps {
   onSelectAllQuickFilters: () => void;
   onToggleAttribute: (key: string) => void;
   onToggleProduction: (key: string) => void;
+  endAction?: ReactNode;
 }
 
 const viewToggleClass = (active: boolean) =>
@@ -57,6 +65,8 @@ export function CategoryCatalogToolbar({
   onSortChange,
   viewMode,
   onViewModeChange,
+  gridColumns,
+  onGridColumnsChange,
   filtersOpen,
   filtersSheetOpen,
   hasSidebarFilters,
@@ -69,6 +79,7 @@ export function CategoryCatalogToolbar({
   onSelectAllQuickFilters,
   onToggleAttribute,
   onToggleProduction,
+  endAction,
 }: CategoryCatalogToolbarProps) {
   const searchHint =
     searchQuery.trim().length > 0 && searchQuery.trim().length < MIN_PRODUCT_SEARCH_LENGTH
@@ -85,7 +96,7 @@ export function CategoryCatalogToolbar({
 
   return (
     <div className="mb-4 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4">
-      <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap">
+      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <button
           type="button"
           onClick={onToggleSidebarFilters}
@@ -127,7 +138,7 @@ export function CategoryCatalogToolbar({
           ) : null}
         </div>
 
-        <div className="relative min-w-0 w-full flex-1 basis-[10rem] lg:min-w-[12rem]">
+        <div className="relative min-w-[9rem] w-full max-w-md flex-1 basis-[10rem]">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
@@ -164,7 +175,7 @@ export function CategoryCatalogToolbar({
             value={sortBy}
             onValueChange={(value) => onSortChange(value as CategorySortValue)}
           >
-            <SelectTrigger className="h-10 w-full min-w-[10.5rem] bg-background sm:min-w-[11rem] sm:w-[12.5rem]">
+            <SelectTrigger className="h-10 w-[11.5rem] min-w-[10.5rem] shrink-0 bg-background">
               <SelectValue placeholder="Selecciona orden" />
             </SelectTrigger>
             <SelectContent>
@@ -208,6 +219,38 @@ export function CategoryCatalogToolbar({
             <Table2 className="size-4" aria-hidden="true" />
           </button>
         </div>
+
+        {viewMode === 'grid' ? (
+          <div
+            className="flex shrink-0 items-center gap-1 rounded-md border border-border bg-background px-1 py-1"
+            role="group"
+            aria-label="Columnas en grilla"
+          >
+            <span className="hidden pl-1 text-[0.65rem] font-medium text-muted-foreground sm:inline">
+              Cols
+            </span>
+            {CATALOG_GRID_COLUMN_OPTIONS.map((columns) => (
+              <button
+                key={columns}
+                type="button"
+                aria-pressed={gridColumns === columns}
+                aria-label={`${columns} columnas`}
+                onClick={() => onGridColumnsChange(columns)}
+                className={cn(
+                  'inline-flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-xs font-semibold transition-colors sm:h-9',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
+                  gridColumns === columns
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
+              >
+                {columns}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {endAction ? <div className="ml-auto shrink-0 pl-1">{endAction}</div> : null}
       </div>
     </div>
   );

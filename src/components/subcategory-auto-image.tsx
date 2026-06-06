@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Grid3x3, Package, Recycle, Sparkles, Tags } from 'lucide-react';
+import { Grid3x3, History, Package, Recycle, Sparkles, Tags } from 'lucide-react';
 
 import {
   subcategoryInitials,
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 const KIND_ICONS: Record<SubcategoryVisualKind, typeof Tags> = {
   all: Grid3x3,
   new: Sparkles,
+  preowned: History,
   refurbished: Recycle,
   supplies: Package,
   default: Tags,

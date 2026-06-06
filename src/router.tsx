@@ -44,6 +44,10 @@ const ServiciosPage = lazyWithRetry(
   () => import('@/pages/servicios').then((m) => ({ default: m.ServiciosPage })),
   'servicios',
 );
+const HaiProtectPage = lazyWithRetry(
+  () => import('@/pages/haiprotect').then((m) => ({ default: m.HaiProtectPage })),
+  'haiprotect',
+);
 const ForumLayout = lazyWithRetry(
   () => import('@/components/forum/forum-layout').then((m) => ({ default: m.ForumLayout })),
   'foro',
@@ -332,6 +336,7 @@ export const router = createBrowserRouter([
       { index: true, element: withSuspense(<HomePage />) },
       { path: 'tienda', element: withSuspense(<StorePage />) },
       { path: 'servicios', element: withSuspense(<ServiciosPage />) },
+      { path: 'haiprotect', element: withSuspense(<HaiProtectPage />) },
       { path: 'alquiler', element: <Navigate to="/servicios" replace /> },
       {
         path: 'servicio-tecnico',

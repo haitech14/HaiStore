@@ -29,3 +29,7 @@ export function getProformasPath() {
 export function getStoreCategoriesPath() {
   return path.join(getServerDataDir(), 'store-categories.json');
 }
+
+export function getSupportTicketsPath() {
+  return path.join(getServerDataDir(), 'support-tickets.json');
+}

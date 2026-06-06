@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import {
   Calendar,
+  CheckSquare,
   Copy,
   FileText,
   MessageCircle,
@@ -32,6 +33,7 @@ import {
   getLeadContactDisplay,
   openLeadFollowUpWhatsApp,
 } from '@/lib/crm-lead-whatsapp-message';
+import { countPendingLeadTasks } from '@/lib/crm-lead-tasks';
 import {
   formatLeadCreatedShort,
   formatLeadDealValueDual,
@@ -73,6 +75,7 @@ export function CrmPipelineLeadCard({
   const contactDisplay = getLeadContactDisplay(lead);
   const celularDisplay = formatLeadCelularDisplay(lead);
   const hasCelular = getLeadCelularDigits(lead).replace(/\D/g, '').length >= 9;
+  const pendingTasks = countPendingLeadTasks(lead.tasks);
 
   const openEdit = () => onEdit(lead);
 
@@ -282,6 +285,12 @@ export function CrmPipelineLeadCard({
           {priorityLabel(lead.priority)}
         </span>
         <div className="flex flex-col items-end gap-0.5 text-[0.65rem] text-muted-foreground">
+          {pendingTasks > 0 ? (
+            <span className="inline-flex items-center gap-1 font-medium text-amber-700">
+              <CheckSquare className="size-3 shrink-0" aria-hidden="true" />
+              {pendingTasks} tarea{pendingTasks === 1 ? '' : 's'}
+            </span>
+          ) : null}
           <span className="inline-flex items-center gap-1">
             <Calendar className="size-3 shrink-0" aria-hidden="true" />
             {formatLeadCreatedShort(lead.createdAt)}

@@ -33,18 +33,20 @@ export interface MegaMenuNavColumn {
   items: MegaMenuNavItem[];
 }
 
-const SECTION_ROOT_IDS: Record<Exclude<MegaMenuSectionId, 'destacados'>, string[]> = {
+type MegaMenuCatalogSectionId = Exclude<MegaMenuSectionId, 'destacados' | 'servicios'>;
+
+const SECTION_ROOT_IDS: Record<MegaMenuCatalogSectionId, string[]> = {
   impresion: [
     'cat-multifuncionales',
     'cat-impresoras',
     '54e448b6-6573-4c4b-9d35-a9f7eaf1c829',
     'cat-escaneres',
   ],
-  suministros: ['cat-toner', 'cat-repuestos', 'cat-servicio-tecnico'],
+  suministros: ['cat-toner', 'cat-repuestos', 'cat-servicio-tecnico', 'cat-alquiler'],
   tecnologia: ['cat-tecnologia'],
 };
 
-const SECTION_TITLES: Record<Exclude<MegaMenuSectionId, 'destacados'>, string> = {
+const SECTION_TITLES: Record<MegaMenuCatalogSectionId, string> = {
   impresion: 'Impresión',
   suministros: 'Suministros',
   tecnologia: 'Tecnología',
@@ -64,6 +66,7 @@ const ICON_BY_SLUG: Record<string, LucideIcon> = {
   'toner-suministros': PackageOpen,
   toner: Droplets,
   'toner-originales': Droplets,
+  'toner-compatibles': Droplets,
   suministros: Package,
   'accesorios-toner': Package,
   accesorios: Headphones,
@@ -153,7 +156,7 @@ export function buildMegaMenuFromStoreCategories(
 ): { columns: MegaMenuNavColumn[]; sidebarSectionIds: MegaMenuSectionId[] } {
   const columns: MegaMenuNavColumn[] = [];
 
-  for (const sectionId of ['impresion', 'suministros', 'tecnologia'] as const) {
+  for (const sectionId of ['impresion', 'suministros', 'tecnologia'] as const satisfies readonly MegaMenuCatalogSectionId[]) {
     const items: MegaMenuNavItem[] = [];
 
     for (const rootId of SECTION_ROOT_IDS[sectionId]) {
@@ -173,6 +176,7 @@ export function buildMegaMenuFromStoreCategories(
 
   const sidebarSectionIds: MegaMenuSectionId[] = [
     ...columns.map((column) => column.id),
+    'servicios',
     'destacados',
   ];
 

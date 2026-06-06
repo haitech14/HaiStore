@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { LineChart as LineChartIcon, PieChart as PieChartIcon } from 'lucide-react';
 import { CartesianGrid, Cell, Line, LineChart, Pie, PieChart, XAxis, YAxis } from 'recharts';
 
+import { InventoryCategoryStockBar } from '@/components/inventory-category-stock-bar';
 import { AdminDashboardCard } from '@/components/admin/AdminDashboardCard';
 import { useAdminDateRange } from '@/context/admin-date-range-context';
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState';
@@ -228,25 +229,16 @@ export function AdminDashboard() {
             <ul className="space-y-4">
               {inventory.data.map((row) => (
                 <li key={row.category}>
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <span className="font-medium">{row.category}</span>
-                    <span className="text-muted-foreground">
-                      {row.total} prod. · {row.lowStock} bajo stock
-                    </span>
-                  </div>
-                  <div
-                    className="h-2 overflow-hidden rounded-full bg-muted"
-                    role="progressbar"
-                    aria-valuenow={row.healthyPercent}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label={`${row.category}: ${row.healthyPercent}% con stock saludable`}
-                  >
-                    <div
-                      className="h-full rounded-full bg-[hsl(var(--admin-accent))]"
-                      style={{ width: `${row.healthyPercent}%` }}
-                    />
-                  </div>
+                  <p className="mb-1 text-sm font-medium">{row.category}</p>
+                  <InventoryCategoryStockBar
+                    category={row.category}
+                    stats={{
+                      total: row.total,
+                      out: row.out,
+                      low: row.low,
+                      healthy: row.healthy,
+                    }}
+                  />
                 </li>
               ))}
             </ul>

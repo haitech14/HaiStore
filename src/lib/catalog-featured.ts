@@ -76,6 +76,7 @@ export function catalogRowToFeatured(
     name: product.name,
     category: product.category ?? '',
     brand: product.brand ?? null,
+    code: product.code?.trim() || null,
     price: publicPrice,
     isNew: meta?.isNew ?? row.is_new ?? false,
     rating: meta?.rating ?? 5,

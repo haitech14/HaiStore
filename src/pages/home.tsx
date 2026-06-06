@@ -1,4 +1,3 @@
-import { BusinessSolutionsSection } from '@/components/business-solutions-section';
 import { CategoryStrip } from '@/components/category-strip';
 import { ClientRecommendationsSection } from '@/components/client-recommendations-section';
 import { ClientsSection } from '@/components/clients-section';
@@ -26,7 +25,6 @@ export function HomePage() {
         <CatalogCategorySections sectionsConfig={HOME_CATALOG_EQUIPMENT_SECTIONS} />
       </div>
 
-      <BusinessSolutionsSection />
       <RentalCategoriesSection />
 
       <div className="container flex flex-col gap-8 pb-6 pt-2 sm:gap-10 sm:pb-8 sm:pt-4">
