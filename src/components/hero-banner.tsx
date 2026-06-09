@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import useEmblaCarousel from 'embla-carousel-react';
-import { BadgeCheck, ChevronLeft, ChevronRight, ShieldCheck, ShoppingCart } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ShieldCheck, ShoppingCart } from 'lucide-react';
 import { Icon } from '@mdi/react';
 import { mdiWhatsapp } from '@mdi/js';
 
@@ -22,28 +22,21 @@ function HeroSlideContent({ slide, index }: { slide: HomeHeroSlide; index: numbe
   const headingId = index === 0 ? 'hero-titulo' : `hero-titulo-${slide.id}`;
 
   return (
-    <div className="relative">
+    <div className="relative min-h-[min(62vh,32rem)] sm:min-h-[min(66vh,36rem)] lg:min-h-[min(70vh,40rem)]">
       <div
         aria-hidden="true"
         className={cn(
           'pointer-events-none absolute inset-0 bg-no-repeat',
-          slide.backgroundClass ??
-            'bg-cover bg-[center_65%] lg:bg-[length:58%_auto] lg:[background-position:62%_65%]',
+          slide.backgroundClass ?? 'bg-cover bg-[center_42%]',
         )}
         style={{ backgroundImage: `url('${slide.backgroundImage}')` }}
       />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-black/15"
+      />
 
-      <div className="container relative py-8 sm:py-10 lg:min-h-[380px] lg:py-12">
-        <div className="absolute right-3 top-3 z-10 hidden items-center gap-1.5 rounded-lg border border-red-600/40 bg-black/60 px-2.5 py-1.5 backdrop-blur-sm sm:flex">
-          <BadgeCheck className="size-5 shrink-0 text-red-500" aria-hidden="true" />
-          <div className="leading-tight">
-            <p className="whitespace-pre-line text-[0.65rem] font-bold uppercase tracking-wide text-white">
-              {slide.sealTitle}
-            </p>
-            <p className="text-[0.6rem] text-white/60">{slide.sealSubtitle}</p>
-          </div>
-        </div>
-
+      <div className="container relative flex min-h-[inherit] flex-col justify-center py-7 pb-14 sm:py-9 sm:pb-16 lg:py-10 lg:pb-20">
         <div className="relative flex max-w-2xl flex-col items-start gap-4">
         <span className="-mb-1 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 pb-0.5 pt-1 text-[0.65rem] font-bold uppercase leading-none tracking-[0.18em] text-white">
           <span className="size-1.5 rounded-full bg-white" aria-hidden="true" />
@@ -199,45 +192,55 @@ export function HeroBanner() {
       onMouseEnter={pauseAutoplay}
       onFocus={pauseAutoplay}
     >
-      <div ref={emblaRef} className="overflow-hidden">
-        <ul className="flex">
-          {homeHeroSlides.map((slide, index) => (
-            <li
-              key={slide.id}
-              className="relative min-w-0 flex-[0_0_100%]"
-              aria-hidden={selectedIndex !== index}
-            >
-              <HeroSlideContent slide={slide} index={index} />
-            </li>
-          ))}
-        </ul>
+      <div className="relative">
+        <div ref={emblaRef} className="overflow-hidden">
+          <ul className="flex">
+            {homeHeroSlides.map((slide, index) => (
+              <li
+                key={slide.id}
+                className="relative min-w-0 flex-[0_0_100%]"
+                aria-hidden={selectedIndex !== index}
+              >
+                <HeroSlideContent slide={slide} index={index} />
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            pauseAutoplay();
+            scrollPrev();
+          }}
+          aria-label="Slide anterior"
+          className="absolute left-2 top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 sm:flex lg:left-4"
+        >
+          <ChevronLeft className="size-5" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            pauseAutoplay();
+            scrollNext();
+          }}
+          aria-label="Siguiente slide"
+          className="absolute right-2 top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 sm:flex lg:right-4"
+        >
+          <ChevronRight className="size-5" aria-hidden="true" />
+        </button>
+
+        <BrandStrip
+          brands={printerBrands}
+          variant="dark"
+          showHeading={false}
+          overlay
+          className="absolute inset-x-0 bottom-0 z-10"
+        />
       </div>
 
-      <button
-        type="button"
-        onClick={() => {
-          pauseAutoplay();
-          scrollPrev();
-        }}
-        aria-label="Slide anterior"
-        className="absolute left-2 top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 sm:flex lg:left-4"
-      >
-        <ChevronLeft className="size-5" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          pauseAutoplay();
-          scrollNext();
-        }}
-        aria-label="Siguiente slide"
-        className="absolute right-2 top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 sm:flex lg:right-4"
-      >
-        <ChevronRight className="size-5" aria-hidden="true" />
-      </button>
-
       <div
-        className="absolute bottom-[4.5rem] left-1/2 z-20 flex -translate-x-1/2 gap-2 sm:bottom-[5rem]"
+        className="flex justify-center gap-2 border-t border-white/10 bg-black px-4 py-3"
         role="tablist"
         aria-label="Seleccionar slide del banner"
       >
@@ -259,8 +262,6 @@ export function HeroBanner() {
           />
         ))}
       </div>
-
-      <BrandStrip brands={printerBrands} variant="dark" showHeading={false} />
     </section>
   );
 }

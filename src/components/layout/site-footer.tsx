@@ -82,6 +82,7 @@ const quickLinks = [
   { label: 'Mis compras', to: '/mi-cuenta' },
   { label: 'Nuestras tiendas', to: '/contacto' },
   { label: 'Canales de atención', to: '/contacto' },
+  { label: 'Descargas', to: '/contacto?servicio=Descargas' },
 ] as const;
 
 function FooterColumn({

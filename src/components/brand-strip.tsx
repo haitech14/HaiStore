@@ -8,6 +8,8 @@ import {
   brands as defaultBrands,
   getBrandFilterHref,
   getBrandLogo,
+  getBrandLogoClassName,
+  getBrandLogoDimensions,
   getBrandName,
   getBrandSlug,
   type BrandItem,
@@ -23,6 +25,8 @@ interface BrandStripProps {
   showHeading?: boolean;
   linkable?: boolean;
   activeBrandSlug?: string | null;
+  /** Superpuesto sobre el hero (sin barra sólida inferior). */
+  overlay?: boolean;
   className?: string;
 }
 
@@ -39,6 +43,8 @@ function BrandLogoCard({
 }) {
   const name = getBrandName(brand);
   const logo = getBrandLogo(brand);
+  const logoClassName = getBrandLogoClassName(brand);
+  const logoDimensions = getBrandLogoDimensions(brand);
 
   const content = (
     <>
@@ -46,8 +52,10 @@ function BrandLogoCard({
         <img
           src={logo}
           alt=""
+          width={logoDimensions.width}
+          height={logoDimensions.height}
           className={cn(
-            'max-h-5 w-auto max-w-full object-contain sm:max-h-6',
+            logoClassName,
             isDark ? 'opacity-80 transition-opacity group-hover:opacity-100' : '',
           )}
           loading="lazy"
@@ -124,11 +132,13 @@ function BrandMarqueeInteractive({
   isDark,
   linkable,
   activeBrandSlug,
+  overlay = false,
 }: {
   brands: BrandItem[];
   isDark: boolean;
   linkable: boolean;
   activeBrandSlug?: string | null;
+  overlay?: boolean;
 }) {
   const [emblaRef] = useEmblaCarousel(
     {
@@ -150,14 +160,24 @@ function BrandMarqueeInteractive({
   );
 
   return (
-    <div className="container py-2">
+    <div className={cn('container', overlay ? 'py-1.5 sm:py-2' : 'py-2')}>
       <div className="relative mx-auto overflow-hidden">
         <div
-          className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-black/80 to-transparent sm:w-16"
+          className={cn(
+            'pointer-events-none absolute inset-y-0 left-0 z-10 w-10 sm:w-16',
+            overlay
+              ? 'bg-gradient-to-r from-black/70 to-transparent'
+              : 'bg-gradient-to-r from-black/80 to-transparent',
+          )}
           aria-hidden="true"
         />
         <div
-          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-black/80 to-transparent sm:w-16"
+          className={cn(
+            'pointer-events-none absolute inset-y-0 right-0 z-10 w-10 sm:w-16',
+            overlay
+              ? 'bg-gradient-to-l from-black/70 to-transparent'
+              : 'bg-gradient-to-l from-black/80 to-transparent',
+          )}
           aria-hidden="true"
         />
 
@@ -197,11 +217,13 @@ function BrandMarquee({
   isDark,
   linkable,
   activeBrandSlug,
+  overlay = false,
 }: {
   brands: BrandItem[];
   isDark: boolean;
   linkable: boolean;
   activeBrandSlug?: string | null;
+  overlay?: boolean;
 }) {
   const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
 
@@ -231,6 +253,7 @@ function BrandMarquee({
       isDark={isDark}
       linkable={linkable}
       activeBrandSlug={activeSlug}
+      overlay={overlay}
     />
   );
 }
@@ -241,6 +264,7 @@ export function BrandStrip({
   showHeading = true,
   linkable = true,
   activeBrandSlug = null,
+  overlay = false,
   className,
 }: BrandStripProps) {
   const isDark = variant === 'dark' || variant === 'filter';
@@ -254,7 +278,10 @@ export function BrandStrip({
         showHeading ? undefined : isFilterRow ? 'Filtrar productos por marca' : 'Marcas disponibles'
       }
       className={cn(
-        variant === 'dark' && 'border-t border-white/10 bg-black/70 backdrop-blur-sm',
+        variant === 'dark' &&
+          !overlay &&
+          'border-t border-white/10 bg-black/70 backdrop-blur-sm',
+        overlay && 'bg-gradient-to-t from-black/85 via-black/45 to-transparent backdrop-blur-[2px]',
         isFilterRow &&
           'rounded-xl bg-zinc-950 px-3 py-4 shadow-sm ring-1 ring-white/10 sm:px-4 sm:py-5',
         className,
@@ -275,6 +302,7 @@ export function BrandStrip({
           isDark={isDark}
           linkable={linkable}
           activeBrandSlug={activeBrandSlug}
+          overlay={overlay}
         />
       ) : (
         <ul

@@ -21,6 +21,15 @@ import {
   HAIBOT_QUICK_ACTIONS,
   type HaibotQuickAction,
 } from '@/lib/haibot-quick-actions';
+
+const SEARCH_MODE_LABELS: Record<HaibotSearchFocus, string> = {
+  all: 'buscar',
+  price: 'precio',
+  stock: 'stock',
+};
+
+const HAIBOT_SEARCH_ACTIONS = HAIBOT_QUICK_ACTIONS.filter((action) => action.kind === 'search');
+const HAIBOT_SECONDARY_ACTIONS = HAIBOT_QUICK_ACTIONS.filter((action) => action.kind !== 'search');
 import { useProducts } from '@/hooks/use-products';
 import { cn } from '@/lib/utils';
 
@@ -154,12 +163,7 @@ export function HaibotChatPanel({ open, onClose }: HaibotChatPanelProps) {
       return;
     }
 
-    setSearchFocus(action.focus);
-    setMessages((prev) => [
-      ...prev,
-      createHaibotMessage('user', getHaibotQuickActionUserMessage(action.id)),
-      createHaibotMessage('assistant', getHaibotQuickActionReply(action.id)),
-    ]);
+    setSearchFocus((current) => (current === action.focus ? null : action.focus));
     inputRef.current?.focus();
   };
 
@@ -178,7 +182,7 @@ export function HaibotChatPanel({ open, onClose }: HaibotChatPanelProps) {
             {isThinking
               ? 'escribiendo…'
               : searchFocus
-                ? 'modo buscador · inventario'
+                ? `modo ${SEARCH_MODE_LABELS[searchFocus]} · inventario`
                 : 'en línea · asistente HaiStore'}
           </p>
         </div>
@@ -212,38 +216,67 @@ export function HaibotChatPanel({ open, onClose }: HaibotChatPanelProps) {
 
       <div className="shrink-0 bg-[#f0f2f5] px-2 pb-2 pt-2">
         <div
-          className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="mb-2 overflow-x-auto rounded-xl bg-[#e9edef] p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="toolbar"
           aria-label="Acciones rápidas"
         >
-          {HAIBOT_QUICK_ACTIONS.map((action) => {
-            const Icon = action.icon;
-            const isSearchActive =
-              action.kind === 'search' && searchFocus === action.focus;
-            const isWhatsapp = action.accent === 'whatsapp';
+          <div className="flex min-w-min items-stretch gap-1">
+            <div className="flex gap-1" role="radiogroup" aria-label="Modo de consulta">
+              {HAIBOT_SEARCH_ACTIONS.map((action) => {
+                const Icon = action.icon;
+                const isSelected = searchFocus === action.focus;
 
-            return (
-              <button
-                key={action.id}
-                type="button"
-                disabled={isThinking}
-                onClick={() => handleQuickAction(action)}
-                className={cn(
-                  'inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1.5 text-[0.7rem] font-semibold transition-colors',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#075e54] focus-visible:ring-offset-1',
-                  'disabled:pointer-events-none disabled:opacity-50',
-                  isWhatsapp
-                    ? 'border-[#25d366]/40 bg-[#dcf8c6] text-[#075e54] hover:bg-[#c8f0b4]'
-                    : isSearchActive
-                      ? 'border-[#075e54] bg-[#075e54] text-white'
-                      : 'border-[#d1d7db] bg-white text-[#3b4a54] hover:bg-[#e9edef]',
-                )}
-              >
-                <Icon className="size-3.5 shrink-0" aria-hidden="true" />
-                {action.label}
-              </button>
-            );
-          })}
+                return (
+                  <button
+                    key={action.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    disabled={isThinking}
+                    onClick={() => handleQuickAction(action)}
+                    className={cn(
+                      'inline-flex min-h-10 min-w-[4.5rem] items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-[0.7rem] font-semibold transition-all',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#075e54] focus-visible:ring-offset-1',
+                      'disabled:pointer-events-none disabled:opacity-50',
+                      isSelected
+                        ? 'bg-white text-[#075e54] shadow-sm ring-1 ring-[#075e54]/20'
+                        : 'text-[#54656f] hover:bg-white/70 hover:text-[#3b4a54]',
+                    )}
+                  >
+                    <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+                    {action.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div aria-hidden="true" className="my-1.5 w-px shrink-0 self-stretch bg-[#cfd4d8]" />
+
+            {HAIBOT_SECONDARY_ACTIONS.map((action) => {
+              const Icon = action.icon;
+              const isWhatsapp = action.accent === 'whatsapp';
+
+              return (
+                <button
+                  key={action.id}
+                  type="button"
+                  disabled={isThinking}
+                  onClick={() => handleQuickAction(action)}
+                  className={cn(
+                    'inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-[0.7rem] font-semibold transition-all',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#075e54] focus-visible:ring-offset-1',
+                    'disabled:pointer-events-none disabled:opacity-50',
+                    isWhatsapp
+                      ? 'bg-[#dcf8c6] text-[#075e54] ring-1 ring-[#25d366]/25 hover:bg-[#c8f0b4]'
+                      : 'text-[#54656f] hover:bg-white/70 hover:text-[#3b4a54]',
+                  )}
+                >
+                  <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+                  {action.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <form id={formId} onSubmit={handleSubmit} className="flex items-end gap-2">

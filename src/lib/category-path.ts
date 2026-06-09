@@ -11,6 +11,11 @@ function categoryQueryString(subSlug?: string | null, condition?: ProductConditi
   return query ? `?${query}` : '';
 }
 
+/** Entrada desde vitrinas (home, mega menú): hero + subcategorías visibles al cargar. */
+export function categoryLandingPath(slug: string): string {
+  return `/categoria/${slug}`;
+}
+
 export function categoryPath(slug: string, subSlug?: string | null): string {
   return `/categoria/${slug}${categoryQueryString(subSlug)}#${CATEGORY_PRODUCTS_ID}`;
 }

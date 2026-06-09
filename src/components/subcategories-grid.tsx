@@ -1,11 +1,8 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-import { SubcategoryAutoImage } from '@/components/subcategory-auto-image';
-import { Badge } from '@/components/ui/badge';
+import { SubcategoryTabs } from '@/components/subcategory-tabs';
 import { scrollToCategoryProducts } from '@/lib/category-path';
-import { resolveSubcategoryImage } from '@/lib/subcategory-product-image';
-import { cn } from '@/lib/utils';
 import type { Product } from '@/types/product';
 import type { StoreCategoryTreeNode } from '@/types/store-category';
 
@@ -15,135 +12,38 @@ interface SubcategoriesGridProps {
   subcategories: StoreCategoryTreeNode[];
   activeSubSlug: string | null;
   products?: Product[];
+  /** Si se define, no usa query params de la URL (p. ej. panel en inicio). */
+  onSelectSub?: (subSlug: string | null) => void;
 }
 
-const cardButtonClass =
-  'flex h-full w-full flex-col overflow-hidden rounded-md border bg-card text-left shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500';
-
 export function SubcategoriesGrid({
-  parentSlug,
-  parentImage,
   subcategories,
   activeSubSlug,
-  products = [],
+  onSelectSub,
 }: SubcategoriesGridProps) {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const subcategoryImages = useMemo(() => {
-    const map = new Map<string, string | null>();
-    for (const sub of subcategories) {
-      map.set(
-        sub.id,
-        resolveSubcategoryImage(
-          {
-            name: sub.name,
-            slug: sub.slug,
-            image: sub.image ?? null,
-            inventoryLabels: sub.inventoryLabels,
-          },
-          products,
-          parentImage,
-        ),
-      );
-    }
-    return map;
-  }, [subcategories, products, parentImage]);
-
   const selectSubcategory = useCallback(
     (subSlug: string | null) => {
+      if (onSelectSub) {
+        onSelectSub(subSlug);
+        return;
+      }
+
       const next = new URLSearchParams(searchParams);
       if (subSlug) next.set('sub', subSlug);
       else next.delete('sub');
       setSearchParams(next, { replace: true, preventScrollReset: true });
       requestAnimationFrame(() => scrollToCategoryProducts('smooth'));
     },
-    [searchParams, setSearchParams],
+    [onSelectSub, searchParams, setSearchParams],
   );
 
-  if (subcategories.length === 0) return null;
-
   return (
-    <section aria-labelledby="subcategorias-titulo">
-      <h2
-        id="subcategorias-titulo"
-        className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-      >
-        Subcategorías
-      </h2>
-
-      <ul
-        className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-2.5 md:grid-cols-5 lg:grid-cols-6"
-        role="list"
-      >
-        <li>
-          <button
-            type="button"
-            aria-pressed={activeSubSlug === null}
-            onClick={() => selectSubcategory(null)}
-            className={cn(
-              cardButtonClass,
-              'hover:border-red-600/40',
-              activeSubSlug === null
-                ? 'border-red-600 ring-1 ring-red-600/25'
-                : 'border-border/80',
-            )}
-          >
-            <SubcategoryAutoImage
-              name="Ver todo"
-              slug={`${parentSlug}-all`}
-              image={parentImage ?? null}
-              compact
-            />
-            <div className="border-t border-border/60 px-2 py-1.5">
-              <p className="text-[0.6rem] font-bold uppercase leading-tight text-foreground sm:text-[0.65rem]">
-                Ver todo
-              </p>
-              <p className="text-[0.55rem] text-muted-foreground">Todos</p>
-            </div>
-          </button>
-        </li>
-
-        {subcategories.map((sub) => {
-          const isActive = activeSubSlug === sub.slug;
-          return (
-            <li key={sub.id}>
-              <button
-                type="button"
-                aria-pressed={isActive}
-                onClick={() => selectSubcategory(sub.slug)}
-                className={cn(
-                  cardButtonClass,
-                  'hover:-translate-y-0.5 hover:border-red-600/30 hover:shadow-md',
-                  isActive
-                    ? 'border-red-600 ring-1 ring-red-600/25'
-                    : 'border-border/80',
-                )}
-              >
-                <span className="block h-0.5 bg-red-600" aria-hidden="true" />
-                <SubcategoryAutoImage
-                  name={sub.name}
-                  slug={sub.slug}
-                  image={subcategoryImages.get(sub.id) ?? sub.image ?? null}
-                  compact
-                />
-                <div className="flex items-center justify-between gap-1 border-t border-border/60 px-2 py-1.5">
-                  <p className="line-clamp-2 text-[0.6rem] font-bold uppercase leading-tight text-foreground sm:text-[0.65rem]">
-                    {sub.name}
-                  </p>
-                  {(sub.productCount ?? 0) > 0 && (
-                    <Badge
-                      variant="secondary"
-                      className="h-4 shrink-0 px-1 text-[0.55rem] leading-none"
-                    >
-                      {sub.productCount}
-                    </Badge>
-                  )}
-                </div>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+    <SubcategoryTabs
+      subcategories={subcategories}
+      activeSubSlug={activeSubSlug}
+      onSelect={selectSubcategory}
+    />
   );
 }

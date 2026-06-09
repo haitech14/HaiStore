@@ -30,28 +30,9 @@ export const HOME_CATALOG_EQUIPMENT_SECTIONS: HomeCatalogSectionConfig[] = [
   },
 ];
 
-/** Debajo de soluciones B2B / servicio técnico. */
-export const HOME_CATALOG_SUPPLIES_SECTIONS: HomeCatalogSectionConfig[] = [
-  {
-    id: 'toner-suministros',
-    title: 'Toner y Suministros',
-    subtitle: 'Consumibles originales y compatibles para tu equipo',
-    categoryPathSlug: 'toner-suministros',
-    inventoryCategorySlugs: ['toner-suministros'],
-  },
-  {
-    id: 'repuestos',
-    title: 'Repuestos',
-    subtitle: 'Partes y componentes para impresoras',
-    categoryPathSlug: 'repuestos',
-    inventoryCategorySlugs: ['repuestos'],
-  },
-];
-
 /** Orden completo (p. ej. rutas o documentación). */
 export const HOME_CATALOG_SECTIONS: HomeCatalogSectionConfig[] = [
   ...HOME_CATALOG_EQUIPMENT_SECTIONS,
-  ...HOME_CATALOG_SUPPLIES_SECTIONS,
 ];
 
 export function resolveHomeSectionInventoryLabels(section: HomeCatalogSectionConfig): string[] {

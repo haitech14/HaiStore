@@ -82,6 +82,8 @@ export const homeHeroSlides: HomeHeroSlide[] = [
     secondaryCta: { label: 'Ver catálogo', href: '/tienda' },
     footerNote: 'Garantía de fábrica · Compra segura',
     backgroundImage: '/hero-bg.png',
+    backgroundClass:
+      'bg-[length:168%_auto] bg-[54%_40%] sm:bg-[length:148%_auto] lg:bg-[length:128%_auto] lg:bg-[50%_38%]',
     sealTitle: 'Distribuidores\nautorizados',
     sealSubtitle: 'Consumibles certificados',
   },

@@ -105,10 +105,10 @@ export function ClientRecommendationsSection() {
   return (
     <section
       aria-labelledby="clientes-recomiendan-titulo"
-      className="relative overflow-hidden border-t border-border/60 bg-muted/30 py-12 sm:py-16"
+      className="relative overflow-hidden border-t border-border/60 bg-muted/30 py-6 sm:py-8"
     >
       <div className="container relative">
-        <header className="mx-auto mb-6 max-w-3xl text-center sm:mb-8">
+        <header className="mx-auto mb-4 max-w-3xl text-center sm:mb-5">
           <div className="flex items-center justify-center gap-3 sm:gap-4">
             <span className="h-px w-8 bg-sky-400 sm:w-12" aria-hidden="true" />
             <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-sky-500 sm:text-xs">
@@ -119,12 +119,12 @@ export function ClientRecommendationsSection() {
 
           <h2
             id="clientes-recomiendan-titulo"
-            className="mt-4 text-balance text-2xl font-bold tracking-tight text-[#0f1f3d] sm:text-3xl lg:text-[2rem]"
+            className="mt-2.5 text-balance text-2xl font-bold tracking-tight text-[#0f1f3d] sm:mt-3 sm:text-3xl lg:text-[2rem]"
           >
             Nuestros clientes nos recomiendan
           </h2>
 
-          <p className="mx-auto mt-4 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p className="mx-auto mt-2 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:mt-2.5 sm:text-base">
             Experiencias de compra, entrega y soporte. Toca una foto para verla en grande.
           </p>
         </header>
@@ -162,7 +162,7 @@ export function ClientRecommendationsSection() {
 
         {scrollSnaps.length > 1 ? (
           <div
-            className="mt-4 flex items-center justify-center gap-1.5"
+            className="mt-3 flex items-center justify-center gap-1.5"
             role="tablist"
             aria-label="Paginación de testimonios"
           >

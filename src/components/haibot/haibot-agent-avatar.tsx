@@ -5,19 +5,27 @@ import { HAIBOT_AGENT_AVATAR, HAIBOT_AGENT_AVATAR_ALT } from '@/data/haibot-agen
 import { cn } from '@/lib/utils';
 
 interface HaibotAgentAvatarProps {
-  size?: 'sm' | 'lg';
+  size?: 'xs' | 'sm' | 'lg';
   showWhatsAppBadge?: boolean;
   className?: string;
 }
 
 const sizeClasses = {
+  xs: 'size-8',
   sm: 'size-10',
   lg: 'size-14',
 } as const;
 
 const badgeSizeClasses = {
+  xs: 'size-3.5 [&_svg]:scale-[0.65]',
   sm: 'size-4 [&_svg]:scale-75',
   lg: 'size-5',
+} as const;
+
+const badgeIconScale = {
+  xs: 0.42,
+  sm: 0.55,
+  lg: 0.55,
 } as const;
 
 export function HaibotAgentAvatar({
@@ -43,7 +51,7 @@ export function HaibotAgentAvatar({
             badgeSizeClasses[size],
           )}
         >
-          <Icon path={mdiWhatsapp} size={0.55} />
+          <Icon path={mdiWhatsapp} size={badgeIconScale[size]} />
         </span>
       ) : null}
     </span>

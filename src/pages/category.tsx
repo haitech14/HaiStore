@@ -50,6 +50,7 @@ import {
   CATEGORY_HERO_ID,
   CATEGORY_PRODUCTS_ID,
   scrollToCategoryHero,
+  scrollToCategoryProducts,
 } from '@/lib/category-path';
 import {
   findRentalCategoryBySlug,
@@ -111,13 +112,6 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
   const isInventorySearch = searchQuery.length >= MIN_PRODUCT_SEARCH_LENGTH;
   const estadoFilter = useCategoryConditionFilter();
 
-  if (slug === 'alquiler' && !catalogSlug) {
-    return <Navigate to="/servicios" replace />;
-  }
-  if (slug === 'servicio-tecnico' && !catalogSlug) {
-    return <Navigate to="/servicios?seccion=servicio-tecnico" replace />;
-  }
-
   const category = slug ? findCategoryBySlug(slug) : undefined;
   const catalogFamily = slug ? catalogFamilyForCategorySlug(slug) : null;
   const { data: categoryTreeData } = useStoreCategoriesTree();
@@ -129,7 +123,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
   const [priceMax, setPriceMax] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<CategorySortValue>('price-asc');
   const [viewMode, setViewMode] = useState<CatalogViewMode>('table');
-  const [gridColumns, setGridColumns] = useState<CatalogGridColumns>(4);
+  const [gridColumns, setGridColumns] = useState<CatalogGridColumns>(5);
   const [filtersPanelOpen, setFiltersPanelOpen] = useState(true);
   const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState('');
@@ -318,15 +312,24 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
 
   useLayoutEffect(() => {
     const behavior: ScrollBehavior = location.hash ? 'smooth' : 'auto';
+    const hashId = location.hash.replace(/^#/, '');
 
-    const focusHero = () => scrollToCategoryHero(behavior);
-    focusHero();
-    const retry = window.setTimeout(focusHero, 150);
+    const scrollToTarget = () => {
+      if (hashId === CATEGORY_PRODUCTS_ID) {
+        scrollToCategoryProducts(behavior);
+        return;
+      }
+      scrollToCategoryHero(behavior);
+    };
+
+    scrollToTarget();
+    const retry = window.setTimeout(scrollToTarget, 150);
     return () => window.clearTimeout(retry);
-  }, [slug, location.hash, location.pathname]);
+  }, [slug, location.hash, location.pathname, isLoading]);
 
   const hasSubcategoryHeroes =
-    Boolean(storeCategory?.children.length) && !isRentalCategory && !isInventorySearch;
+    Boolean(storeCategory?.children.length) && !isInventorySearch;
+  const showProductCatalog = !isRentalCategory || hasSubcategoryHeroes;
 
   const parentHeroContent = useMemo(() => {
     if (!category) return null;
@@ -665,12 +668,12 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
         <div
           className={cn(
             'grid gap-5 lg:gap-6',
-            !isRentalCategory && filtersPanelOpen
+            showProductCatalog && filtersPanelOpen
               ? 'lg:grid-cols-[minmax(17rem,20rem)_minmax(0,1fr)]'
               : 'lg:grid-cols-1',
           )}
         >
-          {!isRentalCategory ? (
+          {showProductCatalog ? (
           <aside
             ref={filtersAsideRef}
             className={cn(
@@ -687,7 +690,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
           </aside>
           ) : null}
 
-          {!isRentalCategory ? (
+          {showProductCatalog ? (
           <Sheet open={filtersSheetOpen} onOpenChange={setFiltersSheetOpen}>
             <SheetContent
               side="left"
@@ -713,13 +716,13 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
               {isRentalCategory ? 'Alquiler de equipos' : 'Productos'}
             </span>
 
-            {isRentalCategory ? (
+            {isRentalCategory && !hasSubcategoryHeroes ? (
               <div className="mb-8">
                 <RentalCategoryGrid activeSubSlug={subSlug} />
               </div>
             ) : null}
 
-            {!isRentalCategory ? (
+            {showProductCatalog ? (
             <>
             <CategoryCatalogToolbar
               productCount={filteredProducts.length}
@@ -770,13 +773,13 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
             </>
             ) : null}
 
-            {!isRentalCategory && isError && (
+            {showProductCatalog && isError && (
               <p role="alert" className="text-destructive">
                 No se pudieron cargar los productos. Inténtalo de nuevo más tarde.
               </p>
             )}
 
-            {!isRentalCategory && isLoading ? (
+            {showProductCatalog && isLoading ? (
               viewMode === 'table' ? (
                 <CategoryProductsTableSkeleton />
               ) : (
@@ -793,13 +796,13 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
                   ))}
                 </div>
               )
-            ) : !isRentalCategory && viewMode === 'table' ? (
+            ) : showProductCatalog && viewMode === 'table' ? (
               <CategoryProductsTable
                 products={filteredProducts}
                 defaultCategory={defaultCategoryForNewProduct}
                 bindOpenCreate={bindOpenCreate}
               />
-            ) : !isRentalCategory && filteredProducts.length === 0 ? (
+            ) : showProductCatalog && filteredProducts.length === 0 ? (
               <div className="rounded-lg border border-dashed px-6 py-10 text-center">
                 <p className="font-medium text-foreground">
                   No hay productos en «{pageTitle}» por ahora.
@@ -808,7 +811,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
                   <Link to="/tienda">Explorar todo el catálogo</Link>
                 </Button>
               </div>
-            ) : !isRentalCategory ? (
+            ) : showProductCatalog ? (
               <div
                 className={cn(
                   viewMode === 'grid'

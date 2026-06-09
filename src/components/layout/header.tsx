@@ -7,31 +7,48 @@ import {
   X,
   Mail,
   MapPin,
-  Download,
   Phone,
 } from 'lucide-react';
 import { Icon } from '@mdi/react';
-import { mdiWhatsapp, mdiFacebook, mdiInstagram, mdiYoutube } from '@mdi/js';
+import { mdiWhatsapp } from '@mdi/js';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AccountDropdown } from '@/components/layout/account-dropdown';
-import { CategoriesMegaMenu } from '@/components/layout/categories-mega-menu';
 import { SiteSearchForm } from '@/components/layout/site-search-form';
 import { useCart } from '@/context/cart-context';
 import { useWishlist } from '@/context/wishlist-context';
 import { cn } from '@/lib/utils';
 
-const homeItem = { to: '/', label: 'Inicio', end: true } as const;
+type MainNavItem = {
+  to: string;
+  label: string;
+  end?: boolean;
+  matchActive?: (location: { pathname: string; search: string }) => boolean;
+};
 
-const navItems = [
-  { to: '/tienda', label: 'Tienda', end: false },
-  { to: '/servicios', label: 'Servicios', end: false },
-  { to: '/foro', label: 'Foro', end: false },
-  { to: '/contacto', label: 'Contacto', end: false },
-] as const;
+const homeItem: MainNavItem = { to: '/', label: 'Inicio', end: true };
 
-const distribuidoresHref = '/contacto?servicio=Programa%20distribuidores';
+const navItems: MainNavItem[] = [
+  { to: '/tienda', label: 'Tienda' },
+  {
+    to: '/servicios',
+    label: 'Alquiler',
+    matchActive: ({ pathname, search }) => {
+      if (pathname !== '/servicios') return false;
+      const seccion = new URLSearchParams(search).get('seccion');
+      return !seccion || seccion === 'alquiler';
+    },
+  },
+  {
+    to: '/servicios?seccion=servicio-tecnico',
+    label: 'Servicio técnico',
+    matchActive: ({ pathname, search }) =>
+      pathname === '/servicios' &&
+      new URLSearchParams(search).get('seccion') === 'servicio-tecnico',
+  },
+  { to: '/contacto', label: 'Contacto' },
+];
 
 const utilityLinksLeft = [
   {
@@ -60,15 +77,7 @@ const utilityLinksLeft = [
   },
 ] as const;
 
-const downloadsLink = {
-  label: 'Descargas',
-  href: '/contacto',
-  icon: 'download' as const,
-} as const;
-
-type UtilityIconType =
-  | (typeof utilityLinksLeft)[number]['icon']
-  | typeof downloadsLink.icon;
+type UtilityIconType = (typeof utilityLinksLeft)[number]['icon'];
 
 function UtilityIcon({ type }: { type: UtilityIconType }) {
   const className = 'size-4 shrink-0 text-current';
@@ -82,20 +91,8 @@ function UtilityIcon({ type }: { type: UtilityIconType }) {
       return <Mail className={className} aria-hidden="true" />;
     case 'location':
       return <MapPin className={className} aria-hidden="true" />;
-    case 'download':
-      return <Download className={className} aria-hidden="true" />;
   }
 }
-
-const TIKTOK_PATH =
-  'M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z';
-
-const socialLinks = [
-  { label: 'Facebook', href: 'https://facebook.com/', path: mdiFacebook },
-  { label: 'Instagram', href: 'https://instagram.com/', path: mdiInstagram },
-  { label: 'TikTok', href: 'https://tiktok.com/', path: TIKTOK_PATH },
-  { label: 'YouTube', href: 'https://youtube.com/', path: mdiYoutube },
-] as const;
 
 const utilityLinkClass =
   'flex shrink-0 items-center gap-1.5 whitespace-nowrap text-neutral-400 transition-colors hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/50';
@@ -132,13 +129,27 @@ function UtilityBarLink({
   );
 }
 
-const desktopLinkClass = ({ isActive }: { isActive: boolean }) =>
-  cn(
+function desktopLinkClass(isActive: boolean) {
+  return cn(
     'relative inline-flex h-10 items-center px-3 text-sm font-medium transition-colors hover:bg-red-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50',
     isActive
       ? 'font-semibold text-white after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-white'
       : 'text-white/90',
   );
+}
+
+function mainNavLinkProps(item: MainNavItem) {
+  if (!item.matchActive) {
+    return { to: item.to, end: item.end ?? false };
+  }
+
+  return {
+    to: item.to,
+    end: item.end ?? false,
+    isActive: (_match: unknown, location: { pathname: string; search: string }) =>
+      item.matchActive!(location),
+  };
+}
 
 function favoritesSubtitle(count: number): string {
   if (count === 0) return 'Vacío';
@@ -154,42 +165,16 @@ export function Header() {
     <header className="w-full">
       {/* Barra superior de utilidades */}
       <div className="bg-black text-neutral-400">
-        <div className="container flex h-9 items-center justify-between gap-4 overflow-x-auto text-xs sm:gap-6 sm:overflow-visible">
-          <div className="flex items-center gap-4 sm:gap-6">
-            {utilityLinksLeft.map((item) => (
-              <UtilityBarLink
-                key={item.label}
-                label={item.label}
-                href={item.href}
-                icon={item.icon}
-                external={item.external}
-              />
-            ))}
-          </div>
-
-          <div className="flex shrink-0 items-center gap-4 sm:gap-6">
-            <ul aria-label="Redes sociales" className="flex items-center gap-2 sm:gap-2.5">
-              {socialLinks.map((social) => (
-                <li key={social.label}>
-                  <a
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={social.label}
-                    className="flex size-7 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-white/10 hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/50"
-                  >
-                    <Icon path={social.path} size={0.65} aria-hidden="true" />
-                  </a>
-                </li>
-              ))}
-            </ul>
-
+        <div className="container flex h-9 items-center gap-4 overflow-x-auto text-xs sm:gap-6 sm:overflow-visible">
+          {utilityLinksLeft.map((item) => (
             <UtilityBarLink
-              label={downloadsLink.label}
-              href={downloadsLink.href}
-              icon={downloadsLink.icon}
+              key={item.label}
+              label={item.label}
+              href={item.href}
+              icon={item.icon}
+              external={item.external}
             />
-          </div>
+          ))}
         </div>
       </div>
 
@@ -293,33 +278,27 @@ export function Header() {
         aria-label="Navegación principal"
         className="hidden border-0 bg-red-600 lg:block"
       >
-        <div className="container flex h-10 items-stretch gap-2">
-          <CategoriesMegaMenu />
-
+        <div className="container flex h-10 items-stretch">
           <ul className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
             <li className="shrink-0">
-              <NavLink to={homeItem.to} end={homeItem.end} className={desktopLinkClass}>
+              <NavLink
+                {...mainNavLinkProps(homeItem)}
+                className={({ isActive }) => desktopLinkClass(isActive)}
+              >
                 {homeItem.label}
               </NavLink>
             </li>
             {navItems.map((item) => (
               <li key={item.label} className="shrink-0">
-                <NavLink to={item.to} end={item.end} className={desktopLinkClass}>
+                <NavLink
+                  {...mainNavLinkProps(item)}
+                  className={({ isActive }) => desktopLinkClass(isActive)}
+                >
                   {item.label}
                 </NavLink>
               </li>
             ))}
           </ul>
-
-          <Link
-            to={distribuidoresHref}
-            className={cn(
-              'ml-auto inline-flex h-10 shrink-0 items-center rounded-md border border-white/80 px-3 text-sm font-semibold text-white',
-              'transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50',
-            )}
-          >
-            Distribuidores
-          </Link>
         </div>
       </nav>
 
@@ -333,8 +312,7 @@ export function Header() {
                 {[homeItem, ...navItems].map((item) => (
                   <li key={item.label}>
                     <NavLink
-                      to={item.to}
-                      end={item.end}
+                      {...mainNavLinkProps(item)}
                       onClick={() => setMobileOpen(false)}
                       className={({ isActive }) =>
                         cn(
@@ -347,15 +325,6 @@ export function Header() {
                     </NavLink>
                   </li>
                 ))}
-                <li>
-                  <Link
-                    to={distribuidoresHref}
-                    onClick={() => setMobileOpen(false)}
-                    className="block rounded-md border border-red-600/30 px-3 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
-                  >
-                    Distribuidores
-                  </Link>
-                </li>
               </ul>
             </nav>
           </div>

@@ -20,14 +20,14 @@ import {
 } from '@/components/ui/table';
 import { useProductCompare } from '@/context/product-compare-context';
 import {
-  attributeValueForProduct,
-  collectCompareAttributeRows,
+  COMPARE_SPEC_ROWS,
+  getCompareSpecValue,
+  type CompareSpecRowKey,
 } from '@/lib/compare-product';
 import { productPath } from '@/lib/product-path';
 
 export function ProductCompareDialog() {
   const { items, compareOpen, setCompareOpen, remove, clear } = useProductCompare();
-  const attributeRows = collectCompareAttributeRows(items);
 
   return (
     <Dialog open={compareOpen} onOpenChange={setCompareOpen}>
@@ -94,44 +94,18 @@ export function ProductCompareDialog() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow>
-                  <TableCell className="sticky left-0 z-10 bg-background font-medium">
-                    Precio
-                  </TableCell>
-                  {items.map((item) => (
-                    <TableCell key={item.id} className="text-center font-semibold">
-                      <DualPrice usd={item.price} className="justify-center" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-                <TableRow>
-                  <TableCell className="sticky left-0 z-10 bg-background font-medium">
-                    Categoría
-                  </TableCell>
-                  {items.map((item) => (
-                    <TableCell key={item.id} className="text-center text-sm">
-                      {item.category || '—'}
-                    </TableCell>
-                  ))}
-                </TableRow>
-                <TableRow>
-                  <TableCell className="sticky left-0 z-10 bg-background font-medium">
-                    Marca
-                  </TableCell>
-                  {items.map((item) => (
-                    <TableCell key={item.id} className="text-center text-sm">
-                      {item.brand || '—'}
-                    </TableCell>
-                  ))}
-                </TableRow>
-                {attributeRows.map((row) => (
+                {COMPARE_SPEC_ROWS.map((row) => (
                   <TableRow key={row.key}>
                     <TableCell className="sticky left-0 z-10 bg-background font-medium">
                       {row.label}
                     </TableCell>
                     {items.map((item) => (
                       <TableCell key={item.id} className="text-center text-sm">
-                        {attributeValueForProduct(item, row.key)}
+                        {row.key === 'precio' ? (
+                          <DualPrice usd={item.price} className="justify-center font-semibold" />
+                        ) : (
+                          getCompareSpecValue(item, row.key as CompareSpecRowKey)
+                        )}
                       </TableCell>
                     ))}
                   </TableRow>
