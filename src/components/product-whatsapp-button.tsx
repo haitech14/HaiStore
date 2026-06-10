@@ -15,12 +15,15 @@ interface ProductWhatsAppButtonProps {
   className?: string;
   /** Evita activar el enlace padre de la tarjeta. */
   stopPropagation?: boolean;
+  /** Muestra texto junto al icono (p. ej. «Cotizar ahora»). */
+  label?: string;
 }
 
 export function ProductWhatsAppButton({
   product,
   className,
   stopPropagation = true,
+  label,
 }: ProductWhatsAppButtonProps) {
   const { contact, saveContact, isSaving } = useWhatsAppContact();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -64,16 +67,19 @@ export function ProductWhatsAppButton({
     <>
       <Button
         type="button"
-        variant="outline"
-        size="icon"
+        variant={label ? 'default' : 'outline'}
+        size={label ? 'default' : 'icon'}
         className={cn(
-          'size-10 min-h-11 shrink-0 rounded-lg border-[#25D366] text-[#25D366] hover:bg-[#25D366]/10 focus-visible:ring-[#25D366]',
+          label
+            ? 'min-h-9 gap-1.5 bg-[#25D366] px-2 text-xs font-semibold text-white hover:bg-[#20bd5a] focus-visible:ring-[#25D366]'
+            : 'size-10 min-h-11 shrink-0 rounded-lg border-[#25D366] text-[#25D366] hover:bg-[#25D366]/10 focus-visible:ring-[#25D366]',
           className,
         )}
-        aria-label={`Consultar ${product.name} por WhatsApp`}
+        aria-label={label ? `Cotizar ${product.name} por WhatsApp` : `Consultar ${product.name} por WhatsApp`}
         onClick={handleClick}
       >
         <Icon path={mdiWhatsapp} size={0.95} aria-hidden="true" />
+        {label ? <span className="truncate">{label}</span> : null}
       </Button>
 
       <WhatsAppContactDialog

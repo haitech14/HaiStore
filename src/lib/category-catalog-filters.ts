@@ -67,7 +67,7 @@ const QUICK_FILTER_KEYS_BY_SLUG: Record<string, readonly string[]> = {
     `${FORMATO_PAPEL_ATTR}::A4`,
     `${FORMATO_PAPEL_ATTR}::A3`,
   ],
-  tienda: [
+  impresoras: [
     'Color::B/N',
     'Color::Color',
     ADF_ESTANDAR_KEY,
@@ -82,6 +82,8 @@ const QUICK_FILTER_CHIP_LABELS: Record<string, string> = {
   [ADF_DOBLE_SCAN_KEY]: 'ADF Doble Scan',
   [`${FORMATO_PAPEL_ATTR}::A4`]: 'Formato A4',
   [`${FORMATO_PAPEL_ATTR}::A3`]: 'Formato A3',
+  'Color::B/N': 'B/N',
+  'Color::Color': 'Color',
 };
 
 export function getQuickFilterChipLabel(attr: { key: string; label: string }): string {
@@ -199,7 +201,6 @@ export function shouldShowProductionFilters(slug: string | undefined): boolean {
   return slug === 'multifuncionales' || slug === 'tienda';
 }
 
-/** Inferencia para multifuncionales sin atributos en inventario. */
 export function inferFormatoPapel(product: Product): 'A4' | 'A3' {
   const haystack = `${product.name} ${product.category ?? ''}`.toLowerCase();
   if (
@@ -258,15 +259,87 @@ export function inferProduccionTier(product: Product): (typeof PRODUCTION_FILTER
   return 'Basico (>5000 páginas)';
 }
 
+function isPrinterEquipmentForSpecFilters(product: Product): boolean {
+  const haystack = `${product.name} ${product.category ?? ''}`.toLowerCase();
+  return /multifunc|impresor|laser|plotter|copiadora/.test(haystack);
+}
+
+export function inferColor(product: Product): 'B/N' | 'Color' {
+  const stored = (product.attributes ?? []).find((attr) => /color/i.test(attr.name.trim()));
+  if (stored?.value?.trim()) {
+    const value = stored.value.trim();
+    if (/^color$/i.test(value) || /a color/i.test(value)) return 'Color';
+    if (/b\/n|negro|monocrom/i.test(value)) return 'B/N';
+  }
+
+  const haystack = `${product.name} ${product.category ?? ''}`.toLowerCase();
+  if (/\bcolor\b|a color|\bc\d{3,4}\b|\bim\s*c/i.test(haystack)) return 'Color';
+  return 'B/N';
+}
+
+export const CATALOG_SPEC_FILTER_TABS = [
+  { key: `${FORMATO_PAPEL_ATTR}::A4`, label: 'Formato A4' },
+  { key: `${FORMATO_PAPEL_ATTR}::A3`, label: 'Formato A3' },
+  { key: 'Color::B/N', label: 'B/N' },
+  { key: 'Color::Color', label: 'Color' },
+] as const;
+
+const FORMAT_FILTER_KEYS = new Set<string>(
+  CATALOG_SPEC_FILTER_TABS.filter((tab) => tab.key.startsWith(`${FORMATO_PAPEL_ATTR}::`)).map(
+    (tab) => tab.key,
+  ),
+);
+
+const COLOR_FILTER_KEYS = new Set<string>(
+  CATALOG_SPEC_FILTER_TABS.filter((tab) => tab.key.startsWith('Color::')).map((tab) => tab.key),
+);
+
+export const CATALOG_SPEC_FILTER_TAB_KEYS = new Set<string>(
+  CATALOG_SPEC_FILTER_TABS.map((tab) => tab.key),
+);
+
+export function shouldShowCatalogSpecFilterTabs(slug: string | undefined): boolean {
+  return slug === 'multifuncionales' || slug === 'impresoras' || slug === 'tienda';
+}
+
+export function buildCatalogSpecFilterTabs(products: readonly Product[]) {
+  return CATALOG_SPEC_FILTER_TABS.map(({ key, label }) => ({
+    key,
+    label,
+    count: countProductsForAttributeKey(products, key),
+  }));
+}
+
+export function toggleCatalogSpecFilter(selectedKeys: readonly string[], key: string): string[] {
+  if (selectedKeys.includes(key)) {
+    return selectedKeys.filter((item) => item !== key);
+  }
+
+  const withoutSameGroup = selectedKeys.filter((item) => {
+    if (FORMAT_FILTER_KEYS.has(key) && FORMAT_FILTER_KEYS.has(item)) return false;
+    if (COLOR_FILTER_KEYS.has(key) && COLOR_FILTER_KEYS.has(item)) return false;
+    return true;
+  });
+
+  return [...withoutSameGroup, key];
+}
+
 export function resolveProductCatalogAttributeKeys(product: Product): Set<string> {
   const keys = productAttributeKeys(product);
   const isMultifuncional = /multifunc/i.test(product.category ?? '');
+  const useSpecInference = isMultifuncional || isPrinterEquipmentForSpecFilters(product);
 
-  if (!isMultifuncional) return keys;
+  if (!useSpecInference) return keys;
 
   if (![...keys].some((key) => key.startsWith(`${FORMATO_PAPEL_ATTR}::`))) {
     keys.add(attributeKey(FORMATO_PAPEL_ATTR, inferFormatoPapel(product)));
   }
+
+  if (![...keys].some((key) => key.startsWith('Color::'))) {
+    keys.add(attributeKey('Color', inferColor(product)));
+  }
+
+  if (!isMultifuncional) return keys;
 
   if (![...keys].some((key) => key.startsWith(`${PRODUCCION_ATTR}::`))) {
     keys.add(attributeKey(PRODUCCION_ATTR, inferProduccionTier(product)));

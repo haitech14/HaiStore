@@ -22,3 +22,11 @@ export function collectInventoryLabels(category: StoreCategory): string[] {
   }
   return [...labels];
 }
+
+/** Etiqueta corta para tabs (p. ej. «Multifuncionales Nuevas» → «Nuevas»). */
+export function formatSubcategoryTabLabel(name: string, parentName?: string | null): string {
+  if (!parentName?.trim()) return name;
+  const prefix = `${parentName.trim()} `;
+  if (name.startsWith(prefix)) return name.slice(prefix.length);
+  return name;
+}

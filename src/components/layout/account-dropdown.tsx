@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import {
+  Check,
   ChevronDown,
   ChevronRight,
+  Eye,
   Headphones,
   LayoutGrid,
   LogIn,
@@ -18,12 +20,16 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/context/auth-context';
 import type { AuthUser } from '@/lib/auth-storage';
 import { ADMIN_PANEL_EMAILS, normalizeAuthEmail } from '@/lib/admin-access';
 import { ADMIN_ROUTES } from '@/lib/admin-routes';
+import { VIEW_AS_ROLE_OPTIONS } from '@/lib/view-as-role';
 import { cn } from '@/lib/utils';
 import { USER_ROLE_LABELS, type UserRole } from '@/types/product';
 
@@ -107,9 +113,21 @@ function HaiPointsBanner({ points }: { points: number }) {
 
 export function AccountDropdown() {
   const navigate = useNavigate();
-  const { user, logout, canAccessAdminPanel: showAdminPanel } = useAuth();
+  const {
+    user,
+    logout,
+    canAccessAdminPanel: showAdminPanel,
+    role,
+    effectiveRole,
+    viewAsRole,
+    setViewAsRole,
+  } = useAuth();
   const displayName = getDisplayName(user);
-  const roleLabel = user ? USER_ROLE_LABELS[user.role] : USER_ROLE_LABELS.public;
+  const roleLabel = viewAsRole
+    ? `Como ${USER_ROLE_LABELS[effectiveRole as UserRole]}`
+    : user
+      ? USER_ROLE_LABELS[user.role]
+      : USER_ROLE_LABELS.public;
 
   const goTo = (path: string) => {
     navigate(path);
@@ -132,7 +150,7 @@ export function AccountDropdown() {
               <span
                 className={cn(
                   'rounded-md px-1.5 py-0.5 text-[0.65rem] font-semibold leading-none',
-                  roleBadgeClass(user.role),
+                  viewAsRole ? 'bg-orange-100 text-orange-800' : roleBadgeClass(user.role),
                 )}
               >
                 {roleLabel}
@@ -175,6 +193,40 @@ export function AccountDropdown() {
                 >
                   <AccountMenuRow icon={LayoutGrid} label="Panel Administración" />
                 </DropdownMenuItem>
+              )}
+
+              {showAdminPanel && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="cursor-pointer rounded-none px-0 py-0 focus:bg-muted/50 data-[state=open]:bg-muted/50">
+                    <AccountMenuRow icon={Eye} label="Ver como (Rol)" />
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="rounded-lg border-border/80 p-1 shadow-lg">
+                    <DropdownMenuItem
+                      className="min-h-10 cursor-pointer justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium focus:bg-muted/60"
+                      onSelect={() => setViewAsRole(null)}
+                    >
+                      <span>Mi rol real ({USER_ROLE_LABELS[role as UserRole] ?? role})</span>
+                      {!viewAsRole ? (
+                        <Check className="size-4 shrink-0 text-red-600" aria-hidden="true" />
+                      ) : null}
+                    </DropdownMenuItem>
+                    {VIEW_AS_ROLE_OPTIONS.map((option) => {
+                      const selected = viewAsRole === option.value;
+                      return (
+                        <DropdownMenuItem
+                          key={option.value}
+                          className="min-h-10 cursor-pointer justify-between gap-2 rounded-md px-3 py-2 text-sm focus:bg-muted/60"
+                          onSelect={() => setViewAsRole(option.value)}
+                        >
+                          <span>{option.label}</span>
+                          {selected ? (
+                            <Check className="size-4 shrink-0 text-red-600" aria-hidden="true" />
+                          ) : null}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
               )}
 
               <DropdownMenuItem

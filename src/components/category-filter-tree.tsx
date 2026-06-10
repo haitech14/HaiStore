@@ -12,7 +12,6 @@ function subtreeContainsSlug(node: StoreCategoryTreeNode, subSlug: string): bool
 }
 
 interface CategoryFilterTreeProps {
-  verTodoCount: number;
   subSlug: string | null;
   onSelectSub: (slug: string | null) => void;
   rootCategory?: StoreCategoryTreeNode;
@@ -128,7 +127,6 @@ function CategoryFilterTreeNode({
 }
 
 export function CategoryFilterTree({
-  verTodoCount,
   subSlug,
   onSelectSub,
   rootCategory,
@@ -137,15 +135,6 @@ export function CategoryFilterTree({
 
   return (
     <div className="space-y-1">
-      <button
-        type="button"
-        onClick={() => onSelectSub(null)}
-        className={subcategoryItemClass(subSlug === null)}
-      >
-        <span>Ver todo</span>
-        <span className="text-xs text-muted-foreground">{verTodoCount}</span>
-      </button>
-
       {rootCategory && childNodes.length > 0 ? (
         <ul className="space-y-1" role="tree" aria-label={`Árbol de ${rootCategory.name}`}>
           <CategoryFilterTreeNode

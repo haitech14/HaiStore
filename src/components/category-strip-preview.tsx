@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 
 import { ProductCatalogCard } from '@/components/product/product-catalog-card';
-import { SubcategoriesGrid } from '@/components/subcategories-grid';
+import { CatalogProductPagination } from '@/components/category/catalog-product-pagination';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { findCategoryBySlug, resolveCategoryPageProductLabels } from '@/lib/category-product-labels';
@@ -12,25 +12,31 @@ import {
   useStoreCategoriesTree,
 } from '@/hooks/use-store-categories';
 import { useProducts } from '@/hooks/use-products';
-import { categoryPath, categoryLandingPath } from '@/lib/category-path';
+import { categoryLandingPath, categoryPath } from '@/lib/category-path';
 import { catalogGridClassName } from '@/lib/category-grid-layout';
 import { productMatchesCategoryFilter } from '@/lib/inventory-categories';
+import { productMatchesCatalogFilters } from '@/lib/category-catalog-filters';
 import { isPrinterEquipmentProduct } from '@/lib/product-condition';
 import { findStoreCategoryBySlug } from '@/lib/store-category-display';
-
-const PREVIEW_PRODUCT_LIMIT = 8;
+import {
+  CATALOG_PRODUCTS_PER_PAGE,
+  clampCatalogPage,
+  getCatalogPageSlice,
+  getCatalogTotalPages,
+} from '@/lib/catalog-product-pagination';
 
 interface CategoryStripPreviewProps {
   categorySlug: string;
-  activeSubSlug: string | null;
-  onSelectSub: (subSlug: string | null) => void;
+  activeSubSlug?: string | null;
+  selectedSpecFilters?: string[];
 }
 
 export function CategoryStripPreview({
   categorySlug,
-  activeSubSlug,
-  onSelectSub,
+  activeSubSlug = null,
+  selectedSpecFilters = [],
 }: CategoryStripPreviewProps) {
+  const [page, setPage] = useState(1);
   const category = findCategoryBySlug(categorySlug);
   const { data: categoryTreeData, isLoading: treeLoading } = useStoreCategoriesTree();
   const categoryTree = categoryTreeData ?? EMPTY_STORE_CATEGORY_TREE;
@@ -56,16 +62,27 @@ export function CategoryStripPreview({
         }
         return productLabels.some((label) => productMatchesCategoryFilter(product, label));
       })
+      .filter((product) => productMatchesCatalogFilters(product, selectedSpecFilters, null))
       .sort((a, b) => {
         const aOrder = a.sort_order ?? Number.MAX_SAFE_INTEGER;
         const bOrder = b.sort_order ?? Number.MAX_SAFE_INTEGER;
         if (aOrder !== bOrder) return aOrder - bOrder;
         return a.name.localeCompare(b.name, 'es');
       });
-  }, [products, category, categorySlug, productLabels]);
+  }, [products, category, categorySlug, productLabels, selectedSpecFilters]);
 
-  const previewProducts = filteredProducts.slice(0, PREVIEW_PRODUCT_LIMIT);
-  const subcategories = storeCategory?.children ?? [];
+  const totalPages = getCatalogTotalPages(filteredProducts.length);
+  const safePage = clampCatalogPage(page, totalPages);
+  const pagedProducts = getCatalogPageSlice(filteredProducts, safePage);
+
+  useEffect(() => {
+    setPage(1);
+  }, [categorySlug, activeSubSlug, selectedSpecFilters]);
+
+  useEffect(() => {
+    if (page !== safePage) setPage(safePage);
+  }, [page, safePage]);
+
   const isLoading = treeLoading || productsLoading;
   const viewAllHref = activeSubSlug
     ? categoryPath(categorySlug, activeSubSlug)
@@ -89,18 +106,7 @@ export function CategoryStripPreview({
   }
 
   return (
-    <div className="mt-8 space-y-6 border-t border-border/60 pt-8">
-      {subcategories.length > 0 ? (
-        <SubcategoriesGrid
-          parentSlug={categorySlug}
-          parentImage={storeCategory?.image ?? category.image ?? null}
-          subcategories={subcategories}
-          activeSubSlug={activeSubSlug}
-          products={products ?? []}
-          onSelectSub={onSelectSub}
-        />
-      ) : null}
-
+    <div className="mt-6 space-y-6">
       {isError ? (
         <p role="alert" className="text-sm text-destructive">
           No se pudieron cargar los productos. Inténtalo de nuevo más tarde.
@@ -115,7 +121,7 @@ export function CategoryStripPreview({
             </div>
           ))}
         </div>
-      ) : previewProducts.length === 0 ? (
+      ) : pagedProducts.length === 0 ? (
         <div className="rounded-xl border border-dashed px-6 py-10 text-center">
           <p className="font-medium text-foreground">
             No hay productos en esta categoría por ahora.
@@ -127,23 +133,29 @@ export function CategoryStripPreview({
       ) : (
         <>
           <ul className={catalogGridClassName(5)} role="list">
-            {previewProducts.map((product) => (
+            {pagedProducts.map((product) => (
               <li key={product.id}>
                 <ProductCatalogCard product={product} />
               </li>
             ))}
           </ul>
 
-          {filteredProducts.length > PREVIEW_PRODUCT_LIMIT ? (
-            <div className="flex justify-center pt-2">
-              <Button asChild className="min-h-11 gap-1.5 bg-red-600 hover:bg-red-500">
-                <Link to={viewAllHref}>
-                  Ver {filteredProducts.length - PREVIEW_PRODUCT_LIMIT} productos más
-                  <ArrowRight className="size-4" aria-hidden="true" />
-                </Link>
-              </Button>
-            </div>
-          ) : null}
+          <CatalogProductPagination
+            page={safePage}
+            totalPages={totalPages}
+            totalItems={filteredProducts.length}
+            pageSize={CATALOG_PRODUCTS_PER_PAGE}
+            onPageChange={setPage}
+          />
+
+          <div className="flex justify-center pt-1">
+            <Button asChild variant="link" className="min-h-11 gap-1.5 text-red-600">
+              <Link to={viewAllHref}>
+                Ver catálogo completo
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            </Button>
+          </div>
         </>
       )}
     </div>

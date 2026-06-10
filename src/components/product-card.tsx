@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ShoppingCart } from 'lucide-react';
+import { ImageOff, ShoppingCart } from 'lucide-react';
 import { AddToCartButton, getAddToCartLabel } from '@/components/cart/add-to-cart-button';
 import { ProductCardPricing } from '@/components/product/product-card-pricing';
 import { ProductCardTitle } from '@/components/product/product-card-title';
@@ -22,7 +22,7 @@ interface ProductCardProps {
 export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
   const outOfStock = product.stock <= 0;
   const detailHref = productPath(product.id);
-  const imageUrl = resolveProductImageUrl(product);
+  const imageUrl = resolveProductImageUrl(product, { stockFallback: false });
   const showNuevoCorner = productHasNuevoCornerBadge(product);
 
   const cartActions = (
@@ -76,7 +76,7 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
                   loading="lazy"
                 />
               ) : (
-                <span className="text-3xl font-bold text-muted-foreground">{product.name.charAt(0)}</span>
+                <ImageOff className="size-8 text-muted-foreground/70" aria-hidden="true" />
               )}
             </div>
           </div>
@@ -133,7 +133,7 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
                   loading="lazy"
                 />
               ) : (
-                <span className="text-3xl font-bold text-muted-foreground">{product.name.charAt(0)}</span>
+                <ImageOff className="size-10 text-muted-foreground/70" aria-hidden="true" />
               )}
             </div>
           </div>

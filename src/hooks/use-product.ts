@@ -8,6 +8,7 @@ import { apiFetch } from '@/lib/api';
 import { getCatalogProductById } from '@/lib/catalog-featured';
 import { normalizeInventoryProduct } from '@/lib/inventory-product';
 import { toPublicProduct } from '@/lib/pricing';
+import { applyViewAsPriceToProduct } from '@/lib/view-as-role';
 import type { Product } from '@/types/product';
 
 async function fetchProductById(id: string): Promise<Product | null> {
@@ -19,7 +20,7 @@ async function fetchProductById(id: string): Promise<Product | null> {
 }
 
 export function useProduct(id: string | undefined) {
-  const { role } = useAuth();
+  const { role, viewAsRole, effectiveRole } = useAuth();
   const featured = id ? getFeaturedProductById(id) : undefined;
   const {
     data: products,
@@ -37,10 +38,12 @@ export function useProduct(id: string | undefined) {
   );
 
   const { data: fetchedProduct, isLoading: fetchingOne } = useQuery({
-    queryKey: ['product', id, role],
+    queryKey: ['product', id, role, viewAsRole],
     queryFn: () => (id ? fetchProductById(id) : Promise.resolve(null)),
     enabled: shouldFetchOne,
     staleTime: 1000 * 60,
+    select: (product) =>
+      product && viewAsRole ? applyViewAsPriceToProduct(product, effectiveRole) : product,
   });
 
   const fromCatalogJson = useMemo(() => {
@@ -48,8 +51,10 @@ export function useProduct(id: string | undefined) {
     if (!catalogError) return undefined;
     const row = getCatalogProductById(id);
     if (!row) return undefined;
-    return toPublicProduct(normalizeInventoryProduct(row), role);
-  }, [id, featured, fromList, fetchedProduct, catalogError, role]);
+    return viewAsRole
+      ? applyViewAsPriceToProduct(toPublicProduct(normalizeInventoryProduct(row), effectiveRole), effectiveRole)
+      : toPublicProduct(normalizeInventoryProduct(row), role);
+  }, [id, featured, fromList, fetchedProduct, catalogError, role, viewAsRole, effectiveRole]);
 
   const product: Product | undefined =
     fromList ??

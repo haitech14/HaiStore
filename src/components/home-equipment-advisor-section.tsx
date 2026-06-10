@@ -37,17 +37,17 @@ export function HomeEquipmentAdvisorSection() {
   return (
     <section
       aria-labelledby="equipo-asesor-titulo"
-      className="border-t border-border/60 bg-muted/20 py-10 sm:py-12"
+      className="bg-black py-10 text-white sm:py-12"
     >
       <div className="container flex flex-col items-center gap-6 text-center sm:gap-8">
         <div className="max-w-2xl space-y-2">
           <h2
             id="equipo-asesor-titulo"
-            className="text-balance text-xl font-bold tracking-tight text-foreground sm:text-2xl"
+            className="text-balance text-xl font-bold tracking-tight text-white sm:text-2xl"
           >
             ¿No sabes qué impresora necesita tu empresa?
           </h2>
-          <p className="text-pretty text-sm text-muted-foreground sm:text-base">
+          <p className="text-pretty text-sm text-white/70 sm:text-base">
             Cuéntanos tu caso y te orientamos sin compromiso.
           </p>
         </div>
@@ -61,15 +61,15 @@ export function HomeEquipmentAdvisorSection() {
                   href={buildHaitechWhatsAppUrl(option.message)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex min-h-11 items-center gap-3 rounded-xl border border-border/70 bg-card px-4 py-3 text-left shadow-sm transition-colors hover:border-red-600/40 hover:bg-red-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 sm:flex-col sm:items-center sm:px-4 sm:py-5 sm:text-center"
+                  className="flex min-h-11 items-center gap-3 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-left shadow-sm transition-colors hover:border-red-500/50 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:flex-col sm:items-center sm:px-4 sm:py-5 sm:text-center"
                 >
                   <span
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-600/10 text-red-600"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-600/20 text-red-400"
                     aria-hidden="true"
                   >
                     <OptionIcon className="size-5" strokeWidth={2} />
                   </span>
-                  <span className="text-sm font-semibold text-foreground">{option.label}</span>
+                  <span className="text-sm font-semibold text-white">{option.label}</span>
                 </a>
               </li>
             );

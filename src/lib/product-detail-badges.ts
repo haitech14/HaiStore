@@ -108,7 +108,7 @@ function defaultBadges(product: ProductBadgeSource): ProductDetailBadge[] {
   if (isIm430f(product)) {
     return [
       { id: 'condicion', label: 'Condición', value: 'Nuevo' },
-      { id: 'velocidad', label: 'Velocidad', value: '40 ppm' },
+      { id: 'velocidad', label: 'Velocidad', value: '45 ppm' },
       { id: 'formato', label: 'Formato', value: 'A4' },
       { id: 'adf', label: 'ADF', value: 'Doble Scan' },
     ];

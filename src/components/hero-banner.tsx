@@ -22,30 +22,34 @@ function HeroSlideContent({ slide, index }: { slide: HomeHeroSlide; index: numbe
   const headingId = index === 0 ? 'hero-titulo' : `hero-titulo-${slide.id}`;
 
   return (
-    <div className="relative min-h-[min(46vh,24rem)] sm:min-h-[min(50vh,26rem)] lg:min-h-[min(54vh,30rem)]">
-      <div
-        aria-hidden="true"
+    <div className="relative min-h-[min(52vh,26rem)] sm:min-h-[min(56vh,30rem)] lg:min-h-[min(58vh,34rem)] xl:min-h-[min(60vh,36rem)]">
+      <img
+        src={slide.backgroundImage}
+        alt=""
+        sizes="100vw"
+        decoding="async"
+        fetchPriority={index === 0 ? 'high' : 'low'}
+        loading={index === 0 ? 'eager' : 'lazy'}
         className={cn(
-          'pointer-events-none absolute inset-0 bg-no-repeat',
-          slide.backgroundClass ?? 'bg-cover bg-[center_42%]',
+          'pointer-events-none absolute inset-0 size-full object-cover',
+          slide.backgroundClass ?? 'object-[center_42%]',
         )}
-        style={{ backgroundImage: `url('${slide.backgroundImage}')` }}
       />
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-black/15"
       />
 
-      <div className="container relative flex min-h-[inherit] flex-col justify-center py-5 pb-11 sm:py-6 sm:pb-12 lg:py-7 lg:pb-14">
-        <div className="relative flex max-w-2xl flex-col items-start gap-3">
-        <span className="-mb-1 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 pb-0.5 pt-1 text-[0.65rem] font-bold uppercase leading-none tracking-[0.18em] text-white">
+      <div className="container relative flex min-h-[inherit] flex-col justify-center py-5 pb-11 sm:py-6 sm:pb-12 lg:py-8 lg:pb-14">
+        <div className="relative flex max-w-2xl flex-col items-start gap-2.5">
+        <span className="-mb-0.5 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-2.5 pb-0.5 pt-1 text-[0.6rem] font-bold uppercase leading-none tracking-[0.16em] text-white">
           <span className="size-1.5 rounded-full bg-white" aria-hidden="true" />
           {slide.eyebrow}
         </span>
 
         <HeadingTag
           id={headingId}
-          className="font-hero text-4xl font-bold uppercase leading-[0.9] tracking-normal sm:text-5xl lg:text-6xl"
+          className="font-hero text-3xl font-bold uppercase leading-[0.92] tracking-normal sm:text-4xl lg:text-5xl"
         >
           {slide.titleLines.map((line) => (
             <span
@@ -57,38 +61,38 @@ function HeroSlideContent({ slide, index }: { slide: HomeHeroSlide; index: numbe
           ))}
         </HeadingTag>
 
-        <p className="max-w-xl text-sm leading-snug text-white sm:text-[0.95rem]">
+        <p className="max-w-xl text-[0.8125rem] leading-snug text-white sm:text-sm">
           {slide.subtitle}
         </p>
 
-        <ul className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-2">
+        <ul className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-1.5">
           {slide.trustBadges.map((badge) => {
             const BadgeIcon = TRUST_ICON_MAP[badge.icon];
             return (
-              <li key={badge.title} className="flex items-start gap-2.5">
+              <li key={badge.title} className="flex items-start gap-2">
                 <span
                   className={cn(
-                    'flex size-9 shrink-0 items-center justify-center rounded-md',
+                    'flex size-8 shrink-0 items-center justify-center rounded-md',
                     'border border-white/25 bg-white/10 text-white',
                   )}
                   aria-hidden="true"
                 >
-                  <BadgeIcon className="size-4" />
+                  <BadgeIcon className="size-3.5" />
                 </span>
                 <div className="min-w-0 leading-tight">
-                  <p className="text-sm font-bold text-white">{badge.title}</p>
-                  <p className="text-xs leading-snug text-white/55">{badge.text}</p>
+                  <p className="text-xs font-bold text-white sm:text-[0.8125rem]">{badge.title}</p>
+                  <p className="text-[0.65rem] leading-snug text-white/55 sm:text-xs">{badge.text}</p>
                 </div>
               </li>
             );
           })}
         </ul>
 
-        <div className="flex flex-wrap items-center gap-3 pt-1">
+        <div className="flex flex-wrap items-center gap-2.5 pt-0.5">
           {slide.primaryCta.kind === 'whatsapp' ? (
             <Button
               asChild
-              className="h-11 rounded-md bg-[#25D366] px-5 text-sm font-semibold text-white shadow-[0_0_24px_rgba(37,211,102,0.35)] transition-all hover:bg-[#20bd5a] focus-visible:ring-[#25D366] focus-visible:ring-offset-black"
+              className="h-10 rounded-md bg-[#25D366] px-4 text-sm font-semibold text-white shadow-[0_0_24px_rgba(37,211,102,0.35)] transition-all hover:bg-[#20bd5a] focus-visible:ring-[#25D366] focus-visible:ring-offset-black"
             >
               <a href={HOME_HERO_WHATSAPP_LINK} target="_blank" rel="noopener noreferrer">
                 <Icon path={mdiWhatsapp} size={0.9} aria-hidden="true" />
@@ -99,7 +103,7 @@ function HeroSlideContent({ slide, index }: { slide: HomeHeroSlide; index: numbe
             <Button
               asChild
               className={cn(
-                'h-11 rounded-md px-5 text-sm font-semibold text-white focus-visible:ring-offset-black',
+                'h-10 rounded-md px-4 text-sm font-semibold text-white focus-visible:ring-offset-black',
                 slide.primaryCta.style === 'green'
                   ? 'bg-[#25D366] shadow-[0_0_24px_rgba(37,211,102,0.35)] hover:bg-[#20bd5a] focus-visible:ring-[#25D366]'
                   : 'bg-[#FF3333] shadow-[0_0_24px_rgba(255,51,51,0.35)] hover:bg-red-500 focus-visible:ring-red-600',
@@ -118,7 +122,7 @@ function HeroSlideContent({ slide, index }: { slide: HomeHeroSlide; index: numbe
           <Button
             asChild
             variant="outline"
-            className="h-11 rounded-md border-white/25 bg-black/40 px-5 text-sm font-semibold text-white hover:bg-white/10 hover:text-white focus-visible:ring-white/40 focus-visible:ring-offset-black"
+            className="h-10 rounded-md border-white/25 bg-black/40 px-4 text-sm font-semibold text-white hover:bg-white/10 hover:text-white focus-visible:ring-white/40 focus-visible:ring-offset-black"
           >
             {slide.secondaryCta.external || slide.secondaryCta.href.startsWith('http') ? (
               <a href={slide.secondaryCta.href} target="_blank" rel="noopener noreferrer">
@@ -138,7 +142,7 @@ function HeroSlideContent({ slide, index }: { slide: HomeHeroSlide; index: numbe
           </Button>
         </div>
 
-        <p className="flex items-center gap-2 text-xs text-white/45">
+        <p className="flex items-center gap-1.5 text-[0.65rem] text-white/45 sm:text-xs">
           <ShieldCheck className="size-4 text-red-600" aria-hidden="true" />
           {slide.footerNote}
         </p>
@@ -240,7 +244,7 @@ export function HeroBanner() {
       </div>
 
       <div
-        className="flex justify-center gap-2 border-t border-white/10 bg-black px-4 py-2"
+        className="flex justify-center gap-2 border-t border-white/10 bg-black px-4 py-1.5"
         role="tablist"
         aria-label="Seleccionar slide del banner"
       >

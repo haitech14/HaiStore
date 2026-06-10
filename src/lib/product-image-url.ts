@@ -1,20 +1,32 @@
 export type ResolveProductImageOptions = {
   /** Vista admin: permite previsualizar data: URL antes de persistir en disco. */
   allowDataUrl?: boolean;
+  /** Si es false, no usa imágenes genéricas por categoría ni `/products/{id}.webp`. */
+  stockFallback?: boolean;
+};
+
+type ResolveProductImageInput = {
+  image_url?: string | null;
+  gallery?: string[] | null;
+  id?: string;
+  name?: string;
+  category?: string | null;
+  brand?: string | null;
 };
 
 /** URL pública para mostrar un producto (evita data: URLs que no persisten en Supabase). */
 export function resolveProductImageUrl(
-  product: {
-    image_url?: string | null;
-    gallery?: string[] | null;
-    id?: string;
-    name?: string;
-    category?: string | null;
-    brand?: string | null;
-  },
+  product: ResolveProductImageInput,
   options?: ResolveProductImageOptions,
-): string {
+): string;
+export function resolveProductImageUrl(
+  product: ResolveProductImageInput,
+  options: ResolveProductImageOptions & { stockFallback: false },
+): string | null;
+export function resolveProductImageUrl(
+  product: ResolveProductImageInput,
+  options?: ResolveProductImageOptions,
+): string | null {
   const candidates = [
     product.image_url,
     ...(Array.isArray(product.gallery) ? product.gallery : []),
@@ -26,6 +38,7 @@ export function resolveProductImageUrl(
     return url;
   }
 
+  if (options?.stockFallback === false) return null;
   return resolveProductStockImagePath(product);
 }
 

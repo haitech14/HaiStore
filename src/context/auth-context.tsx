@@ -7,10 +7,15 @@ import { supabase } from '@/lib/supabase';
 import { isSupabaseConfigured } from '@/lib/supabase-config';
 import { canAccessAdminPanel, hasAdminApiAccess } from '@/lib/admin-access';
 import { isUserRole, type UserRole } from '@/types/product';
+import { readViewAsRole, writeViewAsRole } from '@/lib/view-as-role-storage';
 
 interface AuthContextValue {
   user: AuthUser | null;
   role: UserRole | 'public';
+  /** Rol efectivo para precios de catálogo (vista previa admin). */
+  effectiveRole: UserRole | 'public';
+  viewAsRole: UserRole | null;
+  setViewAsRole: (role: UserRole | null) => void;
   isLoading: boolean;
   isAdmin: boolean;
   canAccessAdminPanel: boolean;
@@ -34,8 +39,17 @@ function mapSessionUser(
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<AuthUser | null>(null);
   const [role, setRole] = React.useState<UserRole | 'public'>('public');
+  const [viewAsRole, setViewAsRoleState] = React.useState<UserRole | null>(() => readViewAsRole());
   const [authProvider, setAuthProvider] = React.useState<'supabase' | 'demo' | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+
+  const setViewAsRole = React.useCallback(
+    (nextRole: UserRole | null) => {
+      setViewAsRoleState(nextRole);
+      writeViewAsRole(nextRole);
+    },
+    [],
+  );
 
   const applyMe = React.useCallback(
     (payload: { user: AuthUser | null; role: string; authProvider?: 'supabase' | 'demo' | null }) => {
@@ -178,6 +192,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = React.useCallback(async () => {
     setDemoToken(null);
+    setViewAsRoleState(null);
+    writeViewAsRole(null);
     await supabase.auth.signOut();
     try {
       await apiFetch('/api/auth/logout', { method: 'POST' });
@@ -187,10 +203,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     applyMe({ user: null, role: 'public', authProvider: null });
   }, [applyMe]);
 
+  React.useEffect(() => {
+    if (!hasAdminApiAccess(user, role) && viewAsRole) {
+      setViewAsRole(null);
+    }
+  }, [user, role, viewAsRole, setViewAsRole]);
+
+  const effectiveRole = React.useMemo<UserRole | 'public'>(() => {
+    if (viewAsRole && hasAdminApiAccess(user, role)) return viewAsRole;
+    return role;
+  }, [viewAsRole, user, role]);
+
   const value = React.useMemo<AuthContextValue>(
     () => ({
       user,
       role,
+      effectiveRole,
+      viewAsRole,
+      setViewAsRole,
       isLoading,
       isAdmin: hasAdminApiAccess(user, role),
       canAccessAdminPanel: canAccessAdminPanel(user, role),
@@ -199,7 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       logout,
     }),
-    [user, role, isLoading, authProvider, login, signUp, logout],
+    [user, role, effectiveRole, viewAsRole, setViewAsRole, isLoading, authProvider, login, signUp, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

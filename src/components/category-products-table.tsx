@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type SyntheticEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { Pencil, ShoppingCart, Trash2 } from 'lucide-react';
+import { ImageOff, Pencil, ShoppingCart, Trash2 } from 'lucide-react';
 
 import {
   InventoryProductFormDialog,
@@ -35,7 +35,6 @@ import { createEmptyInventoryProduct } from '@/lib/inventory-product';
 import { getProductCardTitleContent } from '@/lib/product-card-title';
 import {
   resolveProductImageUrl,
-  resolveProductStockImagePath,
 } from '@/lib/product-image-url';
 import { productPath } from '@/lib/product-path';
 import {
@@ -113,17 +112,11 @@ function ProductTableThumbnail({
   allowDataUrl?: boolean;
 }) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const primarySrc = resolveProductImageUrl(
-    product,
-    allowDataUrl ? { allowDataUrl: true } : undefined,
-  );
-  const fallbackSrc = resolveProductStockImagePath(product);
-  const src =
-    failedSrc === primarySrc
-      ? fallbackSrc !== primarySrc
-        ? fallbackSrc
-        : null
-      : primarySrc;
+  const primarySrc = resolveProductImageUrl(product, {
+    ...(allowDataUrl ? { allowDataUrl: true } : {}),
+    stockFallback: false,
+  });
+  const src = failedSrc === primarySrc ? null : primarySrc;
 
   const handleError = (event: SyntheticEvent<HTMLImageElement>) => {
     const attempted = event.currentTarget.currentSrc || event.currentTarget.src;
@@ -145,12 +138,7 @@ function ProductTableThumbnail({
           onError={handleError}
         />
       ) : (
-        <span
-          className="flex size-full items-center justify-center text-sm font-semibold text-muted-foreground"
-          aria-hidden="true"
-        >
-          {product.name.charAt(0)}
-        </span>
+        <ImageOff className="mx-auto size-4 text-muted-foreground/70" aria-hidden="true" />
       )}
     </Link>
   );
@@ -237,13 +225,14 @@ export function CategoryProductsTable({
   defaultCategory = null,
   bindOpenCreate,
 }: CategoryProductsTableProps) {
-  const { isAdmin, role } = useAuth();
+  const { isAdmin, role, viewAsRole, effectiveRole } = useAuth();
   const catalogMap = useAdminInventoryCatalogMap();
+  const previewAsRole = Boolean(viewAsRole);
   const visiblePriceRoles = useMemo(
-    () => getCategoryTableVisiblePriceRoles(isAdmin, role),
-    [isAdmin, role],
+    () => getCategoryTableVisiblePriceRoles(isAdmin && !previewAsRole, previewAsRole ? effectiveRole : role),
+    [isAdmin, previewAsRole, effectiveRole, role],
   );
-  const discountPriceRole: PriceRole = isAdmin ? 'public' : resolvePriceRole(role);
+  const discountPriceRole: PriceRole = isAdmin && !previewAsRole ? 'public' : resolvePriceRole(effectiveRole);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<InventoryProduct | null>(null);
@@ -513,10 +502,15 @@ function CategoryProductTableRow({
 }
 
 export function CategoryProductsTableSkeleton({ rows = 8 }: { rows?: number }) {
-  const { isAdmin, role } = useAuth();
+  const { isAdmin, role, viewAsRole, effectiveRole } = useAuth();
+  const previewAsRole = Boolean(viewAsRole);
   const colSpan = useMemo(
-    () => countCategoryTableColumns(isAdmin, role),
-    [isAdmin, role],
+    () =>
+      countCategoryTableColumns(
+        isAdmin && !previewAsRole,
+        previewAsRole ? effectiveRole : role,
+      ),
+    [isAdmin, previewAsRole, effectiveRole, role],
   );
 
   const minWidth = isAdmin ? '96rem' : '52rem';

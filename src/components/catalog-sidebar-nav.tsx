@@ -19,7 +19,6 @@ interface CatalogSidebarNavProps {
   categoryTree: StoreCategoryTreeNode[];
   activeCategorySlug: string;
   subSlug: string | null;
-  categoryTotalCount: number;
   onSelectSub: (slug: string | null) => void;
 }
 
@@ -74,7 +73,6 @@ export function CatalogSidebarNav({
   categoryTree,
   activeCategorySlug,
   subSlug,
-  categoryTotalCount,
   onSelectSub,
 }: CatalogSidebarNavProps) {
   const activeRoot = categoryTree.find((node) => node.slug === activeCategorySlug);
@@ -101,14 +99,6 @@ export function CatalogSidebarNav({
 
             {showSubs ? (
               <div className="ml-1 space-y-1 border-l-2 border-border/80 pl-2">
-                <button
-                  type="button"
-                  onClick={() => onSelectSub(null)}
-                  className={itemClass(subSlug === null)}
-                >
-                  <span>Ver todo</span>
-                  <span className="text-xs tabular-nums text-muted-foreground">{categoryTotalCount}</span>
-                </button>
                 <SubcategoryList
                   nodes={subcategories}
                   subSlug={subSlug}

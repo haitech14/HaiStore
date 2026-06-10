@@ -4,6 +4,7 @@ import { useAuth } from '@/context/auth-context';
 import { apiFetch } from '@/lib/api';
 import { normalizeInventoryProduct } from '@/lib/inventory-product';
 import { DEFAULT_WAREHOUSES } from '@/lib/inventory-stock';
+import { applyViewAsPriceToProducts } from '@/lib/view-as-role';
 import type { InventoryBulkPatch } from '@/types/inventory-bulk';
 import type { InventoryProduct, Product } from '@/types/product';
 
@@ -12,13 +13,15 @@ async function fetchProductsForRole(): Promise<Product[]> {
 }
 
 export function useProducts() {
-  const { role } = useAuth();
+  const { role, viewAsRole, effectiveRole } = useAuth();
 
   return useQuery({
-    queryKey: ['products', role],
+    queryKey: ['products', role, viewAsRole],
     queryFn: fetchProductsForRole,
     staleTime: 1000 * 15,
     refetchInterval: 1000 * 20,
+    select: (products) =>
+      viewAsRole ? applyViewAsPriceToProducts(products, effectiveRole) : products,
   });
 }
 

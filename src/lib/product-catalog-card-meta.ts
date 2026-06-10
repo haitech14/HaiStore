@@ -1,3 +1,4 @@
+import { inferColor } from '@/lib/category-catalog-filters';
 import {
   buildProductDetailBadges,
   formatBadgeDisplayValue,
@@ -6,6 +7,9 @@ import {
   type ProductBadgeSource,
 } from '@/lib/product-detail-badges';
 import { normalizeAttributes } from '@/lib/inventory-attributes';
+import { getCatalogProductById } from '@/lib/catalog-featured';
+import { resolveProductCardPricing, type ProductCardPricing } from '@/lib/product-card-pricing';
+import { getProductTableSpecDisplay } from '@/lib/product-table-spec-columns';
 import type { Product } from '@/types/product';
 import { usdToPen } from '@/lib/utils';
 
@@ -33,6 +37,113 @@ export function getCatalogCardRating(product: Product): { rating: number; review
     reviews: soldCount + 2,
     soldCount,
   };
+}
+
+function extractUnitNumber(value: string, unit: 'ppm' | 'ipm'): string | null {
+  const match = value.match(new RegExp(`(\\d+)\\s*${unit}`, 'i'));
+  return match?.[1] ?? null;
+}
+
+function findAttributeValueByName(product: Product, pattern: RegExp): string | null {
+  for (const attr of product.attributes ?? []) {
+    const name = attr.name.trim();
+    const value = attr.value.trim();
+    if (!name || !value) continue;
+    if (pattern.test(name)) return value;
+  }
+  return null;
+}
+
+function isMultifunctionProduct(product: Product): boolean {
+  return /multifunc|copiadora/i.test(`${product.category ?? ''} ${product.name}`);
+}
+
+function resolveCatalogPrintPpm(product: Product): string {
+  const fromAttr = findAttributeValueByName(product, /velocidad|ppm/i);
+  const attrPpm = fromAttr ? extractUnitNumber(fromAttr, 'ppm') : null;
+  if (attrPpm) return attrPpm;
+
+  const badge = buildProductDetailBadges(product, { primaryOnly: true }).find(
+    (row) => row.id === 'velocidad',
+  );
+  const badgePpm = badge ? extractUnitNumber(badge.value, 'ppm') : null;
+  if (badgePpm) return badgePpm;
+
+  const haystack = `${product.name} ${product.description ?? ''}`;
+  const inferred = extractUnitNumber(haystack, 'ppm');
+  if (inferred) return inferred;
+
+  if (/im\s*430/i.test(product.name)) return '45';
+  if (isMultifunctionProduct(product)) return '45';
+  return '40';
+}
+
+function resolveCatalogScanIpm(product: Product): string {
+  const fromAttr = findAttributeValueByName(product, /ipm|esc[aá]ner/i);
+  const attrIpm = fromAttr ? extractUnitNumber(fromAttr, 'ipm') : null;
+  if (attrIpm) return attrIpm;
+
+  if (/im\s*430/i.test(product.name)) return '180';
+  if (isMultifunctionProduct(product)) return '180';
+  return '120';
+}
+
+function resolveCatalogScannerLine(product: Product): string {
+  const stored = findAttributeValueByName(product, /adf|alimentador|esc[aá]ner/i);
+  const ipm = resolveCatalogScanIpm(product);
+  if (stored && /doble\s*scan/i.test(stored)) {
+    return `Escáner doble scan hasta ${ipm} ipm`;
+  }
+  return `Escáner estándar hasta ${ipm} ipm`;
+}
+
+function resolveCatalogLaunchYear(product: Product): string | null {
+  const fromTable = getProductTableSpecDisplay(product, 'anio');
+  if (fromTable && fromTable !== '—') {
+    const year = fromTable.match(/\b(20\d{2})\b/);
+    if (year) return year[1];
+  }
+
+  const fromAttr = findAttributeValueByName(product, /lanzamiento|fabricaci[oó]n|a[nñ]o/i);
+  if (fromAttr) {
+    const year = fromAttr.match(/\b(20\d{2})\b/);
+    if (year) return year[1];
+  }
+
+  if (/im\s*430/i.test(product.name)) return '2020';
+  return null;
+}
+
+/** Líneas de especificaciones técnicas en tarjetas de catálogo (equipos). */
+export function getCatalogCardSpecLines(product: Product): readonly string[] {
+  if (!isPrinterProduct(product)) return [];
+
+  const color = inferColor(product);
+  const isMultifunc = isMultifunctionProduct(product);
+  const lines: string[] = [];
+
+  if (isMultifunc) {
+    lines.push(
+      color === 'Color'
+        ? 'Copiadora, Impresora, Escáner a color'
+        : 'Copiadora, Impresora, Escáner monocromático',
+    );
+  } else {
+    lines.push(color === 'Color' ? 'Impresora a color' : 'Impresora monocromática');
+  }
+
+  lines.push(`Imprime hasta ${resolveCatalogPrintPpm(product)} ppm`);
+
+  if (isMultifunc) {
+    lines.push(resolveCatalogScannerLine(product));
+  }
+
+  const year = resolveCatalogLaunchYear(product);
+  if (year) {
+    lines.push(`Año lanzamiento ${year}`);
+  }
+
+  return lines;
 }
 
 export function getCatalogCardSubtitle(product: Product): string | null {
@@ -86,4 +197,27 @@ export function formatCatalogVolumePricePen(unitPriceUsd: number, discountPercen
 
 export function productShowsExpressDelivery(product: Product, inStock: boolean): boolean {
   return inStock && isPrinterProduct(product);
+}
+
+export type CatalogUrgencyLabel = 'Últimas unidades' | 'Stock limitado';
+
+export function getCatalogUrgencyLabel(product: Product): CatalogUrgencyLabel | null {
+  if (product.stock <= 0) return null;
+  if (product.stock <= 3) return 'Últimas unidades';
+  if (product.stock <= 8) return 'Stock limitado';
+  return null;
+}
+
+export function getCatalogCardPricing(product: Pick<Product, 'id' | 'price'>): ProductCardPricing {
+  const catalogRow = getCatalogProductById(product.id);
+  const compareAt = catalogRow?.compare_at_price_usd;
+
+  if (compareAt != null && compareAt > product.price) {
+    return resolveProductCardPricing(product.id, product.price, {
+      oldPrice: compareAt,
+      discount: Math.round((1 - product.price / compareAt) * 100),
+    });
+  }
+
+  return resolveProductCardPricing(product.id, product.price);
 }

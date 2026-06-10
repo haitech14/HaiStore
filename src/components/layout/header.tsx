@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import {
   Heart,
@@ -15,10 +15,15 @@ import { mdiWhatsapp } from '@mdi/js';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AccountDropdown } from '@/components/layout/account-dropdown';
+import {
+  HeaderCurrencyControl,
+  HeaderExchangeRateStrip,
+} from '@/components/layout/header-currency-control';
 import { SiteSearchForm } from '@/components/layout/site-search-form';
 import { useCart } from '@/context/cart-context';
+import { useDisplayCurrency } from '@/context/display-currency-context';
 import { useWishlist } from '@/context/wishlist-context';
-import { cn } from '@/lib/utils';
+import { cn, formatPenFromUsd, formatUsd } from '@/lib/utils';
 
 type MainNavItem = {
   to: string;
@@ -158,28 +163,52 @@ function favoritesSubtitle(count: number): string {
 
 export function Header() {
   const { totalItems, totalPrice, openCart } = useCart();
+  const { displayCurrency } = useDisplayCurrency();
   const { totalItems: favoritesCount } = useWishlist();
+  const cartTotalLabel =
+    displayCurrency === 'PEN' ? formatPenFromUsd(totalPrice) : formatUsd(totalPrice);
+  const cartTotalAria =
+    displayCurrency === 'PEN'
+      ? `${formatPenFromUsd(totalPrice)}, tipo de cambio venta`
+      : `${totalPrice.toFixed(2)} dólares`;
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const updateScrolled = () => {
+      setScrolled(window.scrollY > 4);
+    };
+
+    updateScrolled();
+    window.addEventListener('scroll', updateScrolled, { passive: true });
+    return () => window.removeEventListener('scroll', updateScrolled);
+  }, []);
 
   return (
-    <header className="w-full">
+    <header
+      className={cn(
+        'sticky top-0 z-50 w-full bg-background supports-[backdrop-filter]:bg-background/95 supports-[backdrop-filter]:backdrop-blur-sm',
+        scrolled && 'shadow-md ring-1 ring-border/50',
+      )}
+    >
       {/* Barra superior de utilidades */}
       <div className="bg-black text-neutral-400">
         <div className="container flex h-9 items-center gap-4 overflow-x-auto text-xs sm:gap-6 sm:overflow-visible">
-          {utilityLinksLeft.map((item) => (
-            <UtilityBarLink
-              key={item.label}
-              label={item.label}
-              href={item.href}
-              icon={item.icon}
-              external={item.external}
-            />
-          ))}
+          <div className="flex min-w-0 items-center gap-4 sm:gap-6">
+            {utilityLinksLeft.map((item) => (
+              <UtilityBarLink
+                key={item.label}
+                label={item.label}
+                href={item.href}
+                icon={item.icon}
+                external={item.external}
+              />
+            ))}
+          </div>
+          <HeaderExchangeRateStrip />
         </div>
       </div>
 
-      {/* Cabecera fija */}
-      <div className="sticky top-0 z-40 bg-background">
       {/* Fila principal */}
       <div className="container flex h-16 items-center gap-3 sm:gap-4">
         {/* Botón menú móvil */}
@@ -212,6 +241,8 @@ export function Header() {
         <div className="hidden flex-1 justify-center md:flex">
           <SiteSearchForm className="max-w-xl" />
         </div>
+
+        <HeaderCurrencyControl className="hidden shrink-0 md:flex" />
 
         <AccountDropdown />
 
@@ -246,12 +277,12 @@ export function Header() {
             </Link>
           </Button>
 
-          {/* Carrito */}
+          {/* Carrito — siempre accesible en cabecera sticky */}
         <Button
           type="button"
           variant="ghost"
-          className="h-11 gap-2 px-2"
-          aria-label={`Carrito de compras, ${totalItems} artículos`}
+          className="relative h-11 gap-2 px-2"
+          aria-label={`Carrito de compras, ${totalItems} artículos, total ${cartTotalAria}`}
           onClick={openCart}
         >
           <span className="relative">
@@ -267,7 +298,7 @@ export function Header() {
           </span>
           <span className="hidden flex-col items-start leading-tight sm:flex">
             <span className="text-sm font-semibold">Carrito</span>
-            <span className="text-xs text-muted-foreground">${totalPrice.toFixed(2)}</span>
+            <span className="text-xs text-muted-foreground">{cartTotalLabel}</span>
           </span>
         </Button>
         </div>
@@ -306,6 +337,7 @@ export function Header() {
       {mobileOpen && (
         <div className="border-t lg:hidden">
           <div className="container flex flex-col gap-4 py-4">
+            <HeaderCurrencyControl className="w-full md:hidden" />
             <SiteSearchForm onNavigate={() => setMobileOpen(false)} />
             <nav aria-label="Navegación móvil">
               <ul className="flex flex-col">
@@ -330,7 +362,7 @@ export function Header() {
           </div>
         </div>
       )}
-      </div>
+
     </header>
   );
 }

@@ -4,15 +4,18 @@ import { Plus } from 'lucide-react';
 
 import { CatalogFilterOption } from '@/components/catalog-filter-option';
 import { CatalogSidebarNav } from '@/components/catalog-sidebar-nav';
+import { CategoryCatalogFiltersRow } from '@/components/category/category-catalog-filters-row';
 import {
   CategoryCatalogToolbar,
   type CatalogViewMode,
   type CategorySortValue,
 } from '@/components/category/category-catalog-toolbar';
+import { CategorySpecFilterTabs } from '@/components/category/category-spec-filter-tabs';
 import { CategoryQuickFilters } from '@/components/category/category-quick-filters';
+import { CatalogProductPagination } from '@/components/category/catalog-product-pagination';
 import { CategoryHeroBanner } from '@/components/category-hero-banner';
 import { RentalCategoryGrid } from '@/components/rental-category-grid';
-import { SubcategoryHeroBanners } from '@/components/subcategory-hero-banners';
+import { SubcategoryTabs } from '@/components/subcategory-tabs';
 import {
   CategoryProductsTable,
   CategoryProductsTableSkeleton,
@@ -58,13 +61,21 @@ import {
 } from '@/data/rental-categories';
 import { catalogGridClassName, type CatalogGridColumns } from '@/lib/category-grid-layout';
 import {
+  CATALOG_PRODUCTS_PER_PAGE,
+  clampCatalogPage,
+  getCatalogPageSlice,
+  getCatalogTotalPages,
+} from '@/lib/catalog-product-pagination';
+import {
   catalogFamilyForCategorySlug,
   isPrinterEquipmentProduct,
   productMatchesCondition,
 } from '@/lib/product-condition';
 import {
   buildCatalogQuickFilters,
+  buildCatalogSpecFilterTabs,
   buildModelQuickFilters,
+  CATALOG_SPEC_FILTER_TAB_KEYS,
   countProductsForAttributeKey,
   EXCLUDED_QUICK_ATTRIBUTE_KEYS,
   getModeloEquipoChipLabel,
@@ -74,7 +85,9 @@ import {
   isRendimientoAttributeKey,
   PRODUCTION_FILTER_OPTIONS,
   productMatchesCatalogFilters,
+  shouldShowCatalogSpecFilterTabs,
   shouldShowProductionFilters,
+  toggleCatalogSpecFilter,
 } from '@/lib/category-catalog-filters';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/types/product';
@@ -128,6 +141,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
   const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [inStockOnly, setInStockOnly] = useState(false);
+  const [catalogPage, setCatalogPage] = useState(1);
   const filtersAsideRef = useRef<HTMLElement>(null);
   const openCreateProductRef = useRef<(() => void) | null>(null);
   const { isAdmin } = useAuth();
@@ -160,14 +174,6 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     if (!category) return EMPTY_LABEL_LIST;
     return resolveCategoryPageProductLabels(category, storeCategory, subSlug);
   }, [category, storeCategory, subSlug]);
-
-  const categoryTotalCount = useMemo(() => {
-    if (!products?.length || !category) return 0;
-    const labels = resolveCategoryPageProductLabels(category, storeCategory, null);
-    return products.filter((product) =>
-      labels.some((label) => productMatchesCategoryFilter(product, label)),
-    ).length;
-  }, [products, category, storeCategory]);
 
   const baseProducts = useMemo(() => {
     if (!products?.length) return EMPTY_PRODUCT_LIST;
@@ -310,6 +316,29 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     catalogSearch,
   ]);
 
+  const catalogTotalPages = getCatalogTotalPages(filteredProducts.length);
+  const safeCatalogPage = clampCatalogPage(catalogPage, catalogTotalPages);
+  const pagedCatalogProducts = getCatalogPageSlice(filteredProducts, safeCatalogPage);
+
+  useEffect(() => {
+    setCatalogPage(1);
+  }, [
+    slug,
+    subSlug,
+    selectedAttributes,
+    selectedProduction,
+    sortBy,
+    catalogSearch,
+    inStockOnly,
+    priceMin,
+    priceMax,
+    estadoFilter,
+  ]);
+
+  useEffect(() => {
+    if (catalogPage !== safeCatalogPage) setCatalogPage(safeCatalogPage);
+  }, [catalogPage, safeCatalogPage]);
+
   useLayoutEffect(() => {
     const behavior: ScrollBehavior = location.hash ? 'smooth' : 'auto';
     const hashId = location.hash.replace(/^#/, '');
@@ -399,11 +428,13 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
 
   const tipoFilterChips = useMemo(
     () =>
-      quickAttributeFilters.map((attr) => ({
-        key: attr.key,
-        label: getQuickFilterChipLabel(attr),
-        count: countProductsForAttributeKey(baseProducts, attr.key),
-      })),
+      quickAttributeFilters
+        .filter((attr) => !CATALOG_SPEC_FILTER_TAB_KEYS.has(attr.key))
+        .map((attr) => ({
+          key: attr.key,
+          label: getQuickFilterChipLabel(attr),
+          count: countProductsForAttributeKey(baseProducts, attr.key),
+        })),
     [quickAttributeFilters, baseProducts],
   );
 
@@ -442,6 +473,20 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
       prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key],
     );
   }, []);
+
+  const toggleSpecFilter = useCallback((key: string) => {
+    setSelectedAttributes((prev) => toggleCatalogSpecFilter(prev, key));
+  }, []);
+
+  const selectedSpecFilters = useMemo(
+    () => selectedAttributes.filter((key) => CATALOG_SPEC_FILTER_TAB_KEYS.has(key)),
+    [selectedAttributes],
+  );
+
+  const specFilterTabs = useMemo(() => {
+    if (!shouldShowCatalogSpecFilterTabs(slug)) return [];
+    return buildCatalogSpecFilterTabs(baseProducts);
+  }, [slug, baseProducts]);
 
   const clearAllFilters = useCallback(() => {
     setSelectedAttributes([]);
@@ -498,7 +543,6 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
               categoryTree={categoryTree}
               activeCategorySlug={slug ?? ''}
               subSlug={subSlug}
-              categoryTotalCount={categoryTotalCount}
               onSelectSub={selectSubcategory}
             />
           )}
@@ -645,23 +689,9 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
           </div>
         ) : null}
 
-        {hasSubcategoryHeroes && storeCategory && parentHeroContent ? (
-          <div id={CATEGORY_HERO_ID} className="scroll-mt-28 space-y-6 sm:scroll-mt-32">
-            {activeSubcategory && heroContent ? (
-              <CategoryHeroBanner content={heroContent} />
-            ) : null}
-
-            <SubcategoryHeroBanners
-              parentName={storeCategory.name}
-              parentSlug={slug}
-              parentTagline={storeCategory.tagline ?? category.tagline}
-              parentImage={storeCategory.image ?? null}
-              parentHero={parentHeroContent}
-              subcategories={storeCategory.children}
-              activeSubSlug={subSlug}
-              products={products ?? []}
-              onSelectSub={selectSubcategory}
-            />
+        {hasSubcategoryHeroes && activeSubcategory && heroContent ? (
+          <div id={CATEGORY_HERO_ID} className="scroll-mt-28 sm:scroll-mt-32">
+            <CategoryHeroBanner content={heroContent} />
           </div>
         ) : null}
 
@@ -724,6 +754,37 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
 
             {showProductCatalog ? (
             <>
+            {(storeCategory?.children.length ?? 0) > 0 || specFilterTabs.length > 0 ? (
+              <CategoryCatalogFiltersRow
+                className="mb-4"
+                subcategories={
+                  storeCategory && storeCategory.children.length > 0 ? (
+                    <SubcategoryTabs
+                      heading="Subcategorías"
+                      align="start"
+                      parentName={storeCategory.name}
+                      subcategories={storeCategory.children}
+                      activeSubSlug={subSlug}
+                      onSelect={selectSubcategory}
+                    />
+                  ) : null
+                }
+                filters={
+                  specFilterTabs.length > 0 ? (
+                    <CategorySpecFilterTabs
+                      heading="Filtros"
+                      align="end"
+                      tabs={specFilterTabs}
+                      selectedKeys={selectedSpecFilters}
+                      onToggle={toggleSpecFilter}
+                      ariaLabel="Filtros de formato y color"
+                      groupLabel="Formato y color"
+                    />
+                  ) : null
+                }
+              />
+            ) : null}
+
             <CategoryCatalogToolbar
               productCount={filteredProducts.length}
               pageTitle={pageTitle}
@@ -812,21 +873,32 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
                 </Button>
               </div>
             ) : showProductCatalog ? (
-              <div
-                className={cn(
-                  viewMode === 'grid'
-                    ? catalogGridClassName(gridColumns)
-                    : 'flex flex-col gap-4',
-                )}
-              >
-                {filteredProducts.map((product) =>
-                  viewMode === 'list' ? (
-                    <ProductCard key={product.id} product={product} layout="list" />
-                  ) : (
-                    <ProductCatalogCard key={product.id} product={product} />
-                  ),
-                )}
-              </div>
+              <>
+                <div
+                  className={cn(
+                    viewMode === 'grid'
+                      ? catalogGridClassName(gridColumns)
+                      : 'flex flex-col gap-4',
+                  )}
+                >
+                  {pagedCatalogProducts.map((product) =>
+                    viewMode === 'list' ? (
+                      <ProductCard key={product.id} product={product} layout="list" />
+                    ) : (
+                      <ProductCatalogCard key={product.id} product={product} />
+                    ),
+                  )}
+                </div>
+
+                <CatalogProductPagination
+                  page={safeCatalogPage}
+                  totalPages={catalogTotalPages}
+                  totalItems={filteredProducts.length}
+                  pageSize={CATALOG_PRODUCTS_PER_PAGE}
+                  onPageChange={setCatalogPage}
+                  className="mt-6"
+                />
+              </>
             ) : null}
           </section>
         </div>

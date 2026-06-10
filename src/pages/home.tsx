@@ -16,8 +16,8 @@ export function HomePage() {
       <ClientRecommendationsSection />
 
       <ClientsSection />
-      <HomeEquipmentAdvisorSection />
       <HomeFaqSection />
+      <HomeEquipmentAdvisorSection />
     </div>
   );
 }

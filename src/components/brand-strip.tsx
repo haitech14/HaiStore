@@ -17,7 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 
 /** Velocidad del auto-scroll (mayor = más rápido). Default del plugin: 2. */
-const BRAND_MARQUEE_AUTO_SCROLL_SPEED = 1.35;
+const BRAND_MARQUEE_AUTO_SCROLL_SPEED = 0.85;
 
 interface BrandStripProps {
   brands?: BrandItem[];
@@ -64,7 +64,7 @@ function BrandLogoCard({
       ) : (
         <span
           className={cn(
-            'text-center text-xs font-bold sm:text-sm',
+            'text-center text-[0.65rem] font-bold sm:text-xs',
             isDark ? 'text-white/60 group-hover:text-white' : '',
           )}
         >
@@ -75,7 +75,7 @@ function BrandLogoCard({
   );
 
   const className = cn(
-    'group flex h-10 w-full select-none items-center justify-center rounded-lg border px-2 transition-all sm:h-11',
+    'group flex h-9 w-full select-none items-center justify-center rounded-md border px-2 transition-all sm:h-10',
     linkable && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500',
     isActive && 'border-[#DC2626] ring-1 ring-[#DC2626]',
     isDark
@@ -106,14 +106,14 @@ function BrandMarqueeStatic({
   activeBrandSlug?: string | null;
 }) {
   return (
-    <div className="container py-2">
+    <div className="container py-1">
       <ul
-        className="mx-auto flex max-w-5xl flex-wrap justify-center gap-2 sm:gap-3"
+        className="mx-auto flex max-w-5xl flex-wrap justify-center gap-1.5 sm:gap-2"
         role="list"
         aria-label="Marcas disponibles"
       >
         {brands.map((brand) => (
-          <li key={getBrandName(brand)} className="w-[7.5rem] sm:w-[8.5rem]">
+          <li key={getBrandName(brand)} className="w-[6rem] sm:w-[6.75rem]">
             <BrandLogoCard
               brand={brand}
               isDark={isDark}
@@ -160,11 +160,11 @@ function BrandMarqueeInteractive({
   );
 
   return (
-    <div className={cn('container', overlay ? 'py-1.5 sm:py-2' : 'py-2')}>
+    <div className={cn('container', overlay ? 'py-1.5 sm:py-2' : 'py-1.5')}>
       <div className="relative mx-auto overflow-hidden">
         <div
           className={cn(
-            'pointer-events-none absolute inset-y-0 left-0 z-10 w-10 sm:w-16',
+            'pointer-events-none absolute inset-y-0 left-0 z-10 w-8 sm:w-12',
             overlay
               ? 'bg-gradient-to-r from-black/70 to-transparent'
               : 'bg-gradient-to-r from-black/80 to-transparent',
@@ -173,7 +173,7 @@ function BrandMarqueeInteractive({
         />
         <div
           className={cn(
-            'pointer-events-none absolute inset-y-0 right-0 z-10 w-10 sm:w-16',
+            'pointer-events-none absolute inset-y-0 right-0 z-10 w-8 sm:w-12',
             overlay
               ? 'bg-gradient-to-l from-black/70 to-transparent'
               : 'bg-gradient-to-l from-black/80 to-transparent',
@@ -186,11 +186,11 @@ function BrandMarqueeInteractive({
           className="cursor-grab overflow-hidden active:cursor-grabbing"
           aria-label="Marcas disponibles — arrastra para explorar"
         >
-          <ul className="flex touch-pan-y gap-2 sm:gap-3" role="list">
+          <ul className="flex touch-pan-y gap-1.5 sm:gap-2" role="list">
             {brands.map((brand) => (
               <li
                 key={getBrandName(brand)}
-                className="w-[7.5rem] shrink-0 sm:w-[8.5rem] md:w-[9.5rem]"
+                className="w-[6rem] shrink-0 sm:w-[6.75rem] md:w-[7rem]"
               >
                 <BrandLogoCard
                   brand={brand}
@@ -283,7 +283,7 @@ export function BrandStrip({
           'border-t border-white/10 bg-black/70 backdrop-blur-sm',
         overlay && 'bg-gradient-to-t from-black/85 via-black/45 to-transparent backdrop-blur-[2px]',
         isFilterRow &&
-          'rounded-xl bg-zinc-950 px-3 py-4 shadow-sm ring-1 ring-white/10 sm:px-4 sm:py-5',
+          'rounded-xl bg-zinc-950 px-2.5 py-2.5 shadow-sm ring-1 ring-white/10 sm:px-3 sm:py-3',
         className,
       )}
     >
@@ -307,12 +307,12 @@ export function BrandStrip({
       ) : (
         <ul
           className={cn(
-            'grid gap-2 sm:gap-3',
+            'grid gap-1.5 sm:gap-2',
             showHeading
               ? 'grid-cols-3 sm:grid-cols-5 lg:grid-cols-10'
               : isFilterRow
                 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-10'
-                : 'container grid-cols-2 py-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-5 lg:grid-cols-10',
+                : 'container grid-cols-2 py-1.5 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-10',
           )}
         >
           {brands.map((brand) => (
