@@ -1,4 +1,4 @@
-import { inferColor } from '@/lib/category-catalog-filters';
+import { inferFormatoPapel } from '@/lib/category-catalog-filters';
 import {
   buildProductDetailBadges,
   formatBadgeDisplayValue,
@@ -114,25 +114,53 @@ function resolveCatalogLaunchYear(product: Product): string | null {
   return null;
 }
 
-/** Líneas de especificaciones técnicas en tarjetas de catálogo (equipos). */
-export function getCatalogCardSpecLines(product: Product): readonly string[] {
-  if (!isPrinterProduct(product)) return [];
-
-  const color = inferColor(product);
-  const isMultifunc = isMultifunctionProduct(product);
-  const lines: string[] = [];
-
-  if (isMultifunc) {
-    lines.push(
-      color === 'Color'
-        ? 'Copiadora, Impresora, Escáner a color'
-        : 'Copiadora, Impresora, Escáner monocromático',
-    );
-  } else {
-    lines.push(color === 'Color' ? 'Impresora a color' : 'Impresora monocromática');
+function resolveCatalogFormato(product: Product): string {
+  const fromAttr = findAttributeValueByName(product, /formato/i);
+  if (fromAttr) {
+    if (/^a4$/i.test(fromAttr.trim())) return 'Formato A4';
+    if (/^a3$/i.test(fromAttr.trim())) return 'Formato A3';
+    return /^formato\b/i.test(fromAttr) ? fromAttr : `Formato ${fromAttr}`;
   }
 
+  const badge = buildProductDetailBadges(product, { primaryOnly: true }).find(
+    (row) => row.id === 'formato',
+  );
+  if (badge) {
+    const value = badge.value.trim();
+    return /^formato\b/i.test(value) ? value : `Formato ${value}`;
+  }
+
+  return `Formato ${inferFormatoPapel(product)}`;
+}
+
+function resolveCatalogProductCode(product: Product): string | null {
+  const direct = product.code?.trim();
+  if (direct) return direct;
+
+  const fromAttr = findAttributeValueByName(product, /c[oó]digo|^sku$/i);
+  if (fromAttr) return fromAttr;
+
+  if (product.id && !/^[0-9a-f-]{36}$/i.test(product.id)) {
+    return product.id.toUpperCase().replace(/-/g, '');
+  }
+
+  return null;
+}
+
+/** Líneas de especificaciones técnicas en tarjetas de catálogo (equipos). */
+export function getCatalogCardSpecLines(product: Product): readonly string[] {
+  const lines: string[] = [];
+  const code = resolveCatalogProductCode(product);
+  if (code) {
+    lines.push(`Código: ${code}`);
+  }
+
+  if (!isPrinterProduct(product)) return lines;
+
+  const isMultifunc = isMultifunctionProduct(product);
+
   lines.push(`Imprime hasta ${resolveCatalogPrintPpm(product)} ppm`);
+  lines.push(resolveCatalogFormato(product));
 
   if (isMultifunc) {
     lines.push(resolveCatalogScannerLine(product));

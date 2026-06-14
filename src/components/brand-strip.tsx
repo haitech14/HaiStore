@@ -27,6 +27,8 @@ interface BrandStripProps {
   activeBrandSlug?: string | null;
   /** Superpuesto sobre el hero (sin barra sólida inferior). */
   overlay?: boolean;
+  /** Carrusel horizontal con auto-scroll (p. ej. footer). */
+  marquee?: boolean;
   className?: string;
 }
 
@@ -165,18 +167,22 @@ function BrandMarqueeInteractive({
         <div
           className={cn(
             'pointer-events-none absolute inset-y-0 left-0 z-10 w-8 sm:w-12',
-            overlay
-              ? 'bg-gradient-to-r from-black/70 to-transparent'
-              : 'bg-gradient-to-r from-black/80 to-transparent',
+            isDark
+              ? overlay
+                ? 'bg-gradient-to-r from-black/70 to-transparent'
+                : 'bg-gradient-to-r from-black/80 to-transparent'
+              : 'bg-gradient-to-r from-background to-transparent',
           )}
           aria-hidden="true"
         />
         <div
           className={cn(
             'pointer-events-none absolute inset-y-0 right-0 z-10 w-8 sm:w-12',
-            overlay
-              ? 'bg-gradient-to-l from-black/70 to-transparent'
-              : 'bg-gradient-to-l from-black/80 to-transparent',
+            isDark
+              ? overlay
+                ? 'bg-gradient-to-l from-black/70 to-transparent'
+                : 'bg-gradient-to-l from-black/80 to-transparent'
+              : 'bg-gradient-to-l from-background to-transparent',
           )}
           aria-hidden="true"
         />
@@ -265,11 +271,12 @@ export function BrandStrip({
   linkable = true,
   activeBrandSlug = null,
   overlay = false,
+  marquee = false,
   className,
 }: BrandStripProps) {
   const isDark = variant === 'dark' || variant === 'filter';
   const isFilterRow = variant === 'filter';
-  const isHeroCarousel = variant === 'dark' && !showHeading;
+  const isHeroCarousel = marquee || (variant === 'dark' && !showHeading);
 
   return (
     <section

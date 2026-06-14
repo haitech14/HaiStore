@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import {
   Check,
-  ChevronDown,
   ChevronRight,
   Eye,
   Headphones,
@@ -111,7 +110,11 @@ function HaiPointsBanner({ points }: { points: number }) {
   );
 }
 
-export function AccountDropdown() {
+interface AccountDropdownProps {
+  triggerVariant?: 'icon' | 'strip';
+}
+
+export function AccountDropdown({ triggerVariant = 'icon' }: AccountDropdownProps) {
   const navigate = useNavigate();
   const {
     user,
@@ -136,29 +139,27 @@ export function AccountDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="hidden h-auto min-h-11 gap-2.5 px-2 py-1.5 hover:bg-muted/80 sm:inline-flex"
-          aria-label={user ? `Menú de cuenta de ${displayName}` : 'Iniciar sesión o crear cuenta'}
-        >
-          <User className="size-5 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
-          <span className="flex flex-col items-start gap-0.5 leading-tight">
-            <span className="text-sm font-bold text-foreground">
-              {user ? `Hola ${displayName}` : displayName}
+        {triggerVariant === 'strip' ? (
+          <Button
+            variant="ghost"
+            className="h-9 min-h-9 shrink-0 gap-1.5 rounded-none px-3 text-[0.6875rem] font-semibold uppercase tracking-wide text-foreground hover:bg-muted focus-visible:ring-inset"
+            aria-label={user ? `Menú de cuenta de ${displayName}` : 'Iniciar sesión o crear cuenta'}
+          >
+            <span className="flex size-6 shrink-0 items-center justify-center">
+              <User className="size-3.5 text-foreground" strokeWidth={1.75} aria-hidden="true" />
             </span>
-            {user && (
-              <span
-                className={cn(
-                  'rounded-md px-1.5 py-0.5 text-[0.65rem] font-semibold leading-none',
-                  viewAsRole ? 'bg-orange-100 text-orange-800' : roleBadgeClass(user.role),
-                )}
-              >
-                {roleLabel}
-              </span>
-            )}
-          </span>
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        </Button>
+            <span>Cuenta</span>
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-11 shrink-0 sm:inline-flex"
+            aria-label={user ? `Menú de cuenta de ${displayName}` : 'Iniciar sesión o crear cuenta'}
+          >
+            <User className="size-5 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
+          </Button>
+        )}
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
@@ -180,8 +181,15 @@ export function AccountDropdown() {
                     <User className="size-5 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-foreground">{user.email}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">Cuenta activa</p>
+                    <p className="truncate text-sm font-bold text-foreground">Hola {displayName}</p>
+                    <span
+                      className={cn(
+                        'mt-1 inline-block rounded-md px-1.5 py-0.5 text-[0.65rem] font-semibold leading-none',
+                        viewAsRole ? 'bg-orange-100 text-orange-800' : roleBadgeClass(user.role),
+                      )}
+                    >
+                      {roleLabel}
+                    </span>
                   </div>
                 </div>
               </div>

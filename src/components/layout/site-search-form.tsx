@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { ChevronDown, Search } from 'lucide-react';
 
 import { useStoreCategoriesTree } from '@/hooks/use-store-categories';
 import { useProducts } from '@/hooks/use-products';
@@ -141,19 +141,26 @@ export function SiteSearchForm({ className, onNavigate }: SiteSearchFormProps) {
         <label htmlFor={categoryFieldId} className="sr-only">
           Categoría
         </label>
-        <select
-          id={categoryFieldId}
-          value={categoryFilter}
-          onChange={(event) => setCategoryFilter(event.target.value)}
-          className="h-11 max-w-[6.75rem] shrink-0 border-0 border-r border-input bg-muted/40 px-2.5 text-xs font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:max-w-[8.5rem] sm:text-sm"
-          aria-label="Filtrar por categoría"
-        >
-          {categoryOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <div className="relative shrink-0">
+          <select
+            id={categoryFieldId}
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+            className="h-11 max-w-[7.5rem] appearance-none border-0 border-r border-input bg-muted py-0 pl-3 pr-8 text-xs font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:max-w-[9.5rem] sm:text-sm"
+            aria-label="Filtrar por categoría"
+          >
+            {categoryOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            className="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 text-foreground"
+            strokeWidth={2}
+            aria-hidden="true"
+          />
+        </div>
 
         <label htmlFor={inputFieldId} className="sr-only">
           Buscar productos
@@ -188,9 +195,9 @@ export function SiteSearchForm({ className, onNavigate }: SiteSearchFormProps) {
         <button
           type="submit"
           aria-label="Buscar"
-          className="flex h-11 w-12 shrink-0 items-center justify-center border-0 bg-red-600 text-white transition-colors hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-inset"
+          className="flex h-11 w-12 shrink-0 items-center justify-center border-0 bg-transparent text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         >
-          <Search className="size-5" aria-hidden="true" />
+          <Search className="size-5" strokeWidth={1.75} aria-hidden="true" />
         </button>
       </form>
 

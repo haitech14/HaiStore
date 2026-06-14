@@ -1,7 +1,16 @@
-import { Coins } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
+import { Coins, Pencil } from 'lucide-react';
 
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useAuth } from '@/context/auth-context';
 import { useDisplayCurrency } from '@/context/display-currency-context';
-import { useCompanySettings } from '@/hooks/use-company-settings';
+import {
+  useCompanySettings,
+  useCompanySettingsMutation,
+} from '@/hooks/use-company-settings';
 import { cn } from '@/lib/utils';
 import { DEFAULT_COMPANY_SETTINGS } from '@/types/company-settings';
 import type { DisplayCurrency } from '@/types/display-currency';
@@ -28,6 +37,7 @@ function useSystemExchangeRates() {
 const currencyOptions: { id: DisplayCurrency; label: string; shortLabel: string }[] = [
   { id: 'USD', label: 'Dólares', shortLabel: 'USD' },
   { id: 'PEN', label: 'Soles', shortLabel: 'PEN' },
+  { id: 'BOTH', label: 'Ambos', shortLabel: 'Ambos' },
 ];
 
 export function ExchangeRateDisplay({ className }: { className?: string }) {
@@ -95,18 +105,144 @@ export function HeaderCurrencyControl({ className }: { className?: string }) {
   );
 }
 
-/** TC Compra/Venta en barra superior negra (arriba a la derecha). */
-export function HeaderExchangeRateStrip({ className }: { className?: string }) {
+/** Selector $ / S/ / $S/ bajo el carrito. */
+export function HeaderCurrencySymbolToggle({ className }: { className?: string }) {
+  const { displayCurrency, setDisplayCurrency } = useDisplayCurrency();
+
+  const symbolOptions: { id: DisplayCurrency; label: string; ariaLabel: string }[] = [
+    { id: 'USD', label: '$', ariaLabel: 'Mostrar precios en dólares' },
+    { id: 'PEN', label: 'S/', ariaLabel: 'Mostrar precios en soles' },
+    { id: 'BOTH', label: '$S/', ariaLabel: 'Mostrar precios en dólares y soles' },
+  ];
+
+  return (
+    <div
+      role="group"
+      aria-label="Moneda de visualización"
+      className={cn(
+        'inline-flex shrink-0 items-center rounded-md border border-border bg-muted/40 p-0.5',
+        className,
+      )}
+    >
+      {symbolOptions.map((option) => {
+        const isActive = displayCurrency === option.id;
+        return (
+          <button
+            key={option.id}
+            type="button"
+            aria-pressed={isActive}
+            aria-label={option.ariaLabel}
+            onClick={() => setDisplayCurrency(option.id)}
+            className={cn(
+              'min-h-5 min-w-6 rounded px-1 text-[0.6rem] font-semibold leading-none tabular-nums transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-1 focus-visible:ring-offset-background',
+              isActive
+                ? 'bg-red-600 text-white shadow-sm'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            )}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function CartExchangeRateText({ saleRate }: { saleRate: number }) {
+  return (
+    <>
+      <span className="font-medium">T.C.</span>{' '}
+      <span className="font-semibold text-foreground">S/ {formatExchangeRate(saleRate)}</span>
+    </>
+  );
+}
+
+function HeaderCartExchangeRate({ className }: { className?: string }) {
   const { saleRate, purchaseRate } = useSystemExchangeRates();
+  const { isAdmin } = useAuth();
+
+  if (isAdmin) {
+    return (
+      <AdminExchangeRateEditor
+        {...(className ? { className } : {})}
+        saleRate={saleRate}
+        purchaseRate={purchaseRate}
+        compact
+      />
+    );
+  }
 
   return (
     <p
       className={cn(
-        'ml-auto shrink-0 whitespace-nowrap text-right text-[0.65rem] tabular-nums leading-tight text-neutral-400 sm:text-xs',
+        'shrink-0 whitespace-nowrap text-[0.6rem] tabular-nums leading-tight text-muted-foreground sm:text-[0.65rem]',
         className,
       )}
-      aria-label="Tipo de cambio del sistema"
+      aria-label="Tipo de cambio de venta"
     >
+      <CartExchangeRateText saleRate={saleRate} />
+    </p>
+  );
+}
+
+/** T.C. + selector de símbolos en el header. */
+export function HeaderCartExchangeBar({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        'flex min-h-9 shrink-0 flex-col justify-center gap-0.5 px-3 py-1',
+        className,
+      )}
+      aria-label="Tipo de cambio y moneda de visualización"
+    >
+      <HeaderCurrencySymbolToggle className="self-end" />
+      <HeaderCartExchangeRate className="min-w-0" />
+    </div>
+  );
+}
+
+/** Selector de moneda compacto para la barra superior negra. */
+export function HeaderTopbarCurrencyToggle({ className }: { className?: string }) {
+  const { displayCurrency, setDisplayCurrency } = useDisplayCurrency();
+
+  return (
+    <div
+      role="group"
+      aria-label="Moneda de visualización"
+      className={cn(
+        'inline-flex shrink-0 items-center rounded-md border border-neutral-700 bg-neutral-900 p-0.5',
+        className,
+      )}
+    >
+      {currencyOptions.map((option) => {
+        const isActive = displayCurrency === option.id;
+        return (
+          <button
+            key={option.id}
+            type="button"
+            aria-pressed={isActive}
+            onClick={() => setDisplayCurrency(option.id)}
+            className={cn(
+              'min-h-6 rounded px-2 text-[0.65rem] font-semibold leading-none transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-1 focus-visible:ring-offset-black',
+              isActive
+                ? 'bg-red-600 text-white shadow-sm'
+                : 'text-neutral-400 hover:text-white',
+            )}
+          >
+            <span className="sm:hidden">{option.shortLabel}</span>
+            <span className="hidden sm:inline">{option.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ExchangeRateText({ saleRate, purchaseRate }: { saleRate: number; purchaseRate: number }) {
+  return (
+    <>
       <span className="font-medium">Compra:</span>{' '}
       <span className="font-semibold text-neutral-300">S/ {formatExchangeRate(purchaseRate)}</span>
       <span className="mx-1.5 text-neutral-500" aria-hidden="true">
@@ -114,6 +250,170 @@ export function HeaderExchangeRateStrip({ className }: { className?: string }) {
       </span>
       <span className="font-medium">Venta:</span>{' '}
       <span className="font-semibold text-neutral-300">S/ {formatExchangeRate(saleRate)}</span>
+    </>
+  );
+}
+
+function AdminExchangeRateEditor({
+  className,
+  saleRate,
+  purchaseRate,
+  compact = false,
+}: {
+  className?: string;
+  saleRate: number;
+  purchaseRate: number;
+  compact?: boolean;
+}) {
+  const { data: settings } = useCompanySettings();
+  const mutation = useCompanySettingsMutation();
+  const [open, setOpen] = useState(false);
+  const [compra, setCompra] = useState('');
+  const [venta, setVenta] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (next) {
+      setCompra(purchaseRate.toFixed(2));
+      setVenta(saleRate.toFixed(2));
+      setError(null);
+    }
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!settings) return;
+
+    const compraNum = Number(compra.replace(',', '.'));
+    const ventaNum = Number(venta.replace(',', '.'));
+    if (!Number.isFinite(compraNum) || compraNum <= 0 || !Number.isFinite(ventaNum) || ventaNum <= 0) {
+      setError('Ingresa valores mayores a 0.');
+      return;
+    }
+
+    setError(null);
+    mutation.mutate(
+      {
+        ...settings,
+        usdToPenPurchaseExchangeRate: compraNum,
+        usdToPenExchangeRate: ventaNum,
+      },
+      {
+        onSuccess: () => setOpen(false),
+        onError: () => setError('No se pudo guardar. Inténtalo de nuevo.'),
+      },
+    );
+  };
+
+  return (
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={compact ? 'Editar tipo de cambio de venta' : 'Editar tipo de cambio (Compra y Venta)'}
+          className={cn(
+            'flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded text-right text-[0.65rem] tabular-nums leading-tight sm:text-xs',
+            compact
+              ? 'text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-1 focus-visible:ring-offset-background'
+              : 'text-neutral-400 transition-colors hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-1 focus-visible:ring-offset-black',
+            className,
+          )}
+        >
+          <span>
+            {compact ? (
+              <CartExchangeRateText saleRate={saleRate} />
+            ) : (
+              <ExchangeRateText saleRate={saleRate} purchaseRate={purchaseRate} />
+            )}
+          </span>
+          <Pencil
+            className={cn('size-3 shrink-0', compact ? 'text-muted-foreground' : 'text-neutral-500')}
+            aria-hidden="true"
+          />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={8} className="w-64 p-3.5">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+            Tipo de cambio USD → PEN
+          </p>
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="space-y-1">
+              <Label htmlFor="tc-compra" className="text-xs">
+                Compra
+              </Label>
+              <Input
+                id="tc-compra"
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0.01"
+                value={compra}
+                onChange={(event) => setCompra(event.target.value)}
+                className="h-9 tabular-nums"
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="tc-venta" className="text-xs">
+                Venta
+              </Label>
+              <Input
+                id="tc-venta"
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0.01"
+                value={venta}
+                onChange={(event) => setVenta(event.target.value)}
+                className="h-9 tabular-nums"
+                required
+              />
+            </div>
+          </div>
+          {error ? (
+            <p role="alert" className="text-xs text-destructive">
+              {error}
+            </p>
+          ) : null}
+          <Button
+            type="submit"
+            disabled={mutation.isPending}
+            className="h-9 w-full bg-red-600 text-sm font-semibold hover:bg-red-500"
+          >
+            {mutation.isPending ? 'Guardando…' : 'Guardar'}
+          </Button>
+        </form>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** TC Compra/Venta en barra superior negra (editable para administradores). */
+export function HeaderExchangeRateStrip({ className }: { className?: string }) {
+  const { saleRate, purchaseRate } = useSystemExchangeRates();
+  const { isAdmin } = useAuth();
+
+  if (isAdmin) {
+    return (
+      <AdminExchangeRateEditor
+        {...(className ? { className } : {})}
+        saleRate={saleRate}
+        purchaseRate={purchaseRate}
+      />
+    );
+  }
+
+  return (
+    <p
+      className={cn(
+        'shrink-0 whitespace-nowrap text-right text-[0.65rem] tabular-nums leading-tight text-neutral-400 sm:text-xs',
+        className,
+      )}
+      aria-label="Tipo de cambio del sistema"
+    >
+      <ExchangeRateText saleRate={saleRate} purchaseRate={purchaseRate} />
     </p>
   );
 }

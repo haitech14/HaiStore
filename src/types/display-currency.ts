@@ -1,3 +1,3 @@
-export type DisplayCurrency = 'USD' | 'PEN';
+export type DisplayCurrency = 'USD' | 'PEN' | 'BOTH';
 
-export const DISPLAY_CURRENCIES: readonly DisplayCurrency[] = ['USD', 'PEN'] as const;
+export const DISPLAY_CURRENCIES: readonly DisplayCurrency[] = ['USD', 'PEN', 'BOTH'] as const;

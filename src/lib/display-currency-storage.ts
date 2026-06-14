@@ -3,9 +3,10 @@ import type { DisplayCurrency } from '@/types/display-currency';
 const STORAGE_KEY = 'haistore-display-currency';
 
 export function readDisplayCurrency(): DisplayCurrency {
-  if (typeof window === 'undefined') return 'USD';
+  if (typeof window === 'undefined') return 'BOTH';
   const stored = window.localStorage.getItem(STORAGE_KEY);
-  return stored === 'PEN' ? 'PEN' : 'USD';
+  if (stored === 'USD' || stored === 'PEN' || stored === 'BOTH') return stored;
+  return 'BOTH';
 }
 
 export function writeDisplayCurrency(currency: DisplayCurrency): void {

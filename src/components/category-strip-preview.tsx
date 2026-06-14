@@ -64,9 +64,7 @@ export function CategoryStripPreview({
       })
       .filter((product) => productMatchesCatalogFilters(product, selectedSpecFilters, null))
       .sort((a, b) => {
-        const aOrder = a.sort_order ?? Number.MAX_SAFE_INTEGER;
-        const bOrder = b.sort_order ?? Number.MAX_SAFE_INTEGER;
-        if (aOrder !== bOrder) return aOrder - bOrder;
+        if (a.price !== b.price) return a.price - b.price;
         return a.name.localeCompare(b.name, 'es');
       });
   }, [products, category, categorySlug, productLabels, selectedSpecFilters]);

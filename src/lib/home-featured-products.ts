@@ -2,12 +2,37 @@ import { FEATURED_PRODUCT_IDS } from '@/data/featured-products';
 import type { FeaturedProduct } from '@/data/featured-products';
 import { shuffleProductsDaily } from '@/lib/daily-shuffle';
 import { enrichFeaturedFromCatalog } from '@/lib/featured-catalog-enrich';
+import { productMatchesCategoryFilter } from '@/lib/inventory-categories';
 import { productToFeatured } from '@/lib/store-products';
 import type { Product } from '@/types/product';
+
+/** Productos visibles en la fila «Lo más destacado» del inicio. */
+export const HOME_HIGHLIGHTED_ROW_SIZE = 6;
 
 /** Múltiplo de 5 para páginas completas en el carrusel (cada bullet = 5 productos). */
 export const HOME_FEATURED_LIMIT = 15;
 export const MIN_HOME_FEATURED = 3;
+
+export function filterInStockProductsForCategoryLabels(
+  products: Product[] | undefined,
+  labels: readonly string[],
+): Product[] {
+  if (!products?.length || labels.length === 0) return [];
+
+  return products.filter(
+    (product) =>
+      product.stock > 0 &&
+      product.price > 0 &&
+      labels.some((label) => productMatchesCategoryFilter(product, label)),
+  );
+}
+
+export function countInStockProductsForCategoryLabels(
+  products: Product[] | undefined,
+  labels: readonly string[],
+): number {
+  return filterInStockProductsForCategoryLabels(products, labels).length;
+}
 
 /**
  * Productos destacados del inicio: solo inventario en vivo con stock,

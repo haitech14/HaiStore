@@ -4,15 +4,13 @@ import {
   Check,
   Heart,
   ImageOff,
-  Minus,
-  Plus,
   ShoppingCart,
 } from 'lucide-react';
 
 import { AddToCartButton, getAddToCartLabel, isProductOutOfStock } from '@/components/cart/add-to-cart-button';
 import { ProductRating } from '@/components/product/product-rating';
-import { ProductWhatsAppButton } from '@/components/product-whatsapp-button';
 import { AdminRolePricesTooltip } from '@/components/admin/admin-role-prices-tooltip';
+import { useDisplayCurrency } from '@/context/display-currency-context';
 import { useWishlist } from '@/context/wishlist-context';
 import {
   CATALOG_VOLUME_TIERS,
@@ -31,31 +29,43 @@ import type { Product } from '@/types/product';
 
 function CatalogCardPricing({ product }: { product: Product }) {
   const pricing = getCatalogCardPricing(product);
+  const { displayCurrency } = useDisplayCurrency();
+  const showUsd = displayCurrency !== 'PEN';
+  const showPen = displayCurrency !== 'USD';
+
+  const compareParts = [
+    ...(showUsd ? [formatUsd(pricing.compareUsd)] : []),
+    ...(showPen ? [formatPenFromUsd(pricing.compareUsd)] : []),
+  ];
 
   return (
     <div className="space-y-1">
       <div className="rounded-md border border-border/60 bg-muted/15 px-2 py-1.5">
-        <div className="grid grid-cols-2 gap-2">
-          <div className="min-w-0">
-            <p className="text-[0.6rem] font-semibold uppercase tracking-wide text-red-600/90">USD</p>
-            <AdminRolePricesTooltip productId={product.id} displayUsd={pricing.currentUsd}>
+        <div className={cn('grid gap-2', showUsd && showPen ? 'grid-cols-2' : 'grid-cols-1')}>
+          {showUsd ? (
+            <div className="min-w-0">
+              <p className="text-[0.6rem] font-semibold uppercase tracking-wide text-red-600/90">USD</p>
+              <AdminRolePricesTooltip productId={product.id} displayUsd={pricing.currentUsd}>
+                <p className="text-base font-bold tabular-nums leading-tight text-red-600 xl:text-lg">
+                  {formatUsd(pricing.currentUsd)}
+                </p>
+              </AdminRolePricesTooltip>
+            </div>
+          ) : null}
+          {showPen ? (
+            <div className={cn('min-w-0', showUsd && 'border-l border-border/50 pl-2')}>
+              <p className="text-[0.6rem] font-semibold uppercase tracking-wide text-red-600/90">PEN</p>
               <p className="text-base font-bold tabular-nums leading-tight text-red-600 xl:text-lg">
-                {formatUsd(pricing.currentUsd)}
+                {formatPenFromUsd(pricing.currentUsd)}
               </p>
-            </AdminRolePricesTooltip>
-          </div>
-          <div className="min-w-0 border-l border-border/50 pl-2">
-            <p className="text-[0.6rem] font-semibold uppercase tracking-wide text-red-600/90">PEN</p>
-            <p className="text-base font-bold tabular-nums leading-tight text-red-600 xl:text-lg">
-              {formatPenFromUsd(pricing.currentUsd)}
-            </p>
-          </div>
+            </div>
+          ) : null}
         </div>
       </div>
       {pricing.discountPercent > 0 ? (
         <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 px-0.5">
           <p className="text-[0.65rem] tabular-nums text-muted-foreground line-through sm:text-xs">
-            {formatUsd(pricing.compareUsd)} · {formatPenFromUsd(pricing.compareUsd)}
+            {compareParts.join(' · ')}
           </p>
           <span className={PRODUCT_CARD_DISCOUNT_CLASS} aria-label={`Ahorra ${pricing.discountPercent} por ciento`}>
             -{pricing.discountPercent}%
@@ -90,16 +100,26 @@ function CatalogCardSpecList({ lines }: { lines: readonly string[] }) {
   if (lines.length === 0) return null;
 
   return (
-    <ul className="space-y-0.5" aria-label="Especificaciones del equipo">
-      {lines.map((line) => (
-        <li
-          key={line}
-          className="flex items-start gap-1.5 text-[0.65rem] leading-snug text-muted-foreground sm:text-xs"
-        >
-          <Check className="mt-0.5 size-3 shrink-0 text-emerald-600" aria-hidden="true" />
-          <span className="text-pretty">{line}</span>
-        </li>
-      ))}
+    <ul className="space-y-0.5" aria-label="Especificaciones del producto">
+      {lines.map((line) => {
+        const isCodeLine = line.startsWith('Código:');
+        return (
+          <li
+            key={line}
+            className="flex items-start gap-1.5 text-[0.65rem] leading-snug text-muted-foreground sm:text-xs"
+          >
+            <Check className="mt-0.5 size-3 shrink-0 text-emerald-600" aria-hidden="true" />
+            <span
+              className={cn(
+                'text-pretty',
+                isCodeLine && 'break-all font-mono text-[0.62rem] sm:text-[0.6875rem]',
+              )}
+            >
+              {line}
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -107,11 +127,9 @@ function CatalogCardSpecList({ lines }: { lines: readonly string[] }) {
 function CatalogCardStockLine({
   outOfStock,
   stock,
-  productCode,
 }: {
   outOfStock: boolean;
   stock: number;
-  productCode: string | null;
 }) {
   return (
     <p
@@ -124,16 +142,6 @@ function CatalogCardStockLine({
         <Check className="size-3.5 shrink-0" aria-hidden="true" />
         {outOfStock ? 'A pedido' : `Stock: ${stock}`}
       </span>
-      {productCode ? (
-        <>
-          <span className="text-muted-foreground" aria-hidden="true">
-            |
-          </span>
-          <span className="font-medium text-foreground">
-            Código: <span className="font-mono">{productCode}</span>
-          </span>
-        </>
-      ) : null}
     </p>
   );
 }
@@ -143,30 +151,16 @@ interface ProductCatalogCardProps {
 }
 
 export function ProductCatalogCard({ product }: ProductCatalogCardProps) {
-  const [quantity, setQuantity] = useState(1);
   const { isSelected: isWishlisted, toggle: toggleWishlist } = useWishlist();
   const outOfStock = isProductOutOfStock(product);
   const detailHref = productPath(product.id);
   const [imageFailed, setImageFailed] = useState(false);
   const imageUrl = imageFailed ? null : resolveProductImageUrl(product, { stockFallback: false });
   const wishlistSelected = isWishlisted(product.id);
-  const stockQty = outOfStock ? 0 : Math.max(product.stock, 1);
   const displayTitle = formatProductCardTitle(product);
-  const productCode = product.code?.trim() || null;
   const rating = getCatalogCardRating(product);
   const specLines = getCatalogCardSpecLines(product);
-  const cartLabel = outOfStock ? getAddToCartLabel(product) : getAddToCartLabel(product, 'detail');
-  const whatsAppProduct = {
-    id: product.id,
-    name: product.name,
-    priceUsd: product.price,
-    category: product.category,
-    brand: product.brand ?? null,
-  };
-
-  const adjustQuantity = (delta: number) => {
-    setQuantity((current) => Math.max(1, Math.min(stockQty || 99, current + delta)));
-  };
+  const buyLabel = outOfStock ? getAddToCartLabel(product) : 'Comprar';
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-lg border border-border/60 bg-card shadow-sm transition-shadow duration-200 hover:shadow-md">
@@ -232,13 +226,20 @@ export function ProductCatalogCard({ product }: ProductCatalogCardProps) {
 
         <ProductRating rating={rating.rating} reviews={rating.reviews} className="-mt-0.5" />
 
-        <CatalogCardStockLine
-          outOfStock={outOfStock}
-          stock={product.stock}
-          productCode={productCode}
-        />
+        <CatalogCardStockLine outOfStock={outOfStock} stock={product.stock} />
 
-        <CatalogCardSpecList lines={specLines} />
+        <div
+          className={cn(
+            'grid grid-rows-[0fr] opacity-0 transition-[grid-template-rows,opacity] duration-200',
+            'group-hover:grid-rows-[1fr] group-hover:opacity-100',
+            'group-focus-within:grid-rows-[1fr] group-focus-within:opacity-100',
+            'motion-reduce:grid-rows-[1fr] motion-reduce:opacity-100 motion-reduce:transition-none',
+          )}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <CatalogCardSpecList lines={specLines} />
+          </div>
+        </div>
 
         <CatalogCardPricing product={product} />
 
@@ -256,66 +257,19 @@ export function ProductCatalogCard({ product }: ProductCatalogCardProps) {
         </div>
 
         <div className="mt-auto pt-1.5">
-          {outOfStock ? (
-            <div className="grid gap-1.5">
-              <ProductWhatsAppButton
-                product={whatsAppProduct}
-                label="Cotizar ahora"
-                className="w-full min-h-9"
-              />
-              <AddToCartButton
-                product={product}
-                addOptions={{ quantity }}
-                className="min-h-9 w-full gap-1 rounded-md border border-red-600/30 bg-background px-2 text-xs font-semibold text-red-600 hover:bg-red-50 focus-visible:ring-red-600"
-              >
-                <ShoppingCart className="size-3.5 shrink-0" aria-hidden="true" />
-                <span className="truncate">{cartLabel}</span>
-              </AddToCartButton>
-            </div>
-          ) : (
-            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-stretch gap-1">
-              <div className="flex items-center rounded-md border border-border bg-muted/30">
-                <button
-                  type="button"
-                  onClick={() => adjustQuantity(-1)}
-                  disabled={quantity <= 1}
-                  aria-label="Disminuir cantidad"
-                  className="flex size-9 items-center justify-center text-muted-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:opacity-40"
-                >
-                  <Minus className="size-3" aria-hidden="true" />
-                </button>
-                <span
-                  className="min-w-[1.5rem] text-center text-xs font-semibold tabular-nums text-foreground"
-                  aria-live="polite"
-                >
-                  {quantity}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => adjustQuantity(1)}
-                  disabled={quantity >= (stockQty || 99)}
-                  aria-label="Aumentar cantidad"
-                  className="flex size-9 items-center justify-center text-muted-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:opacity-40"
-                >
-                  <Plus className="size-3" aria-hidden="true" />
-                </button>
-              </div>
-
-              <AddToCartButton
-                product={product}
-                addOptions={{ quantity }}
-                className="min-h-9 gap-1 rounded-md bg-red-600 px-1.5 text-[0.65rem] font-semibold text-white hover:bg-red-500 focus-visible:ring-red-600 xl:text-xs"
-              >
-                <ShoppingCart className="size-3.5 shrink-0" aria-hidden="true" />
-                <span className="truncate">{cartLabel}</span>
-              </AddToCartButton>
-
-              <ProductWhatsAppButton
-                className="size-9 min-h-9 shrink-0 rounded-md border-[#25D366] bg-[#25D366] text-white hover:bg-[#20bd5a] focus-visible:ring-[#25D366]"
-                product={whatsAppProduct}
-              />
-            </div>
-          )}
+          <AddToCartButton
+            product={product}
+            addOptions={{ quantity: 1 }}
+            className={cn(
+              'min-h-9 w-full gap-1.5 rounded-md px-3 text-sm font-semibold focus-visible:ring-red-600',
+              outOfStock
+                ? 'border border-red-600/30 bg-background text-red-600 hover:bg-red-50'
+                : 'bg-red-600 text-white hover:bg-red-500',
+            )}
+          >
+            <ShoppingCart className="size-3.5 shrink-0" aria-hidden="true" />
+            <span>{buyLabel}</span>
+          </AddToCartButton>
         </div>
       </div>
     </article>

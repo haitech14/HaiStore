@@ -5,6 +5,13 @@ export type ResolveProductImageOptions = {
   stockFallback?: boolean;
 };
 
+function shouldUseStockFallback(options?: ResolveProductImageOptions): boolean {
+  if (options?.stockFallback === false) return false;
+  if (options?.stockFallback === true) return true;
+  // En build de producción (Vercel) no hay imágenes genéricas por slug en /public/products.
+  return !import.meta.env.PROD;
+}
+
 type ResolveProductImageInput = {
   image_url?: string | null;
   gallery?: string[] | null;
@@ -13,34 +20,6 @@ type ResolveProductImageInput = {
   category?: string | null;
   brand?: string | null;
 };
-
-/** URL pública para mostrar un producto (evita data: URLs que no persisten en Supabase). */
-export function resolveProductImageUrl(
-  product: ResolveProductImageInput,
-  options?: ResolveProductImageOptions,
-): string;
-export function resolveProductImageUrl(
-  product: ResolveProductImageInput,
-  options: ResolveProductImageOptions & { stockFallback: false },
-): string | null;
-export function resolveProductImageUrl(
-  product: ResolveProductImageInput,
-  options?: ResolveProductImageOptions,
-): string | null {
-  const candidates = [
-    product.image_url,
-    ...(Array.isArray(product.gallery) ? product.gallery : []),
-  ];
-
-  for (const url of candidates) {
-    if (typeof url !== 'string' || url.length === 0) continue;
-    if (url.startsWith('data:') && !options?.allowDataUrl) continue;
-    return url;
-  }
-
-  if (options?.stockFallback === false) return null;
-  return resolveProductStockImagePath(product);
-}
 
 export function resolveProductStockImagePath(product: {
   id?: string;
@@ -80,4 +59,48 @@ export function resolveProductStockImagePath(product: {
   }
 
   return '/promo-cards/b2b-printer.png';
+}
+
+function isSyntheticStockImageUrl(product: ResolveProductImageInput, url: string): boolean {
+  return url === resolveProductStockImagePath(product);
+}
+
+function isUsableProductImageUrl(
+  product: ResolveProductImageInput,
+  url: string,
+  options?: ResolveProductImageOptions,
+): boolean {
+  if (url.length === 0) return false;
+  if (url.startsWith('data:') && !options?.allowDataUrl) return false;
+  if (!shouldUseStockFallback(options) && isSyntheticStockImageUrl(product, url)) return false;
+  return true;
+}
+
+/** URL pública para mostrar un producto (evita data: URLs que no persisten en Supabase). */
+export function resolveProductImageUrl(
+  product: ResolveProductImageInput,
+  options?: ResolveProductImageOptions,
+): string;
+export function resolveProductImageUrl(
+  product: ResolveProductImageInput,
+  options: ResolveProductImageOptions & { stockFallback: false },
+): string | null;
+export function resolveProductImageUrl(
+  product: ResolveProductImageInput,
+  options?: ResolveProductImageOptions,
+): string | null {
+  const candidates = [
+    product.image_url,
+    ...(Array.isArray(product.gallery) ? product.gallery : []),
+  ];
+
+  for (const url of candidates) {
+    if (typeof url !== 'string') continue;
+    if (isUsableProductImageUrl(product, url, options)) {
+      return url;
+    }
+  }
+
+  if (!shouldUseStockFallback(options)) return null;
+  return resolveProductStockImagePath(product);
 }
