@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Check,
@@ -12,15 +12,15 @@ import { ProductRating } from '@/components/product/product-rating';
 import { AdminRolePricesTooltip } from '@/components/admin/admin-role-prices-tooltip';
 import { useDisplayCurrency } from '@/context/display-currency-context';
 import { useWishlist } from '@/context/wishlist-context';
+import { formatVolumeUnitPrice } from '@/lib/display-price';
 import {
   CATALOG_VOLUME_TIERS,
-  formatCatalogVolumePricePen,
   getCatalogCardPricing,
   getCatalogCardRating,
   getCatalogCardSpecLines,
 } from '@/lib/product-catalog-card-meta';
 import { PRODUCT_CARD_DISCOUNT_CLASS } from '@/lib/product-card-title';
-import { resolveProductImageUrl } from '@/lib/product-image-url';
+import { buildProductImageCandidates } from '@/lib/product-image-url';
 import { formatProductCardTitle } from '@/lib/product-card-title';
 import { productPath } from '@/lib/product-path';
 import { productToWishlistItem } from '@/lib/wishlist-product';
@@ -77,6 +77,8 @@ function CatalogCardPricing({ product }: { product: Product }) {
 }
 
 function CatalogVolumePricing({ priceUsd }: { priceUsd: number }) {
+  const { displayCurrency } = useDisplayCurrency();
+
   return (
     <div className="rounded-md border border-border/70 bg-muted/30 px-2 py-1.5">
       <p className="text-[0.58rem] font-bold uppercase tracking-wide text-muted-foreground">
@@ -87,7 +89,7 @@ function CatalogVolumePricing({ priceUsd }: { priceUsd: number }) {
           <li key={tier.range} className="flex items-center justify-between gap-1 text-[0.65rem]">
             <span className="text-muted-foreground">{tier.range}</span>
             <span className="font-semibold tabular-nums text-foreground">
-              {formatCatalogVolumePricePen(priceUsd, tier.discountPercent)}
+              {formatVolumeUnitPrice(priceUsd, tier.discountPercent, displayCurrency)}
             </span>
           </li>
         ))}
@@ -154,8 +156,10 @@ export function ProductCatalogCard({ product }: ProductCatalogCardProps) {
   const { isSelected: isWishlisted, toggle: toggleWishlist } = useWishlist();
   const outOfStock = isProductOutOfStock(product);
   const detailHref = productPath(product.id);
-  const [imageFailed, setImageFailed] = useState(false);
-  const imageUrl = imageFailed ? null : resolveProductImageUrl(product, { stockFallback: false });
+  const imageCandidates = useMemo(() => buildProductImageCandidates(product), [product]);
+  const [imageIndex, setImageIndex] = useState(0);
+  const [imagesExhausted, setImagesExhausted] = useState(false);
+  const imageUrl = imagesExhausted ? null : (imageCandidates[imageIndex] ?? null);
   const wishlistSelected = isWishlisted(product.id);
   const displayTitle = formatProductCardTitle(product);
   const rating = getCatalogCardRating(product);
@@ -203,7 +207,13 @@ export function ProductCatalogCard({ product }: ProductCatalogCardProps) {
               alt=""
               className="size-full object-contain object-center p-0.5"
               loading="lazy"
-              onError={() => setImageFailed(true)}
+              onError={() => {
+                if (imageIndex + 1 < imageCandidates.length) {
+                  setImageIndex((current) => current + 1);
+                  return;
+                }
+                setImagesExhausted(true);
+              }}
             />
           ) : (
             <div className="flex flex-col items-center gap-2 px-4 text-center text-muted-foreground">

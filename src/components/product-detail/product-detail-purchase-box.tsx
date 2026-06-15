@@ -9,13 +9,14 @@ import {
 } from 'lucide-react';
 
 import { AddToCartButton, getAddToCartLabel } from '@/components/cart/add-to-cart-button';
+import { DualPrice } from '@/components/product/product-dual-price';
 import { ProductWhatsAppButton } from '@/components/product-whatsapp-button';
 import { Button } from '@/components/ui/button';
 import { ProductDetailPriceBlock } from '@/components/product-detail/product-detail-price-block';
 import { ProductDetailPurchaseAccordion } from '@/components/product-detail/product-detail-purchase-accordion';
 import type { ProductDetailViewModel } from '@/types/product-detail';
 import type { Product } from '@/types/product';
-import { cn, usdToPen } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface ProductDetailPurchaseBoxProps {
   product: Product;
@@ -63,7 +64,6 @@ export function ProductDetailPurchaseBox({ product, detail }: ProductDetailPurch
   const outOfStock = product.stock <= 0;
   const countdown = useOrderCountdown();
   const stockDisplay = outOfStock ? 0 : Math.max(product.stock, 10);
-  const unitPricePen = usdToPen(product.price);
 
   const adjustQuantity = (delta: number) => {
     setQuantity((current) => Math.max(1, Math.min(stockDisplay || 99, current + delta)));
@@ -130,7 +130,9 @@ export function ProductDetailPurchaseBox({ product, detail }: ProductDetailPurch
           >
             <ul className="space-y-2">
               {detail.bulkDiscountTiers.map((tier) => {
-                const tierUnitPrice = Math.round(unitPricePen * (1 - tier.discountPercent / 100));
+                const tierUnitUsd =
+                  Math.round(product.price * (1 - tier.discountPercent / 100) * 100) / 100;
+
                 return (
                   <li
                     key={tier.range}
@@ -142,9 +144,7 @@ export function ProductDetailPurchaseBox({ product, detail }: ProductDetailPurch
                     </div>
                     <p className="shrink-0 text-right">
                       <span className="block text-xs text-neutral-500">Precio/unidad</span>
-                      <span className="font-bold text-neutral-900">
-                        S/ {tierUnitPrice.toLocaleString('es-PE')}
-                      </span>
+                      <DualPrice usd={tierUnitUsd} className="font-bold text-neutral-900" />
                     </p>
                   </li>
                 );
@@ -172,8 +172,6 @@ export function ProductDetailPurchaseBox({ product, detail }: ProductDetailPurch
               <legend className="sr-only">Seleccionar garantía extendida</legend>
               <ul className="space-y-2">
                 {detail.warrantyOptions.map((option) => {
-                  const optionPricePen =
-                    option.priceUsd != null ? usdToPen(option.priceUsd) : null;
                   const inputId = `warranty-${option.id}`;
 
                   return (
@@ -199,9 +197,10 @@ export function ProductDetailPurchaseBox({ product, detail }: ProductDetailPurch
                           />
                           <span className="font-medium text-neutral-900">{option.label}</span>
                         </span>
-                        {optionPricePen != null ? (
+                        {option.priceUsd != null ? (
                           <span className="shrink-0 font-semibold text-neutral-900">
-                            + S/ {optionPricePen.toLocaleString('es-PE')}
+                            +{' '}
+                            <DualPrice usd={option.priceUsd} className="inline font-semibold" />
                           </span>
                         ) : (
                           <span className="shrink-0 text-xs text-neutral-500">Sin costo</span>

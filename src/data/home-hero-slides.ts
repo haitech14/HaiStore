@@ -21,10 +21,17 @@ export interface HomeHeroTitleLine {
   variant: 'white' | 'red';
 }
 
+export type HomeHeroSlideLayout = 'image-only' | 'dia-papa-home';
+
 export interface HomeHeroSlide {
   id: string;
+  layout?: HomeHeroSlideLayout;
   /** Banner completo solo imagen (sin textos superpuestos). */
   imageOnly?: boolean;
+  /** Una sola imagen en `backgroundImage` (sin variantes @2x/@3x). */
+  singleAsset?: boolean;
+  /** Altura acorde al carrusel de categorías; ancho natural (no full-bleed). */
+  compact?: boolean;
   linkHref?: string;
   imageAlt?: string;
   eyebrow?: string;
@@ -60,13 +67,15 @@ export const TRUST_ICON_MAP: Record<HomeHeroTrustIcon, LucideIcon> = {
 
 export const homeHeroSlides: HomeHeroSlide[] = [
   {
-    id: 'ricoh-dia-papa',
+    id: 'dia-papa-ricoh-promo',
     imageOnly: true,
-    backgroundImage: '/hero/banner1.png',
-    imageWidth: 1920,
-    imageHeight: 538,
+    singleAsset: true,
+    compact: true,
+    backgroundImage: '/categories/banner2.png',
+    imageWidth: 2172,
+    imageHeight: 724,
     imageAlt:
-      'Feliz Día Papá — Lo mejor para él en Ricoh. Multifuncionales con tecnología que rinde, confiabilidad que avanza y soporte experto siempre.',
-    linkHref: '/categoria/multifuncionales',
+      'Día del Padre — Promociones especiales en fotocopiadoras Ricoh IM 550F, IM C2010 e IM 430F. Potencia tu oficina con rendimiento, velocidad y calidad profesional.',
+    linkHref: HOME_HERO_WHATSAPP_LINK,
   },
 ];

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, ZoomIn } from 'lucide-react';
 import useEmblaCarousel from 'embla-carousel-react';
 
 import {
@@ -15,37 +15,59 @@ import {
 import { cn } from '@/lib/utils';
 
 const SLIDE_CLASS =
-  'min-w-0 flex-[0_0_calc((100%-0.5rem)/2)] sm:flex-[0_0_calc((100%-1.25rem)/3)] md:flex-[0_0_calc((100%-2.25rem)/4)] lg:flex-[0_0_calc((100%-3rem)/5)] xl:flex-[0_0_calc((100%-3.75rem)/6)]';
+  'min-w-0 flex-[0_0_88%] sm:flex-[0_0_48%] md:flex-[0_0_32%] lg:flex-[0_0_24%] xl:flex-[0_0_16.666%]';
 
-function RecommendationSlide({
+function StarRating() {
+  return (
+    <div className="flex justify-center gap-0.5" aria-label="5 estrellas">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <Star
+          key={index}
+          className="size-3 fill-red-600 text-red-600 sm:size-3.5"
+          aria-hidden="true"
+        />
+      ))}
+    </div>
+  );
+}
+
+function RecommendationCard({
   item,
   onOpen,
+  className,
 }: {
   item: ClientRecommendation;
   onOpen: (item: ClientRecommendation) => void;
+  className?: string;
 }) {
   return (
-    <li className={SLIDE_CLASS}>
+    <li className={cn(SLIDE_CLASS, 'pl-3 first:pl-0 sm:pl-4', className)}>
       <button
         type="button"
         onClick={() => onOpen(item)}
         className={cn(
-          'group relative flex h-full w-full flex-col overflow-hidden rounded-xl border border-border/70 bg-card text-left shadow-[0_2px_16px_rgba(15,23,42,0.06)]',
-          'transition-shadow hover:shadow-md',
+          'group flex h-full w-full flex-col overflow-hidden rounded-xl border border-border/60 bg-white text-left shadow-[0_2px_16px_rgba(15,31,61,0.08)]',
+          'transition-shadow hover:shadow-[0_4px_24px_rgba(15,31,61,0.12)]',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
         )}
       >
-        <div className="relative aspect-[3/4] overflow-hidden bg-muted">
+        <div className="relative aspect-[4/5] overflow-hidden bg-muted">
           <img
             src={item.image}
             alt=""
-            className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             loading="lazy"
           />
           <span
+            className="absolute bottom-3 left-3 flex size-8 items-center justify-center rounded-full bg-red-600 text-lg font-bold leading-none text-white shadow-md"
+            aria-hidden="true"
+          >
+            &ldquo;
+          </span>
+          <span
             className={cn(
               'absolute inset-0 flex items-center justify-center bg-black/0 transition-colors',
-              'group-hover:bg-black/25 group-focus-visible:bg-black/25',
+              'group-hover:bg-black/20 group-focus-visible:bg-black/20',
             )}
             aria-hidden="true"
           >
@@ -54,9 +76,20 @@ function RecommendationSlide({
             </span>
           </span>
         </div>
-        <p className="px-3 py-2.5 text-center text-[0.7rem] font-semibold leading-snug text-foreground sm:text-xs">
-          {item.caption}
-        </p>
+
+        <div className="flex flex-1 flex-col gap-2 px-3 pb-4 pt-3 sm:px-4 sm:pb-5 sm:pt-3.5">
+          <StarRating />
+          <h3 className="text-balance text-center text-xs font-bold leading-snug text-[#0f1f3d] sm:text-sm">
+            {item.title}
+          </h3>
+          <p className="line-clamp-4 flex-1 text-pretty text-center text-[0.6875rem] italic leading-relaxed text-muted-foreground sm:text-xs">
+            &ldquo;{item.quote}&rdquo;
+          </p>
+          <p className="text-center text-[0.6875rem] sm:text-xs">
+            <span className="font-bold text-[#0f1f3d]">{item.customerName}</span>
+            <span className="text-muted-foreground"> · {item.customerCity}</span>
+          </p>
+        </div>
         <span className="sr-only">Ver imagen ampliada: {item.imageAlt}</span>
       </button>
     </li>
@@ -105,26 +138,27 @@ export function ClientRecommendationsSection() {
   return (
     <section
       aria-labelledby="clientes-recomiendan-titulo"
-      className="relative overflow-hidden border-t border-border/60 bg-muted/30 py-6 sm:py-8"
+      className="relative overflow-hidden border-t border-border/60 bg-white py-8 sm:py-10"
     >
       <div className="container relative">
-        <header className="mx-auto mb-4 max-w-3xl text-center sm:mb-5">
+        <header className="mx-auto mb-6 max-w-3xl text-center sm:mb-8">
           <div className="flex items-center justify-center gap-3 sm:gap-4">
-            <span className="h-px w-8 bg-sky-400 sm:w-12" aria-hidden="true" />
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-sky-500 sm:text-xs">
+            <span className="h-px w-8 bg-red-600/70 sm:w-12" aria-hidden="true" />
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-red-600 sm:text-xs">
               Testimonios reales
             </p>
-            <span className="h-px w-8 bg-sky-400 sm:w-12" aria-hidden="true" />
+            <span className="h-px w-8 bg-red-600/70 sm:w-12" aria-hidden="true" />
           </div>
 
           <h2
             id="clientes-recomiendan-titulo"
-            className="mt-2.5 text-balance text-2xl font-bold tracking-tight text-[#0f1f3d] sm:mt-3 sm:text-3xl lg:text-[2rem]"
+            className="mt-3 text-balance text-2xl font-bold tracking-tight text-[#0f1f3d] sm:mt-4 sm:text-3xl lg:text-[2rem]"
           >
-            Nuestros clientes nos recomiendan
+            Nuestros clientes nos{' '}
+            <span className="text-red-600">recomiendan</span>
           </h2>
 
-          <p className="mx-auto mt-2 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:mt-2.5 sm:text-base">
+          <p className="mx-auto mt-2 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:mt-3 sm:text-base">
             Experiencias de compra, entrega y soporte. Toca una foto para verla en grande.
           </p>
         </header>
@@ -134,8 +168,8 @@ export function ClientRecommendationsSection() {
             <button
               type="button"
               onClick={scrollPrev}
-              className="absolute -left-1 top-[38%] z-10 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background shadow-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 sm:flex lg:-left-3"
-              aria-label="Foto anterior"
+              className="absolute -left-1 top-[32%] z-10 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white shadow-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 sm:flex lg:-left-3"
+              aria-label="Testimonio anterior"
             >
               <ChevronLeft className="size-5" aria-hidden="true" />
             </button>
@@ -144,17 +178,21 @@ export function ClientRecommendationsSection() {
             <button
               type="button"
               onClick={scrollNext}
-              className="absolute -right-1 top-[38%] z-10 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background shadow-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 sm:flex lg:-right-3"
-              aria-label="Foto siguiente"
+              className="absolute -right-1 top-[32%] z-10 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white shadow-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 sm:flex lg:-right-3"
+              aria-label="Testimonio siguiente"
             >
               <ChevronRight className="size-5" aria-hidden="true" />
             </button>
           ) : null}
 
-          <div className="overflow-hidden px-0.5" ref={emblaRef}>
-            <ul className="flex touch-pan-y gap-2 sm:gap-2.5 md:gap-3">
+          <div className="-mx-3 overflow-hidden px-3 sm:-mx-4 sm:px-4" ref={emblaRef}>
+            <ul className="flex touch-pan-y">
               {clientRecommendations.map((item) => (
-                <RecommendationSlide key={item.id} item={item} onOpen={setLightboxItem} />
+                <RecommendationCard
+                  key={item.id}
+                  item={item}
+                  onOpen={setLightboxItem}
+                />
               ))}
             </ul>
           </div>
@@ -162,7 +200,7 @@ export function ClientRecommendationsSection() {
 
         {scrollSnaps.length > 1 ? (
           <div
-            className="mt-3 flex items-center justify-center gap-1.5"
+            className="mt-4 flex items-center justify-center gap-1.5 sm:mt-5"
             role="tablist"
             aria-label="Paginación de testimonios"
           >
@@ -172,7 +210,7 @@ export function ClientRecommendationsSection() {
                 type="button"
                 role="tab"
                 aria-selected={index === selectedIndex}
-                aria-label={`Ir al grupo ${index + 1} de fotos`}
+                aria-label={`Ir al grupo ${index + 1} de testimonios`}
                 onClick={() => scrollTo(index)}
                 className={cn(
                   'size-2.5 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
@@ -191,8 +229,8 @@ export function ClientRecommendationsSection() {
         >
           {lightboxItem ? (
             <>
-              <DialogTitle className="text-center text-sm font-semibold text-white sm:text-base">
-                {lightboxItem.caption}
+              <DialogTitle className="text-center text-sm font-bold text-white sm:text-base">
+                {lightboxItem.title}
               </DialogTitle>
               <DialogDescription className="sr-only">{lightboxItem.imageAlt}</DialogDescription>
               <div className="flex max-h-[min(85dvh,52rem)] items-center justify-center overflow-hidden rounded-lg bg-black/40">
@@ -202,6 +240,12 @@ export function ClientRecommendationsSection() {
                   className="max-h-[min(85dvh,52rem)] w-full object-contain"
                 />
               </div>
+              <p className="text-center text-xs italic text-neutral-300 sm:text-sm">
+                &ldquo;{lightboxItem.quote}&rdquo; —{' '}
+                <span className="font-semibold text-white">{lightboxItem.customerName}</span>
+                {', '}
+                {lightboxItem.customerCity}
+              </p>
             </>
           ) : null}
         </DialogContent>

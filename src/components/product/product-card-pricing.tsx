@@ -1,5 +1,5 @@
 import { AdminRolePricesTooltip } from '@/components/admin/admin-role-prices-tooltip';
-import { DualPrice } from '@/components/product-showcase-card';
+import { DualPrice } from '@/components/product/product-dual-price';
 import { resolveProductCardPricing } from '@/lib/product-card-pricing';
 import {
   PRODUCT_CARD_DISCOUNT_CLASS,

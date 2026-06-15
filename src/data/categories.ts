@@ -63,6 +63,14 @@ export const categories: Category[] = [
     ],
   },
   {
+    slug: 'accesorios',
+    name: 'Accesorios',
+    tagline: 'Bandejas, finisher y complementos para impresoras',
+    icon: PackageOpen,
+    image: '/categories/accesorios-impresoras.png',
+    inventoryCategories: ['Accesorios'],
+  },
+  {
     slug: 'repuestos',
     name: 'Repuestos',
     tagline: 'Partes y componentes para impresoras',

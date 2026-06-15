@@ -57,6 +57,32 @@ function isColorPrinter(product: ProductBadgeSource): boolean {
   );
 }
 
+/** Título en vitrina «Lo más destacado»: minúsculas con primera mayúscula; RICOH, IM y modelo en mayúsculas. */
+export function formatHighlightProductTitle(name: string): string {
+  const trimmed = name
+    .trim()
+    .replace(/\s+B\/N\s+/gi, ' ')
+    .replace(/\s+B\/N$/i, '')
+    .replace(/\s{2,}/g, ' ');
+  if (!trimmed) return trimmed;
+
+  const ricohMatch = /\bRICOH\b/i.exec(trimmed);
+  if (!ricohMatch || ricohMatch.index === undefined) {
+    const lower = trimmed.toLowerCase();
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  }
+
+  const prefix = trimmed.slice(0, ricohMatch.index).trim();
+  const suffix = trimmed.slice(ricohMatch.index).trim().toUpperCase();
+
+  if (!prefix) return suffix;
+
+  const lowerPrefix = prefix.toLowerCase();
+  const formattedPrefix = lowerPrefix.charAt(0).toUpperCase() + lowerPrefix.slice(1);
+
+  return `${formattedPrefix} ${suffix}`;
+}
+
 /** Añade «B/N» en equipos monocromáticos si el nombre aún no lo incluye. */
 export function formatProductCardTitle(
   product: ProductBadgeSource & { name: string; category?: string | null },

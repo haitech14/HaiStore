@@ -5,7 +5,7 @@ export function FooterBrandsSection() {
   return (
     <section
       aria-labelledby="marcas-footer-titulo"
-      className="border-b border-border bg-background"
+      className="border-y border-border/60 bg-muted/30"
     >
       <div className="container pt-5 pb-2 text-center sm:pt-6">
         <h2

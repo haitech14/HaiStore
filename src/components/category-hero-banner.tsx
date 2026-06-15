@@ -1,4 +1,5 @@
 import { BadgePercent, Headphones, Printer, Sparkles } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import type { CategoryHeroFeatureIcon, ResolvedCategoryHero } from '@/data/category-hero';
 import { cn } from '@/lib/utils';
@@ -18,6 +19,8 @@ interface CategoryHeroBannerProps {
   compact?: boolean;
   /** Tarjeta estrecha para filas de subcategorías. */
   inline?: boolean;
+  /** Zona inferior del banner (p. ej. subcategorías). */
+  footer?: ReactNode;
 }
 
 function HeroBody({
@@ -48,11 +51,6 @@ function HeroBody({
       <div
         className="absolute inset-0 bg-gradient-to-r from-neutral-950/95 via-neutral-900/80 to-neutral-900/20 lg:via-neutral-900/55 lg:to-transparent"
         aria-hidden="true"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 right-[36%] hidden w-px bg-red-600/70 sm:block"
-        style={{ transform: 'skewX(-12deg)' }}
       />
       <div
         className={cn(
@@ -141,6 +139,7 @@ export function CategoryHeroBanner({
   headingLevel = 'h1',
   compact = false,
   inline = false,
+  footer,
 }: CategoryHeroBannerProps) {
   const shellClass = cn(
     'relative h-full overflow-hidden rounded-2xl border shadow-md transition-all',
@@ -154,6 +153,22 @@ export function CategoryHeroBanner({
         : 'border-border',
   );
 
+  const body = (
+    <>
+      <HeroBody
+        content={content}
+        headingLevel={headingLevel}
+        compact={compact}
+        inline={inline}
+      />
+      {footer ? (
+        <div className="relative z-10 flex justify-center border-t border-white/15 bg-neutral-950/50 px-4 py-3 backdrop-blur-sm sm:px-6 lg:px-8">
+          {footer}
+        </div>
+      ) : null}
+    </>
+  );
+
   if (interactive) {
     return (
       <button
@@ -163,24 +178,14 @@ export function CategoryHeroBanner({
         onClick={onActivate}
         className={shellClass}
       >
-        <HeroBody
-          content={content}
-          headingLevel={headingLevel}
-          compact={compact}
-          inline={inline}
-        />
+        {body}
       </button>
     );
   }
 
   return (
     <div className={shellClass} role="region" aria-label={content.title}>
-      <HeroBody
-        content={content}
-        headingLevel={headingLevel}
-        compact={compact}
-        inline={inline}
-      />
+      {body}
     </div>
   );
 }

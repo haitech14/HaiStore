@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type SyntheticEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ImageOff, Pencil, ShoppingCart, Trash2 } from 'lucide-react';
 
@@ -33,9 +33,7 @@ import {
 } from '@/lib/category-table-price-columns';
 import { createEmptyInventoryProduct } from '@/lib/inventory-product';
 import { getProductCardTitleContent } from '@/lib/product-card-title';
-import {
-  resolveProductImageUrl,
-} from '@/lib/product-image-url';
+import { buildProductImageCandidates } from '@/lib/product-image-url';
 import { productPath } from '@/lib/product-path';
 import {
   formatProductTableCategory,
@@ -111,16 +109,23 @@ function ProductTableThumbnail({
   detailHref: string;
   allowDataUrl?: boolean;
 }) {
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const primarySrc = resolveProductImageUrl(product, {
-    ...(allowDataUrl ? { allowDataUrl: true } : {}),
-    stockFallback: false,
-  });
-  const src = failedSrc === primarySrc ? null : primarySrc;
+  const imageCandidates = useMemo(
+    () =>
+      buildProductImageCandidates(product, {
+        ...(allowDataUrl ? { allowDataUrl: true } : {}),
+      }),
+    [allowDataUrl, product],
+  );
+  const [imageIndex, setImageIndex] = useState(0);
+  const [imagesExhausted, setImagesExhausted] = useState(false);
+  const src = imagesExhausted ? null : (imageCandidates[imageIndex] ?? null);
 
-  const handleError = (event: SyntheticEvent<HTMLImageElement>) => {
-    const attempted = event.currentTarget.currentSrc || event.currentTarget.src;
-    setFailedSrc(attempted);
+  const handleError = () => {
+    if (imageIndex + 1 < imageCandidates.length) {
+      setImageIndex((current) => current + 1);
+      return;
+    }
+    setImagesExhausted(true);
   };
 
   return (

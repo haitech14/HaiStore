@@ -8,9 +8,9 @@ export interface Brand {
   logoClassName?: string;
 }
 
-/** Clase por defecto para logos horizontales en la franja de marcas. */
+/** Clase por defecto para logos horizontales en la franja de marcas (footer claro, a color). */
 export const DEFAULT_BRAND_LOGO_CLASS =
-  'max-h-5 w-auto max-w-full object-contain sm:max-h-[1.375rem]';
+  'max-h-7 w-auto max-w-full object-contain sm:max-h-8 md:max-h-9';
 
 export const brands: string[] = [
   'Apple',
@@ -31,105 +31,105 @@ export const printerBrands: Brand[] = [
     logo: '/brands/ricoh.png',
     logoWidth: 390,
     logoHeight: 80,
-    logoClassName: 'max-h-5 w-auto max-w-[5rem] object-contain sm:max-h-[1.375rem]',
+    logoClassName: 'max-h-7 w-auto max-w-[5rem] object-contain sm:max-h-8 md:max-h-9',
   },
   {
     name: 'Konica Minolta',
     logo: '/brands/konica-minolta.png',
     logoWidth: 138,
     logoHeight: 80,
-    logoClassName: 'max-h-5 w-auto max-w-[3.75rem] object-contain sm:max-h-[1.375rem]',
+    logoClassName: 'max-h-7 w-auto max-w-[3.75rem] object-contain sm:max-h-8 md:max-h-9',
   },
   {
     name: 'Canon',
     logo: '/brands/canon.png',
     logoWidth: 213,
     logoHeight: 80,
-    logoClassName: 'max-h-5 w-auto max-w-[4.25rem] object-contain sm:max-h-[1.375rem]',
+    logoClassName: 'max-h-7 w-auto max-w-[4.25rem] object-contain sm:max-h-8 md:max-h-9',
   },
   {
     name: 'Epson',
     logo: '/brands/epson.png',
     logoWidth: 325,
     logoHeight: 80,
-    logoClassName: 'max-h-5 w-auto max-w-[5rem] object-contain sm:max-h-[1.375rem]',
+    logoClassName: 'max-h-7 w-auto max-w-[5rem] object-contain sm:max-h-8 md:max-h-9',
   },
   {
     name: 'HP',
     logo: '/brands/hp.png',
     logoWidth: 80,
     logoHeight: 80,
-    logoClassName: 'h-5 w-5 object-contain sm:h-[1.375rem] sm:w-[1.375rem]',
+    logoClassName: 'h-7 w-7 object-contain sm:h-8 sm:w-8 md:h-9 md:w-9',
   },
   {
     name: 'Kyocera',
     logo: '/brands/kyocera.png',
     logoWidth: 319,
     logoHeight: 80,
-    logoClassName: 'max-h-5 w-auto max-w-[5rem] object-contain sm:max-h-[1.375rem]',
+    logoClassName: 'max-h-7 w-auto max-w-[5rem] object-contain sm:max-h-8 md:max-h-9',
   },
   {
     name: 'Lexmark',
     logo: '/brands/lexmark.png',
     logoWidth: 406,
     logoHeight: 80,
-    logoClassName: 'max-h-5 w-auto max-w-[5.25rem] object-contain sm:max-h-[1.375rem]',
+    logoClassName: 'max-h-7 w-auto max-w-[5.25rem] object-contain sm:max-h-8 md:max-h-9',
   },
   {
     name: 'Oki',
     logo: '/brands/oki.png',
     logoWidth: 182,
     logoHeight: 80,
-    logoClassName: 'max-h-5 w-auto max-w-[3.25rem] object-contain sm:max-h-[1.375rem]',
+    logoClassName: 'max-h-7 w-auto max-w-[3.25rem] object-contain sm:max-h-8 md:max-h-9',
   },
   {
     name: 'Pantum',
     logo: '/brands/pantum.png',
     logoWidth: 311,
     logoHeight: 80,
-    logoClassName: 'max-h-5 w-auto max-w-[5rem] object-contain sm:max-h-[1.375rem]',
+    logoClassName: 'max-h-7 w-auto max-w-[5rem] object-contain sm:max-h-8 md:max-h-9',
   },
   {
     name: 'Colortrac',
     logo: '/brands/colortrac.png',
     logoWidth: 297,
     logoHeight: 80,
-    logoClassName: 'max-h-5 w-auto max-w-[4.5rem] object-contain sm:max-h-[1.375rem]',
+    logoClassName: 'max-h-7 w-auto max-w-[4.5rem] object-contain sm:max-h-8 md:max-h-9',
   },
   {
     name: 'Ramko',
     logo: '/brands/ramko.png',
     logoWidth: 225,
     logoHeight: 225,
-    logoClassName: 'h-5 w-auto max-w-[2.75rem] object-contain sm:h-[1.375rem] sm:max-w-[3.25rem]',
+    logoClassName: 'h-7 w-auto max-w-[2.75rem] object-contain sm:h-8 sm:max-w-[3.25rem] md:h-9',
   },
   {
     name: 'Topjet',
     logo: '/brands/topjet.png',
     logoWidth: 320,
     logoHeight: 128,
-    logoClassName: 'max-h-5 w-auto max-w-[4.25rem] object-contain sm:max-h-[1.375rem] sm:max-w-[4.25rem]',
+    logoClassName: 'max-h-7 w-auto max-w-[4.25rem] object-contain sm:max-h-8 md:max-h-9 sm:max-w-[4.25rem]',
   },
   {
     name: 'Densitone',
     logo: '/brands/densitone.png',
     logoWidth: 320,
     logoHeight: 320,
-    logoClassName: 'h-5 w-auto max-w-[2.75rem] object-contain sm:h-[1.375rem] sm:max-w-[3rem]',
+    logoClassName: 'h-7 w-auto max-w-[2.75rem] object-contain sm:h-8 sm:max-w-[3rem] md:h-9',
   },
   {
     name: 'Intercopy',
     logo: '/brands/intercopy.png',
     logoWidth: 320,
     logoHeight: 122,
-    logoClassName: 'max-h-5 w-auto max-w-[4.75rem] object-contain sm:max-h-[1.375rem] sm:max-w-[5.25rem]',
+    logoClassName: 'max-h-7 w-auto max-w-[4.75rem] object-contain sm:max-h-8 md:max-h-9 sm:max-w-[5.25rem]',
   },
   {
     name: 'Katun',
     logo: '/brands/katun.png',
     logoWidth: 320,
     logoHeight: 86,
-    logoClassName: 'max-h-5 w-auto max-w-[5rem] object-contain sm:max-h-[1.375rem]',
+    logoClassName: 'max-h-7 w-auto max-w-[5rem] object-contain sm:max-h-8 md:max-h-9',
   },
 ];
 

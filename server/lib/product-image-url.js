@@ -2,53 +2,33 @@
  * Resuelve una URL pública servible (Vercel /public) para vitrina y API.
  * Los data: URLs no se persisten en Supabase ni deben enviarse al cliente.
  */
-import { publicProductMediaPath } from './persist-product-media.js';
+import fs from 'fs';
+import path from 'path';
+
+import {
+  publicProductMediaPath,
+  resolveProductCategoryStockImage,
+  resolveProductModelStockImage,
+} from '../../shared/product-stock-images.js';
+import { getPublicProductsDir } from './persist-product-media.js';
 
 function shouldUseStockFallback(options) {
-  if (options?.stockFallback === false) return false;
-  if (options?.stockFallback === true) return true;
-  // En Vercel no hay /products/{id}.webp generados por slug; evita 404 y placeholders falsos.
-  return !process.env.VERCEL;
+  return options?.stockFallback !== false;
 }
 
-export function resolveProductStockImagePath(product) {
-  const id = String(product?.id ?? '').trim();
-  if (id) {
-    return publicProductMediaPath(id);
-  }
-
-  const haystack = `${product?.category ?? ''} ${product?.name ?? ''} ${product?.brand ?? ''}`.toLowerCase();
-
-  if (product?.category === 'Accesorios' || haystack.startsWith('accesorios ')) {
-    return '/categories/accesorios-impresoras.png';
-  }
-
-  if (haystack.includes('multifuncional')) {
-    if (haystack.includes('remanufactur') || haystack.includes('reacondicion')) {
-      return '/promotions/promo-hero-multifuncionales.png';
-    }
-    return '/categories/multifuncionales.png';
-  }
-
-  if (haystack.includes('impresor')) {
-    return '/categories/impresoras.png';
-  }
-
-  if (
-    haystack.includes('toner') ||
-    haystack.includes('tóner') ||
-    haystack.includes('suministro') ||
-    haystack.includes('repuesto')
-  ) {
-    return '/categories/toner-suministros.png';
-  }
-
-  return '/promo-cards/b2b-printer.png';
+function isCategoryStockImageUrl(url) {
+  return (
+    url.startsWith('/categories/') ||
+    url.startsWith('/promotions/') ||
+    url.startsWith('/promo-cards/')
+  );
 }
 
 function isSyntheticStockImageUrl(product, url) {
-  if (typeof url !== 'string' || url.length === 0) return false;
-  return url === resolveProductStockImagePath(product);
+  if (url === resolveProductModelStockImage(product)) return true;
+  if (url === resolveProductCategoryStockImage(product)) return true;
+  if (url === publicProductMediaPath(product?.id ?? '')) return true;
+  return isCategoryStockImageUrl(url);
 }
 
 function isUsableProductImageUrl(product, url, options) {
@@ -58,31 +38,65 @@ function isUsableProductImageUrl(product, url, options) {
   return true;
 }
 
-export function resolveProductImageUrl(product, options) {
-  const candidates = [
-    product?.image_url,
-    ...(Array.isArray(product?.gallery) ? product.gallery : []),
-  ];
+function productWebpExists(productId) {
+  const id = String(productId ?? '').trim();
+  if (!id) return false;
 
-  for (const url of candidates) {
-    if (isUsableProductImageUrl(product, url, options)) {
-      return url;
-    }
+  try {
+    const filePath = path.join(getPublicProductsDir(), `${publicProductMediaPath(id).split('/').pop()}`);
+    fs.accessSync(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function resolveProductStockImagePath(product) {
+  const modelImage = resolveProductModelStockImage(product);
+  if (modelImage) return modelImage;
+
+  const id = String(product?.id ?? '').trim();
+  if (id && productWebpExists(id)) {
+    return publicProductMediaPath(id);
   }
 
-  if (!shouldUseStockFallback(options)) return null;
-  return resolveProductStockImagePath(product);
+  return resolveProductCategoryStockImage(product);
+}
+
+export function buildProductImageCandidates(product, options) {
+  const candidates = [];
+  const seen = new Set();
+
+  const push = (url) => {
+    if (!url || url.startsWith('data:') || seen.has(url)) return;
+    if (!isUsableProductImageUrl(product, url, options)) return;
+    seen.add(url);
+    candidates.push(url);
+  };
+
+  push(product?.image_url);
+  for (const url of product?.gallery ?? []) {
+    push(url);
+  }
+
+  if (shouldUseStockFallback(options)) {
+    push(resolveProductModelStockImage(product));
+    const id = String(product?.id ?? '').trim();
+    if (id && productWebpExists(id)) {
+      push(publicProductMediaPath(id));
+    }
+    push(resolveProductCategoryStockImage(product));
+  }
+
+  return candidates;
+}
+
+export function resolveProductImageUrl(product, options) {
+  const candidates = buildProductImageCandidates(product, options);
+  return candidates[0] ?? null;
 }
 
 export function resolveProductGallery(product, options) {
-  const fromGallery = (Array.isArray(product?.gallery) ? product.gallery : []).filter((url) =>
-    isUsableProductImageUrl(product, url, options),
-  );
-  const primary = resolveProductImageUrl(product, options);
-
-  if (primary) {
-    return [...new Set([primary, ...fromGallery])];
-  }
-
-  return fromGallery;
+  const candidates = buildProductImageCandidates(product, options);
+  return [...new Set(candidates)];
 }

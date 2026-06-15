@@ -1,12 +1,4 @@
-import {
-  BadgeCheck,
-  Building2,
-  MapPin,
-  Package,
-  Truck,
-  Wrench,
-  type LucideIcon,
-} from 'lucide-react';
+import { BadgeCheck, Headphones, ShieldCheck, Truck, type LucideIcon } from 'lucide-react';
 
 export interface HomeTrustBenefit {
   id: string;
@@ -17,39 +9,27 @@ export interface HomeTrustBenefit {
 
 export const HOME_TRUST_BENEFITS: HomeTrustBenefit[] = [
   {
-    id: 'ricoh-alliance',
-    title: 'Distribuidor RICOH',
-    description: 'Canal Alliance Partner autorizado',
-    icon: BadgeCheck,
+    id: 'originales',
+    title: 'Equipos 100% originales',
+    description: 'Garantía y respaldo oficial Ricoh',
+    icon: ShieldCheck,
   },
   {
-    id: 'peru-compras',
-    title: 'Peru Compras',
-    description: 'Proveedor autorizado del Estado',
-    icon: Building2,
-  },
-  {
-    id: 'locales-garantia',
-    title: 'Lima y Piura',
-    description: 'Local físico y garantía 100%',
-    icon: MapPin,
-  },
-  {
-    id: 'soporte-certificado',
-    title: 'Soporte técnico propio',
-    description: 'Certificado por la marca',
-    icon: Wrench,
-  },
-  {
-    id: 'stock-almacenes',
-    title: '+1 000 equipos en stock',
-    description: 'Disponibles en nuestros almacenes',
-    icon: Package,
-  },
-  {
-    id: 'envios-diarios',
-    title: 'Envíos diarios',
-    description: 'Despachos todos los días',
+    id: 'envios',
+    title: 'Envíos a todo el país',
+    description: 'Rápido y seguro',
     icon: Truck,
+  },
+  {
+    id: 'soporte',
+    title: 'Soporte técnico especializado',
+    description: 'Te acompañamos siempre',
+    icon: Headphones,
+  },
+  {
+    id: 'compra-segura',
+    title: 'Compra segura',
+    description: 'Cotiza y compra con confianza',
+    icon: BadgeCheck,
   },
 ];

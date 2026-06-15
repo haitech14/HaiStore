@@ -186,18 +186,18 @@ function HeaderCartExchangeRate({ className }: { className?: string }) {
   );
 }
 
-/** T.C. + selector de símbolos en el header. */
+/** T.C. arriba y selector $ / S/ / $S/ a la derecha. */
 export function HeaderCartExchangeBar({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'flex min-h-9 shrink-0 flex-col justify-center gap-0.5 px-3 py-1',
+        'flex min-h-9 shrink-0 flex-col items-end justify-center gap-0.5 px-3 py-1',
         className,
       )}
       aria-label="Tipo de cambio y moneda de visualización"
     >
-      <HeaderCurrencySymbolToggle className="self-end" />
-      <HeaderCartExchangeRate className="min-w-0" />
+      <HeaderCartExchangeRate className="text-right" />
+      <HeaderCurrencySymbolToggle />
     </div>
   );
 }

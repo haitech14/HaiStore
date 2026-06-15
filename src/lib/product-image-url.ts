@@ -1,3 +1,9 @@
+import {
+  publicProductMediaPath,
+  resolveProductCategoryStockImage,
+  resolveProductModelStockImage,
+} from '@/lib/product-stock-images';
+
 export type ResolveProductImageOptions = {
   /** Vista admin: permite previsualizar data: URL antes de persistir en disco. */
   allowDataUrl?: boolean;
@@ -5,64 +11,33 @@ export type ResolveProductImageOptions = {
   stockFallback?: boolean;
 };
 
-function shouldUseStockFallback(options?: ResolveProductImageOptions): boolean {
-  if (options?.stockFallback === false) return false;
-  if (options?.stockFallback === true) return true;
-  // En build de producción (Vercel) no hay imágenes genéricas por slug en /public/products.
-  return !import.meta.env.PROD;
-}
-
 type ResolveProductImageInput = {
   image_url?: string | null;
   gallery?: string[] | null;
   id?: string;
+  code?: string | null;
   name?: string;
   category?: string | null;
   brand?: string | null;
 };
 
-export function resolveProductStockImagePath(product: {
-  id?: string;
-  name?: string;
-  category?: string | null;
-  brand?: string | null;
-}): string {
-  const id = String(product.id ?? '').trim();
-  if (id) {
-    return `/products/${id.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')}.webp`;
-  }
+function shouldUseStockFallback(options?: ResolveProductImageOptions): boolean {
+  return options?.stockFallback !== false;
+}
 
-  const haystack = `${product.category ?? ''} ${product.name ?? ''} ${product.brand ?? ''}`.toLowerCase();
-
-  if (product.category === 'Accesorios' || haystack.startsWith('accesorios ')) {
-    return '/categories/accesorios-impresoras.png';
-  }
-
-  if (haystack.includes('multifuncional')) {
-    if (haystack.includes('remanufactur') || haystack.includes('reacondicion')) {
-      return '/promotions/promo-hero-multifuncionales.png';
-    }
-    return '/categories/multifuncionales.png';
-  }
-
-  if (haystack.includes('impresor')) {
-    return '/categories/impresoras.png';
-  }
-
-  if (
-    haystack.includes('toner') ||
-    haystack.includes('tóner') ||
-    haystack.includes('suministro') ||
-    haystack.includes('repuesto')
-  ) {
-    return '/categories/toner-suministros.png';
-  }
-
-  return '/promo-cards/b2b-printer.png';
+function isCategoryStockImageUrl(url: string): boolean {
+  return (
+    url.startsWith('/categories/') ||
+    url.startsWith('/promotions/') ||
+    url.startsWith('/promo-cards/')
+  );
 }
 
 function isSyntheticStockImageUrl(product: ResolveProductImageInput, url: string): boolean {
-  return url === resolveProductStockImagePath(product);
+  if (url === resolveProductModelStockImage(product)) return true;
+  if (url === resolveProductCategoryStockImage(product)) return true;
+  if (url === publicProductMediaPath(product.id ?? '')) return true;
+  return isCategoryStockImageUrl(url);
 }
 
 function isUsableProductImageUrl(
@@ -76,31 +51,59 @@ function isUsableProductImageUrl(
   return true;
 }
 
+export function resolveProductStockImagePath(product: {
+  id?: string;
+  name?: string;
+  category?: string | null;
+  brand?: string | null;
+}): string {
+  const modelImage = resolveProductModelStockImage(product);
+  if (modelImage) return modelImage;
+
+  const id = String(product.id ?? '').trim();
+  if (id) {
+    return publicProductMediaPath(id);
+  }
+
+  return resolveProductCategoryStockImage(product);
+}
+
+/** Candidatos en orden de prioridad para `<img>` con reintento en error. */
+export function buildProductImageCandidates(
+  product: ResolveProductImageInput,
+  options?: ResolveProductImageOptions,
+): string[] {
+  const candidates: string[] = [];
+  const seen = new Set<string>();
+
+  const push = (url: string | null | undefined) => {
+    if (!url || url.startsWith('data:') || seen.has(url)) return;
+    if (!isUsableProductImageUrl(product, url, options)) return;
+    seen.add(url);
+    candidates.push(url);
+  };
+
+  push(product.image_url);
+  for (const url of product.gallery ?? []) {
+    push(url);
+  }
+
+  if (shouldUseStockFallback(options)) {
+    push(resolveProductModelStockImage(product));
+    if (product.id) {
+      push(publicProductMediaPath(product.id));
+    }
+    push(resolveProductCategoryStockImage(product));
+  }
+
+  return candidates;
+}
+
 /** URL pública para mostrar un producto (evita data: URLs que no persisten en Supabase). */
 export function resolveProductImageUrl(
   product: ResolveProductImageInput,
   options?: ResolveProductImageOptions,
-): string;
-export function resolveProductImageUrl(
-  product: ResolveProductImageInput,
-  options: ResolveProductImageOptions & { stockFallback: false },
-): string | null;
-export function resolveProductImageUrl(
-  product: ResolveProductImageInput,
-  options?: ResolveProductImageOptions,
 ): string | null {
-  const candidates = [
-    product.image_url,
-    ...(Array.isArray(product.gallery) ? product.gallery : []),
-  ];
-
-  for (const url of candidates) {
-    if (typeof url !== 'string') continue;
-    if (isUsableProductImageUrl(product, url, options)) {
-      return url;
-    }
-  }
-
-  if (!shouldUseStockFallback(options)) return null;
-  return resolveProductStockImagePath(product);
+  const candidates = buildProductImageCandidates(product, options);
+  return candidates[0] ?? null;
 }

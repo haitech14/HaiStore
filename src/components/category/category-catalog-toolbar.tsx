@@ -1,25 +1,21 @@
-import { LayoutGrid, List, Search, SlidersHorizontal, Table2 } from 'lucide-react';
+import { ArrowUpDown, Check, Search, SlidersHorizontal } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-import { CategoryToolbarFiltersPopover } from '@/components/category/category-toolbar-filters-popover';
-import type { QuickFilterChip } from '@/components/category/category-quick-filters';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MIN_PRODUCT_SEARCH_LENGTH } from '@/lib/product-search';
-import {
-  CATALOG_GRID_COLUMN_OPTIONS,
-  type CatalogGridColumns,
-} from '@/lib/category-grid-layout';
+import type { CatalogGridColumns } from '@/lib/category-grid-layout';
+import type { QuickFilterChip } from '@/components/category/category-quick-filters';
 import { cn } from '@/lib/utils';
 
 export type CategorySortValue = 'price-asc' | 'price-desc' | 'name-asc';
 export type CatalogViewMode = 'grid' | 'list' | 'table';
+
+export interface CatalogColorFormatTab {
+  key: string;
+  label: string;
+  count: number;
+}
 
 interface CategoryCatalogToolbarProps {
   productCount: number;
@@ -45,100 +41,58 @@ interface CategoryCatalogToolbarProps {
   onToggleAttribute: (key: string) => void;
   onToggleProduction: (key: string) => void;
   endAction?: ReactNode;
+  /** Pestañas de subcategoría integradas en la misma fila. */
+  subcategoryTabs?: ReactNode;
+  /** B/N y Color cuando el catálogo se divide por formato. */
+  colorFormatTabs?: CatalogColorFormatTab[];
+  selectedColorFormatKeys?: string[];
+  onToggleColorFormat?: (key: string) => void;
+  filtersActive?: boolean;
 }
 
-const viewToggleClass = (active: boolean) =>
-  cn(
-    'inline-flex size-9 items-center justify-center rounded-md transition-colors sm:size-10',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
-    active
-      ? 'bg-red-600 text-white shadow-sm'
-      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-  );
+const SORT_OPTIONS: { value: CategorySortValue; label: string }[] = [
+  { value: 'price-asc', label: 'Precio: menor a mayor' },
+  { value: 'price-desc', label: 'Precio: mayor a mayor' },
+  { value: 'name-asc', label: 'Nombre A-Z' },
+];
+
+const iconButtonClass =
+  'inline-flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 text-muted-foreground transition-colors sm:size-11 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2';
 
 export function CategoryCatalogToolbar({
-  productCount,
   pageTitle,
   searchQuery,
   onSearchQueryChange,
   sortBy,
   onSortChange,
-  viewMode,
-  onViewModeChange,
-  gridColumns,
-  onGridColumnsChange,
+  subcategoryTabs,
+  colorFormatTabs,
+  selectedColorFormatKeys = [],
+  onToggleColorFormat,
+  onToggleSidebarFilters,
   filtersOpen,
   filtersSheetOpen,
-  hasSidebarFilters,
-  onToggleSidebarFilters,
-  tipoFilters,
-  productionFilters,
-  showProductionFilters,
-  selectedAttributes,
-  selectedProduction,
-  onSelectAllQuickFilters,
-  onToggleAttribute,
-  onToggleProduction,
-  endAction,
+  filtersActive = false,
 }: CategoryCatalogToolbarProps) {
   const searchHint =
     searchQuery.trim().length > 0 && searchQuery.trim().length < MIN_PRODUCT_SEARCH_LENGTH
       ? `Escribe al menos ${MIN_PRODUCT_SEARCH_LENGTH} caracteres`
       : null;
-
-  const resultsLabel =
-    productCount === 1 ? '1 producto encontrado' : `${productCount} productos encontrados`;
-
-  const contextLabel =
-    searchQuery.trim().length >= MIN_PRODUCT_SEARCH_LENGTH
-      ? `${pageTitle} · «${searchQuery.trim()}»`
-      : pageTitle;
+  const filtersPanelActive = filtersOpen || filtersSheetOpen || filtersActive;
 
   return (
-    <div className="mb-4 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4">
-      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <button
-          type="button"
-          onClick={onToggleSidebarFilters}
-          aria-expanded={filtersSheetOpen || filtersOpen}
-          aria-controls="category-filters-panel"
-          aria-label={
-            filtersOpen ? 'Ocultar filtros del catálogo' : 'Mostrar filtros del catálogo'
-          }
-          className={cn(
-            'relative inline-flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors sm:size-11',
-            'hover:bg-muted hover:text-foreground',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
-            (filtersSheetOpen || filtersOpen || hasSidebarFilters) &&
-              'border-red-200 bg-red-50/50',
-          )}
-        >
-          <SlidersHorizontal className="size-5" aria-hidden="true" />
-          {hasSidebarFilters ? (
-            <span
-              className="absolute right-1.5 top-1.5 size-2 rounded-full bg-red-600"
-              aria-hidden="true"
-            />
-          ) : null}
-        </button>
+    <div className="mb-4 space-y-3 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4">
+      <div className="flex items-center gap-2">
+        {subcategoryTabs ? (
+          <div
+            className="hidden shrink-0 items-center border-r border-border/70 pr-2 sm:flex sm:pr-3"
+            role="presentation"
+          >
+            {subcategoryTabs}
+          </div>
+        ) : null}
 
-        <div
-          className="min-w-0 shrink-0 leading-tight sm:max-w-[11rem] md:max-w-[13rem]"
-          aria-live="polite"
-        >
-          <p className="truncate text-sm font-semibold text-foreground">{resultsLabel}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            <span className="sr-only">Mostrando resultados en </span>
-            {contextLabel}
-          </p>
-          {searchHint ? (
-            <p id="category-search-hint" className="truncate text-xs text-muted-foreground">
-              {searchHint}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="relative min-w-[9rem] w-full max-w-md flex-1 basis-[10rem]">
+        <div className="relative min-w-0 flex-1">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
@@ -153,105 +107,108 @@ export function CategoryCatalogToolbar({
             className="h-10 border-border bg-background pl-9 pr-3 text-sm"
             autoComplete="off"
           />
+          {searchHint ? (
+            <p id="category-search-hint" className="sr-only">
+              {searchHint}
+            </p>
+          ) : null}
         </div>
 
-        <CategoryToolbarFiltersPopover
-          tipoFilters={tipoFilters}
-          productionFilters={productionFilters}
-          showProduction={showProductionFilters}
-          selectedAttributes={selectedAttributes}
-          selectedProduction={selectedProduction}
-          onSelectAll={onSelectAllQuickFilters}
-          onToggleAttribute={onToggleAttribute}
-          onToggleProduction={onToggleProduction}
-        />
-
-        <label className="flex min-w-0 shrink-0 items-center gap-2 text-xs font-medium text-muted-foreground sm:text-sm">
-          <span className="sr-only">Ordenar por:</span>
-          <span className="hidden shrink-0 md:inline" aria-hidden="true">
-            Ordenar por:
-          </span>
-          <Select
-            value={sortBy}
-            onValueChange={(value) => onSortChange(value as CategorySortValue)}
-          >
-            <SelectTrigger className="h-10 w-[11.5rem] min-w-[10.5rem] shrink-0 bg-background">
-              <SelectValue placeholder="Selecciona orden" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="price-asc">Precio: menor a mayor</SelectItem>
-              <SelectItem value="price-desc">Precio: mayor a mayor</SelectItem>
-              <SelectItem value="name-asc">Nombre A-Z</SelectItem>
-            </SelectContent>
-          </Select>
-        </label>
-
-        <div
-          className="flex shrink-0 items-center gap-0.5 rounded-md border border-border bg-background p-1"
-          role="group"
-          aria-label="Modo de vista del catálogo"
+        <button
+          type="button"
+          aria-label="Filtros del catálogo"
+          aria-pressed={filtersPanelActive}
+          onClick={onToggleSidebarFilters}
+          className={cn(
+            iconButtonClass,
+            filtersPanelActive && 'border-red-600/30 bg-red-50 text-red-700',
+          )}
         >
-          <button
-            type="button"
-            onClick={() => onViewModeChange('grid')}
-            aria-pressed={viewMode === 'grid'}
-            aria-label="Vista de grilla"
-            className={viewToggleClass(viewMode === 'grid')}
-          >
-            <LayoutGrid className="size-4" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onViewModeChange('list')}
-            aria-pressed={viewMode === 'list'}
-            aria-label="Vista de lista"
-            className={viewToggleClass(viewMode === 'list')}
-          >
-            <List className="size-4" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onViewModeChange('table')}
-            aria-pressed={viewMode === 'table'}
-            aria-label="Vista de tabla"
-            className={viewToggleClass(viewMode === 'table')}
-          >
-            <Table2 className="size-4" aria-hidden="true" />
-          </button>
-        </div>
+          <SlidersHorizontal className="size-5" aria-hidden="true" />
+        </button>
 
-        {viewMode === 'grid' ? (
-          <div
-            className="flex shrink-0 items-center gap-1 rounded-md border border-border bg-background px-1 py-1"
-            role="group"
-            aria-label="Columnas en grilla"
-          >
-            <span className="hidden pl-1 text-[0.65rem] font-medium text-muted-foreground sm:inline">
-              Cols
-            </span>
-            {CATALOG_GRID_COLUMN_OPTIONS.map((columns) => (
+        <Popover>
+          <PopoverTrigger asChild>
+            <button type="button" aria-label="Ordenar productos" className={iconButtonClass}>
+              <ArrowUpDown className="size-5" aria-hidden="true" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" sideOffset={8} className="w-56 p-2">
+            <p className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Ordenar por
+            </p>
+            <ul role="listbox" aria-label="Opciones de orden" className="space-y-0.5">
+              {SORT_OPTIONS.map((option) => {
+                const isActive = sortBy === option.value;
+                return (
+                  <li key={option.value} role="presentation">
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={isActive}
+                      onClick={() => onSortChange(option.value)}
+                      className={cn(
+                        'flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-inset',
+                        isActive
+                          ? 'bg-red-50 font-medium text-red-700'
+                          : 'text-foreground hover:bg-muted',
+                      )}
+                    >
+                      <span>{option.label}</span>
+                      {isActive ? (
+                        <Check className="size-4 shrink-0 text-red-600" aria-hidden="true" />
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {colorFormatTabs && colorFormatTabs.length > 0 && onToggleColorFormat ? (
+        <div
+          className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3"
+          role="group"
+          aria-label="Formato de impresión"
+        >
+          <span className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-muted-foreground sm:text-xs">
+            Formato
+          </span>
+          {colorFormatTabs.map((tab) => {
+            const isActive = selectedColorFormatKeys.includes(tab.key);
+            return (
               <button
-                key={columns}
+                key={tab.key}
                 type="button"
-                aria-pressed={gridColumns === columns}
-                aria-label={`${columns} columnas`}
-                onClick={() => onGridColumnsChange(columns)}
+                aria-pressed={isActive}
+                disabled={tab.count === 0}
+                onClick={() => onToggleColorFormat(tab.key)}
                 className={cn(
-                  'inline-flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-xs font-semibold transition-colors sm:h-9',
+                  'inline-flex min-h-9 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
-                  gridColumns === columns
-                    ? 'bg-red-600 text-white shadow-sm'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  'disabled:pointer-events-none disabled:opacity-45',
+                  isActive
+                    ? 'border-red-600 bg-red-600 text-white shadow-[0_2px_8px_rgba(220,38,38,0.35)]'
+                    : 'border-border/80 bg-background text-foreground hover:border-border hover:bg-muted/40',
                 )}
               >
-                {columns}
+                <span>{tab.label}</span>
+                <span
+                  className={cn(
+                    'inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-[0.65rem] leading-none',
+                    isActive ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground',
+                  )}
+                >
+                  {tab.count}
+                </span>
               </button>
-            ))}
-          </div>
-        ) : null}
-
-        {endAction ? <div className="ml-auto shrink-0 pl-1">{endAction}</div> : null}
-      </div>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

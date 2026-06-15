@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { InventoryDualPrice } from '@/components/admin/inventory/inventory-dual-price';
-import { DualPrice } from '@/components/product-showcase-card';
+import { DualPrice } from '@/components/product/product-dual-price';
 import { useAdminProductRolePrices } from '@/hooks/use-admin-inventory-price-map';
 import { useAdminInventory } from '@/hooks/use-products';
 import { useAuth } from '@/context/auth-context';

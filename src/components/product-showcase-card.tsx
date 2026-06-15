@@ -9,7 +9,6 @@ import { ProductNuevoCornerBadge } from '@/components/product/product-nuevo-corn
 import { ProductQuickViewDialog } from '@/components/product/product-quick-view-dialog';
 import { AddToCartButton, getAddToCartLabel } from '@/components/cart/add-to-cart-button';
 import { ProductWhatsAppButton } from '@/components/product-whatsapp-button';
-import { useDisplayCurrency } from '@/context/display-currency-context';
 import { useProductCompare } from '@/context/product-compare-context';
 import { useWishlist } from '@/context/wishlist-context';
 import { featuredToWishlistItem } from '@/lib/wishlist-product';
@@ -17,37 +16,9 @@ import type { FeaturedProduct } from '@/data/featured-products';
 import { featuredToCompareItem } from '@/lib/compare-product';
 import { productHasNuevoCornerBadge } from '@/lib/product-detail-badges';
 import { productPath } from '@/lib/product-path';
-import { cn, formatPenFromUsd, formatUsd } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
-export function DualPrice({
-  usd,
-  className,
-  strikethrough = false,
-}: {
-  usd: number;
-  className?: string;
-  strikethrough?: boolean;
-}) {
-  const { displayCurrency } = useDisplayCurrency();
-  const showUsd = displayCurrency !== 'PEN';
-  const showPen = displayCurrency !== 'USD';
-  const strike = strikethrough
-    ? 'line-through decoration-muted-foreground decoration-solid'
-    : undefined;
-
-  return (
-    <span className={cn('inline-flex flex-wrap items-baseline gap-x-1.5', className)}>
-      {showUsd ? <span className={strike}>{formatUsd(usd)}</span> : null}
-      {showUsd && showPen ? (
-        <span aria-hidden="true" className="font-normal text-neutral-400">
-          {' '}
-          -{' '}
-        </span>
-      ) : null}
-      {showPen ? <span className={strike}>{formatPenFromUsd(usd)}</span> : null}
-    </span>
-  );
-}
+export { DualPrice } from '@/components/product/product-dual-price';
 
 function Rating({ rating, reviews }: { rating: number; reviews: number }) {
   if (reviews <= 0) return null;

@@ -7,10 +7,10 @@ import { HeaderCartExchangeBar } from '@/components/layout/header-currency-contr
 import { cn } from '@/lib/utils';
 
 const stripItemClass =
-  'flex min-h-9 items-center gap-1.5 px-3 text-[0.6875rem] font-semibold uppercase tracking-wide text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset';
+  'flex min-h-9 items-center gap-1 px-3 text-[0.6875rem] font-semibold uppercase tracking-wide text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset';
 
 const stripIconWrapClass =
-  'flex size-6 shrink-0 items-center justify-center text-foreground';
+  'flex size-5 shrink-0 items-center justify-center text-foreground';
 
 interface HeaderActionStripProps {
   cartCount: number;

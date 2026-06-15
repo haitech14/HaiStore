@@ -214,7 +214,7 @@ export function SiteSearchForm({ className, onNavigate }: SiteSearchFormProps) {
             <>
               <ul id={listboxId} role="listbox" aria-label="Sugerencias de productos">
                 {suggestions.map((product, index) => {
-                  const imageUrl = resolveProductImageUrl(product);
+                  const imageUrl = resolveProductImageUrl(product) ?? '/promo-cards/b2b-printer.png';
                   const isActive = index === activeIndex;
 
                   return (

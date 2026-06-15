@@ -1,31 +1,42 @@
+import { useDisplayCurrency } from '@/context/display-currency-context';
+import { getDisplayPriceVisibility } from '@/lib/display-price';
 import { cn, formatPenFromUsd, formatUsd } from '@/lib/utils';
 
-interface ProductDualPriceProps {
+export interface DualPriceProps {
   usd: number;
   className?: string;
-  /** Apila soles debajo del dólar en lugar de en línea. */
-  stacked?: boolean;
+  strikethrough?: boolean;
+  /** Vitrina destacada: siempre USD y PEN con guion, como el diseño de referencia. */
+  alwaysBoth?: boolean;
 }
 
-export function ProductDualPrice({ usd, className, stacked = false }: ProductDualPriceProps) {
-  if (stacked) {
-    return (
-      <span className={cn('flex flex-col leading-tight', className)}>
-        <span className="font-bold tabular-nums">{formatUsd(usd)}</span>
-        <span className="text-xs font-normal text-muted-foreground tabular-nums">
-          {formatPenFromUsd(usd)}
-        </span>
-      </span>
-    );
-  }
+/** Precio en USD, PEN o ambos según la moneda activa del header. */
+export function DualPrice({
+  usd,
+  className,
+  strikethrough = false,
+  alwaysBoth = false,
+}: DualPriceProps) {
+  const { displayCurrency } = useDisplayCurrency();
+  const visibility = getDisplayPriceVisibility(displayCurrency);
+  const showUsd = alwaysBoth || visibility.showUsd;
+  const showPen = alwaysBoth || visibility.showPen;
+  const strike = strikethrough
+    ? 'line-through decoration-muted-foreground decoration-solid'
+    : undefined;
 
   return (
     <span className={cn('inline-flex flex-wrap items-baseline gap-x-1.5', className)}>
-      <span>{formatUsd(usd)}</span>
-      <span aria-hidden="true" className="font-normal text-muted-foreground">
-        ·
-      </span>
-      <span>{formatPenFromUsd(usd)}</span>
+      {showUsd ? <span className={cn(strike, alwaysBoth && 'text-[#0f1f3d]')}>{formatUsd(usd)}</span> : null}
+      {showUsd && showPen ? (
+        <span aria-hidden="true" className="font-normal text-red-600">
+          {' '}
+          -{' '}
+        </span>
+      ) : null}
+      {showPen ? (
+        <span className={cn(strike, alwaysBoth && 'text-red-600')}>{formatPenFromUsd(usd)}</span>
+      ) : null}
     </span>
   );
 }

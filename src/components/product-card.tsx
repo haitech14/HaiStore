@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ImageOff, ShoppingCart } from 'lucide-react';
 import { AddToCartButton, getAddToCartLabel } from '@/components/cart/add-to-cart-button';
@@ -6,7 +7,7 @@ import { ProductCardTitle } from '@/components/product/product-card-title';
 import { ProductNuevoCornerBadge } from '@/components/product/product-nuevo-corner-badge';
 import { ProductWhatsAppButton } from '@/components/product-whatsapp-button';
 import { productHasNuevoCornerBadge } from '@/lib/product-detail-badges';
-import { resolveProductImageUrl } from '@/lib/product-image-url';
+import { buildProductImageCandidates } from '@/lib/product-image-url';
 import { productPath } from '@/lib/product-path';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/types/product';
@@ -22,8 +23,19 @@ interface ProductCardProps {
 export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
   const outOfStock = product.stock <= 0;
   const detailHref = productPath(product.id);
-  const imageUrl = resolveProductImageUrl(product, { stockFallback: false });
+  const imageCandidates = useMemo(() => buildProductImageCandidates(product), [product]);
+  const [imageIndex, setImageIndex] = useState(0);
+  const [imagesExhausted, setImagesExhausted] = useState(false);
+  const imageUrl = imagesExhausted ? null : (imageCandidates[imageIndex] ?? null);
   const showNuevoCorner = productHasNuevoCornerBadge(product);
+
+  const handleImageError = () => {
+    if (imageIndex + 1 < imageCandidates.length) {
+      setImageIndex((current) => current + 1);
+      return;
+    }
+    setImagesExhausted(true);
+  };
 
   const cartActions = (
     <div className="flex items-stretch gap-2">
@@ -74,6 +86,7 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
                   alt=""
                   className="max-h-full max-w-full object-contain p-1.5"
                   loading="lazy"
+                  onError={handleImageError}
                 />
               ) : (
                 <ImageOff className="size-8 text-muted-foreground/70" aria-hidden="true" />
@@ -131,6 +144,7 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
                   alt=""
                   className="max-h-full max-w-full object-contain p-1.5 sm:p-2"
                   loading="lazy"
+                  onError={handleImageError}
                 />
               ) : (
                 <ImageOff className="size-10 text-muted-foreground/70" aria-hidden="true" />

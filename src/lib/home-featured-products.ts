@@ -1,4 +1,5 @@
 import { FEATURED_PRODUCT_IDS } from '@/data/featured-products';
+import { HOME_HIGHLIGHTED_MODEL_PATTERNS } from '@/data/home-highlighted-products';
 import type { FeaturedProduct } from '@/data/featured-products';
 import { shuffleProductsDaily } from '@/lib/daily-shuffle';
 import { enrichFeaturedFromCatalog } from '@/lib/featured-catalog-enrich';
@@ -32,6 +33,39 @@ export function countInStockProductsForCategoryLabels(
   labels: readonly string[],
 ): number {
   return filterInStockProductsForCategoryLabels(products, labels).length;
+}
+
+/** Fila fija de 6 equipos Ricoh en el orden del diseño de referencia. */
+export function resolveHomeHighlightedRowProducts(inCategory: Product[]): Product[] {
+  if (inCategory.length === 0) return [];
+
+  const usedIds = new Set<string>();
+  const ordered: Product[] = [];
+
+  for (const pattern of HOME_HIGHLIGHTED_MODEL_PATTERNS) {
+    const match = inCategory.find(
+      (product) => !usedIds.has(product.id) && pattern.test(`${product.name} ${product.code ?? ''}`),
+    );
+    if (match) {
+      usedIds.add(match.id);
+      ordered.push(match);
+    }
+  }
+
+  if (ordered.length < HOME_HIGHLIGHTED_ROW_SIZE) {
+    const featured = resolveHomeFeaturedProducts(inCategory, HOME_HIGHLIGHTED_ROW_SIZE);
+    const byId = new Map(inCategory.map((product) => [product.id, product]));
+
+    for (const item of featured) {
+      if (ordered.length >= HOME_HIGHLIGHTED_ROW_SIZE) break;
+      const product = byId.get(item.id);
+      if (!product || usedIds.has(product.id)) continue;
+      usedIds.add(product.id);
+      ordered.push(product);
+    }
+  }
+
+  return ordered.slice(0, HOME_HIGHLIGHTED_ROW_SIZE);
 }
 
 /**

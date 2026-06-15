@@ -47,10 +47,11 @@ function BrandLogoCard({
   const logo = getBrandLogo(brand);
   const logoClassName = getBrandLogoClassName(brand);
   const logoDimensions = getBrandLogoDimensions(brand);
+  const [logoError, setLogoError] = useState(false);
 
   const content = (
     <>
-      {logo ? (
+      {logo && !logoError ? (
         <img
           src={logo}
           alt=""
@@ -58,16 +59,19 @@ function BrandLogoCard({
           height={logoDimensions.height}
           className={cn(
             logoClassName,
-            isDark ? 'opacity-80 transition-opacity group-hover:opacity-100' : '',
+            isDark
+              ? 'opacity-80 transition-opacity group-hover:opacity-100'
+              : 'opacity-90 transition-opacity group-hover:opacity-100',
           )}
           loading="lazy"
           draggable={false}
+          onError={() => setLogoError(true)}
         />
       ) : (
         <span
           className={cn(
             'text-center text-[0.65rem] font-bold sm:text-xs',
-            isDark ? 'text-white/60 group-hover:text-white' : '',
+            isDark ? 'text-white/60 group-hover:text-white' : 'text-foreground/80',
           )}
         >
           {name}
@@ -77,12 +81,13 @@ function BrandLogoCard({
   );
 
   const className = cn(
-    'group flex h-9 w-full select-none items-center justify-center rounded-md border px-2 transition-all sm:h-10',
+    'group flex w-full select-none items-center justify-center rounded-md border px-2 transition-all',
+    isDark ? 'h-9 sm:h-10' : 'h-12 border-border/70 sm:h-14 md:h-16',
     linkable && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500',
     isActive && 'border-[#DC2626] ring-1 ring-[#DC2626]',
     isDark
       ? 'border-white/10 bg-white/5 hover:border-red-600/40 hover:bg-white/10'
-      : 'bg-card text-muted-foreground grayscale hover:text-foreground hover:grayscale-0',
+      : 'bg-card shadow-sm hover:border-border hover:shadow-md',
   );
 
   if (linkable) {
@@ -115,7 +120,7 @@ function BrandMarqueeStatic({
         aria-label="Marcas disponibles"
       >
         {brands.map((brand) => (
-          <li key={getBrandName(brand)} className="w-[6rem] sm:w-[6.75rem]">
+          <li key={getBrandName(brand)} className="w-[7rem] sm:w-[8rem]">
             <BrandLogoCard
               brand={brand}
               isDark={isDark}
@@ -196,7 +201,7 @@ function BrandMarqueeInteractive({
             {brands.map((brand) => (
               <li
                 key={getBrandName(brand)}
-                className="w-[6rem] shrink-0 sm:w-[6.75rem] md:w-[7rem]"
+                className="w-[7rem] shrink-0 sm:w-[8rem] md:w-[9rem]"
               >
                 <BrandLogoCard
                   brand={brand}

@@ -1,3 +1,8 @@
+import { resolveSubcategoryHeroImage } from '@/lib/subcategory-product-image';
+import { subcategoryVisualKind, type SubcategoryVisualKind } from '@/lib/subcategory-visual';
+import { formatSubcategoryTabLabel } from '@/lib/store-category-display';
+import type { Product } from '@/types/product';
+
 export type CategoryHeroFeatureIcon = 'badge-percent' | 'printer' | 'headset';
 
 export interface CategoryHeroFeature {
@@ -43,10 +48,6 @@ export const categoryHeroBySlug: Record<string, CategoryHeroContent> = {
       { icon: 'printer', label: 'Equipos profesionales' },
       { icon: 'headset', label: 'Asesoría especializada' },
     ],
-    promoCard: {
-      title: 'Ahorra más',
-      subtitle: 'Descuentos exclusivos por tiempo limitado.',
-    },
   },
   impresoras: {
     badge: 'Novedades',
@@ -77,6 +78,41 @@ export const categoryHeroBySlug: Record<string, CategoryHeroContent> = {
   },
 };
 
+const DEFAULT_FEATURES: CategoryHeroFeature[] = [
+  { icon: 'badge-percent', label: 'Precios corporativos' },
+  { icon: 'printer', label: 'Equipos profesionales' },
+  { icon: 'headset', label: 'Asesoría especializada' },
+];
+
+const SUBCATEGORY_HERO_BY_KIND: Record<
+  Extract<SubcategoryVisualKind, 'new' | 'preowned' | 'refurbished'>,
+  { badge?: string; subtitle: string }
+> = {
+  new: {
+    badge: 'HASTA 21% DTO.',
+    subtitle:
+      'Equipos Ricoh y más, nuevos de fábrica con garantía y precios corporativos desde la primera unidad.',
+  },
+  preowned: {
+    badge: 'Revisados',
+    subtitle:
+      'Equipos seminuevos certificados con excelente relación calidad-precio y soporte técnico incluido.',
+  },
+  refurbished: {
+    badge: 'Garantía HaiStore',
+    subtitle:
+      'Reacondicionados profesionalmente con rendimiento garantizado y precios accesibles para tu oficina.',
+  },
+};
+
+export interface SubcategoryHeroSource {
+  name: string;
+  slug: string;
+  tagline?: string | null | undefined;
+  image?: string | null | undefined;
+  inventoryLabels?: string[] | undefined;
+}
+
 export function getCategoryHeroContent(
   slug: string,
   fallback: { name: string; tagline: string; image?: string },
@@ -91,5 +127,43 @@ export function getCategoryHeroContent(
   };
   if (custom?.badge) resolved.badge = custom.badge;
   if (custom?.promoCard) resolved.promoCard = custom.promoCard;
+  return resolved;
+}
+
+export function getSubcategoryHeroContent(
+  parentSlug: string,
+  sub: SubcategoryHeroSource,
+  parentFallback: { name: string; tagline: string; image?: string },
+  products: Product[] = [],
+): ResolvedCategoryHero {
+  const parentHero = getCategoryHeroContent(parentSlug, parentFallback);
+  const kind = subcategoryVisualKind(sub.name);
+  const kindContent =
+    kind === 'new' || kind === 'preowned' || kind === 'refurbished'
+      ? SUBCATEGORY_HERO_BY_KIND[kind]
+      : null;
+
+  const shortTitle = formatSubcategoryTabLabel(sub.name, parentFallback.name);
+  const image = resolveSubcategoryHeroImage(
+    {
+      name: sub.name,
+      slug: sub.slug,
+      ...(sub.image != null ? { image: sub.image } : {}),
+      ...(sub.inventoryLabels ? { inventoryLabels: sub.inventoryLabels } : {}),
+    },
+    products,
+    parentHero.image,
+  );
+
+  const resolved: ResolvedCategoryHero = {
+    title: sub.name,
+    subtitle: sub.tagline?.trim() || kindContent?.subtitle || parentHero.subtitle,
+    image,
+    imageAlt: `Equipos ${shortTitle.toLowerCase()} de ${parentFallback.name}`,
+    features: parentHero.features.length > 0 ? parentHero.features : DEFAULT_FEATURES,
+  };
+
+  if (kindContent?.badge) resolved.badge = kindContent.badge;
+
   return resolved;
 }

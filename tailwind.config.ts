@@ -24,6 +24,7 @@ const config: Config = {
           'system-ui',
           'sans-serif',
         ],
+        celebration: ['"Playfair Display"', 'Georgia', 'ui-serif', 'serif'],
       },
       colors: {
         border: 'hsl(var(--border))',

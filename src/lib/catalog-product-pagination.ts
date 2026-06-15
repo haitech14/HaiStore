@@ -1,6 +1,17 @@
-export const CATALOG_PRODUCTS_PER_PAGE = 10;
+/** Máximo de filas visibles por página en la grilla del catálogo. */
+export const CATALOG_MAX_GRID_ROWS = 5;
 
-export function getCatalogTotalPages(totalItems: number, pageSize = CATALOG_PRODUCTS_PER_PAGE): number {
+/** Productos por página con grilla por defecto (6 columnas × 5 filas). */
+export const CATALOG_PRODUCTS_PER_PAGE = 6 * CATALOG_MAX_GRID_ROWS;
+
+export function getCatalogProductsPerPage(gridColumns = 6): number {
+  return Math.max(1, gridColumns) * CATALOG_MAX_GRID_ROWS;
+}
+
+export function getCatalogTotalPages(
+  totalItems: number,
+  pageSize = CATALOG_PRODUCTS_PER_PAGE,
+): number {
   if (totalItems <= 0) return 1;
   return Math.ceil(totalItems / pageSize);
 }

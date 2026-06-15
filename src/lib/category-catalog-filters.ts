@@ -277,6 +277,25 @@ export function inferColor(product: Product): 'B/N' | 'Color' {
   return 'B/N';
 }
 
+export function splitProductsByCatalogColor(products: readonly Product[]): {
+  bn: Product[];
+  color: Product[];
+  ordered: Product[];
+} {
+  const bn: Product[] = [];
+  const color: Product[] = [];
+
+  for (const product of products) {
+    if (inferColor(product) === 'Color') {
+      color.push(product);
+    } else {
+      bn.push(product);
+    }
+  }
+
+  return { bn, color, ordered: [...bn, ...color] };
+}
+
 export const CATALOG_SPEC_FILTER_TABS = [
   { key: `${FORMATO_PAPEL_ATTR}::A4`, label: 'Formato A4' },
   { key: `${FORMATO_PAPEL_ATTR}::A3`, label: 'Formato A3' },

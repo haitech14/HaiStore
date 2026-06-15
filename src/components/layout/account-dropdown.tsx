@@ -142,10 +142,10 @@ export function AccountDropdown({ triggerVariant = 'icon' }: AccountDropdownProp
         {triggerVariant === 'strip' ? (
           <Button
             variant="ghost"
-            className="h-9 min-h-9 shrink-0 gap-1.5 rounded-none px-3 text-[0.6875rem] font-semibold uppercase tracking-wide text-foreground hover:bg-muted focus-visible:ring-inset"
+            className="h-9 min-h-9 shrink-0 gap-1 rounded-none px-3 text-[0.6875rem] font-semibold uppercase tracking-wide text-foreground hover:bg-muted focus-visible:ring-inset"
             aria-label={user ? `Menú de cuenta de ${displayName}` : 'Iniciar sesión o crear cuenta'}
           >
-            <span className="flex size-6 shrink-0 items-center justify-center">
+            <span className="flex size-5 shrink-0 items-center justify-center">
               <User className="size-3.5 text-foreground" strokeWidth={1.75} aria-hidden="true" />
             </span>
             <span>Cuenta</span>

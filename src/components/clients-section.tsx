@@ -10,8 +10,8 @@ function ClientLogo({ client }: { client: Client }) {
   return (
     <div
       className={cn(
-        'flex h-10 w-20 shrink-0 items-center justify-center sm:h-12 sm:w-24',
-        client.logoSurface === 'dark' && 'rounded-md bg-neutral-950 px-1.5',
+        'flex h-14 w-28 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-white px-2 shadow-sm sm:h-16 sm:w-32 md:h-[4.5rem] md:w-36',
+        client.logoSurface === 'dark' && 'bg-neutral-950',
       )}
     >
       {!logoError ? (
@@ -67,18 +67,25 @@ export function ClientsSection() {
   return (
     <section
       aria-labelledby="clientes-titulo"
-      className="border-y border-border/40 bg-muted/30 py-4 sm:py-5"
+      className="border-y border-border/40 bg-white py-5 sm:py-6"
     >
       <div className="container">
-        <h2
-          id="clientes-titulo"
-          className="mb-3 text-center text-sm font-semibold text-muted-foreground sm:mb-4 sm:text-base"
-        >
-          Algunos de nuestros clientes
-        </h2>
+        <header className="mb-4 text-center sm:mb-5">
+          <div className="flex items-center justify-center gap-3 sm:gap-4">
+            <span className="h-px w-8 bg-red-600/70 sm:w-12" aria-hidden="true" />
+            <h2
+              id="clientes-titulo"
+              className="text-sm font-bold text-[#0f1f3d] sm:text-base"
+            >
+              Algunos de nuestros{' '}
+              <span className="text-red-600">clientes</span>
+            </h2>
+            <span className="h-px w-8 bg-red-600/70 sm:w-12" aria-hidden="true" />
+          </div>
+        </header>
 
         <div className="overflow-hidden" ref={emblaRef}>
-          <ul className="flex touch-pan-y gap-4 sm:gap-6">
+          <ul className="flex touch-pan-y gap-5 sm:gap-7">
             {clients.map((client) => (
               <li key={client.id} className="min-w-0 shrink-0">
                 <ClientLogo client={client} />

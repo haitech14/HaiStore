@@ -6,6 +6,8 @@ import { Icon } from '@mdi/react';
 import { mdiWhatsapp } from '@mdi/js';
 
 import { Button } from '@/components/ui/button';
+import { CATEGORY_STRIP_HERO_VERTICAL_CROP } from '@/lib/category-strip-layout';
+import { DiaPapaHomeHero } from '@/components/home/dia-papa-home-hero';
 import {
   HOME_HERO_WHATSAPP_LINK,
   HOME_HERO_WHATSAPP_NUMBER,
@@ -27,46 +29,114 @@ function heroResponsiveSources(imagePath: string, baseWidth: number) {
 }
 
 function HeroSlideContent({ slide, index }: { slide: HomeHeroSlide; index: number }) {
-  if (slide.imageOnly) {
-    const headingId = index === 0 ? 'hero-titulo' : `hero-titulo-${slide.id}`;
-    const imageWidth = slide.imageWidth ?? 1024;
-    const imageHeight = slide.imageHeight ?? 364;
-    const { webpSrcSet, fallbackSrcSet, fallbackSrc } = heroResponsiveSources(
-      slide.backgroundImage,
-      imageWidth,
-    );
+  const headingId = index === 0 ? 'hero-titulo' : `hero-titulo-${slide.id}`;
 
+  if (slide.layout === 'dia-papa-home') {
     return (
-      <div className="relative w-full overflow-hidden bg-white">
-        <h1 id={headingId} className="sr-only">
-          {slide.imageAlt}
-        </h1>
-        <Link
-          to={slide.linkHref ?? '/tienda'}
-          className="block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      <DiaPapaHomeHero
+        headingId={headingId}
+        shopHref={slide.linkHref ?? '/tienda'}
+        imageAlt={slide.imageAlt ?? 'Día del Padre — HaiStore'}
+      />
+    );
+  }
+
+  if (slide.imageOnly) {
+    const imageWidth = slide.imageWidth ?? 1920;
+    const displayHeight = slide.imageHeight ?? 400;
+    const href = slide.linkHref ?? '/tienda';
+    const isExternal = href.startsWith('http');
+
+    const imageNode = slide.singleAsset ? (
+      slide.compact ? (
+        <div
+          className="relative w-full overflow-hidden"
+          style={{
+            aspectRatio: `${imageWidth} / ${Math.round(displayHeight * CATEGORY_STRIP_HERO_VERTICAL_CROP)}`,
+          }}
         >
-          <picture className="block w-full">
+          <img
+            src={slide.backgroundImage}
+            width={imageWidth}
+            height={displayHeight}
+            alt=""
+            decoding="async"
+            fetchPriority={index === 0 ? 'high' : 'low'}
+            loading={index === 0 ? 'eager' : 'lazy'}
+            className="absolute inset-0 size-full object-cover object-center"
+          />
+        </div>
+      ) : (
+        <picture
+          className="block w-full overflow-hidden"
+          style={{ aspectRatio: `${imageWidth} / ${displayHeight}` }}
+        >
+          <img
+            src={slide.backgroundImage}
+            width={imageWidth}
+            height={displayHeight}
+            alt=""
+            decoding="async"
+            fetchPriority={index === 0 ? 'high' : 'low'}
+            loading={index === 0 ? 'eager' : 'lazy'}
+            className="size-full object-contain object-center"
+          />
+        </picture>
+      )
+    ) : (
+      (() => {
+        const { webpSrcSet, fallbackSrcSet, fallbackSrc } = heroResponsiveSources(
+          slide.backgroundImage,
+          imageWidth,
+        );
+
+        return (
+          <picture
+            className="block w-full overflow-hidden"
+            style={{ aspectRatio: `${imageWidth} / ${displayHeight}` }}
+          >
             <source type="image/webp" srcSet={webpSrcSet} sizes="100vw" />
             <img
               src={fallbackSrc}
               srcSet={fallbackSrcSet}
               sizes="100vw"
               width={imageWidth}
-              height={imageHeight}
+              height={displayHeight}
               alt=""
               decoding="async"
               fetchPriority={index === 0 ? 'high' : 'low'}
               loading={index === 0 ? 'eager' : 'lazy'}
-              className="block h-auto w-full"
+              className="size-full object-cover object-center"
             />
           </picture>
-        </Link>
+        );
+      })()
+    );
+
+    const linkClassName =
+      'block w-full leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+
+    const content = (
+      <div className="relative w-full overflow-hidden bg-white">
+        <h1 id={headingId} className="sr-only">
+          {slide.imageAlt}
+        </h1>
+        {isExternal ? (
+          <a href={href} target="_blank" rel="noopener noreferrer" className={linkClassName}>
+            {imageNode}
+          </a>
+        ) : (
+          <Link to={href} className={linkClassName}>
+            {imageNode}
+          </Link>
+        )}
       </div>
     );
+
+    return content;
   }
 
   const HeadingTag = index === 0 ? 'h1' : 'h2';
-  const headingId = index === 0 ? 'hero-titulo' : `hero-titulo-${slide.id}`;
 
   return (
     <div className="relative min-h-[min(40vh,18rem)] sm:min-h-[min(44vh,20rem)] lg:min-h-[min(46vh,22rem)] xl:min-h-[min(48vh,24rem)]">
@@ -241,11 +311,13 @@ export function HeroBanner() {
 
   const pauseAutoplay = () => setAutoplayPaused(true);
 
+  if (homeHeroSlides.length === 0) return null;
+
   return (
     <section
       aria-labelledby="hero-titulo"
-      aria-roledescription="carrusel"
-      className="relative w-full overflow-hidden bg-white"
+      aria-roledescription={showCarouselControls ? 'carrusel' : undefined}
+      className="relative w-full bg-white leading-none"
       onMouseEnter={pauseAutoplay}
       onFocus={pauseAutoplay}
     >

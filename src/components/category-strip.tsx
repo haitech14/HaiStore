@@ -5,7 +5,14 @@ import useEmblaCarousel from 'embla-carousel-react';
 
 import { categories, type Category } from '@/data/categories';
 import { emblaShouldWatchDrag } from '@/lib/embla-interaction';
+import { CATEGORY_STRIP_TRACK_WRAPPER_CLASS } from '@/lib/category-strip-layout';
 import { cn } from '@/lib/utils';
+
+const CATEGORY_STRIP_HIDDEN_SLUGS = new Set(['servicio-tecnico']);
+
+const categoryStripItems = categories.filter(
+  (category) => !CATEGORY_STRIP_HIDDEN_SLUGS.has(category.slug),
+);
 
 const CATEGORY_SLIDE_CLASS =
   'min-w-0 flex-[0_0_calc((100%-0.5rem)/3)] sm:flex-[0_0_calc((100%-0.75rem)/4)] md:flex-[0_0_calc((100%-1rem)/5)] lg:flex-[0_0_calc((100%-1.25rem)/6)] xl:flex-[0_0_calc((100%-1.25rem)/6)]';
@@ -95,7 +102,7 @@ export function CategoryStrip() {
 
   return (
     <section aria-labelledby="categorias-titulo" className="bg-white">
-      <div className="container py-6 sm:py-8">
+      <div className="container pb-6 pt-1 sm:pb-8 sm:pt-2 lg:pt-2">
         <header className="mx-auto mb-5 max-w-3xl text-center sm:mb-6">
           <div className="flex items-center justify-center gap-3 sm:gap-4">
             <span className="h-px w-10 bg-red-600 sm:w-14" aria-hidden="true" />
@@ -110,7 +117,7 @@ export function CategoryStrip() {
           </div>
         </header>
 
-        <div className="relative sm:px-1">
+        <div className={CATEGORY_STRIP_TRACK_WRAPPER_CLASS}>
           <button
             type="button"
             onClick={scrollPrev}
@@ -123,7 +130,7 @@ export function CategoryStrip() {
 
           <div ref={emblaRef} className="overflow-hidden px-0.5">
             <ul className="flex gap-1 sm:gap-1.5 lg:gap-2" role="list" aria-label="Categorías de productos">
-              {categories.map((category) => (
+              {categoryStripItems.map((category) => (
                 <li key={category.slug} className={CATEGORY_SLIDE_CLASS}>
                   <CategoryCard category={category} />
                 </li>
