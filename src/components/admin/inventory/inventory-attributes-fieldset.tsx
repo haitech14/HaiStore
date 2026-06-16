@@ -38,6 +38,7 @@ export function InventoryAttributesFieldset({
           attributes={attributes}
           onChange={onChange}
           nameOptions={nameOptions}
+          products={products}
           idPrefix="inv-attr"
         />
       </div>

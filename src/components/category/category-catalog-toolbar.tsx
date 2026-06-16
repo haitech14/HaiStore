@@ -169,7 +169,11 @@ export function CategoryCatalogToolbar({
       </div>
 
       {catalogSpecTabs && catalogSpecTabs.length > 0 && onToggleCatalogSpec ? (
-        <div className="space-y-2.5 border-t border-border/60 pt-3">
+        <div
+          className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border/60 pt-3 sm:gap-x-5"
+          role="toolbar"
+          aria-label="Filtros de formato y color"
+        >
           {[
             {
               label: 'Formato papel',
@@ -181,14 +185,17 @@ export function CategoryCatalogToolbar({
             },
           ]
             .filter((group) => group.tabs.length > 0)
-            .map((group) => (
+            .map((group, groupIndex) => (
               <div
                 key={group.label}
-                className="flex flex-wrap items-center gap-2"
+                className={cn(
+                  'flex flex-wrap items-center gap-2',
+                  groupIndex > 0 && 'sm:border-l sm:border-border/60 sm:pl-5',
+                )}
                 role="group"
                 aria-label={group.label}
               >
-                <span className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-muted-foreground sm:text-xs">
+                <span className="shrink-0 text-[0.65rem] font-bold uppercase tracking-[0.14em] text-muted-foreground sm:text-xs">
                   {group.label}
                 </span>
                 {group.tabs.map((tab) => {
@@ -201,7 +208,7 @@ export function CategoryCatalogToolbar({
                       disabled={tab.count === 0}
                       onClick={() => onToggleCatalogSpec(tab.key)}
                       className={cn(
-                        'inline-flex min-h-9 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm',
+                        'inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
                         'disabled:pointer-events-none disabled:opacity-45',
                         isActive

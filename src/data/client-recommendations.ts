@@ -45,4 +45,15 @@ export const clientRecommendations: ClientRecommendation[] = [
     customerName: 'Luis R.',
     customerCity: 'Trujillo',
   },
+  {
+    id: 'entrega-equipos-osias',
+    image: '/clients/recommendations/osias.png',
+    imageAlt:
+      'Cliente satisfecho junto a su camioneta con equipos embalados y asegurados tras la entrega a domicilio',
+    title: 'Entrega de equipos embalados a domicilio',
+    quote:
+      'Llegó todo bien protegido y en el día pactado. Muy buena coordinación con el equipo de entregas.',
+    customerName: 'Osías V.',
+    customerCity: 'Lima',
+  },
 ];

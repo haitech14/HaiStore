@@ -529,9 +529,16 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     catalogPageSize,
   );
 
+  const catalogProductsForDisplay = useMemo(() => {
+    if (!showFormatSections) {
+      return pagedCatalogProducts;
+    }
+    return getCatalogLayoutOrderedProducts(filteredProducts);
+  }, [showFormatSections, pagedCatalogProducts, filteredProducts]);
+
   const catalogFormatSections = useMemo(
-    () => buildCatalogFormatSections(pagedCatalogProducts),
-    [pagedCatalogProducts],
+    () => buildCatalogFormatSections(catalogProductsForDisplay),
+    [catalogProductsForDisplay],
   );
 
   useEffect(() => {
@@ -1002,14 +1009,16 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
                   </div>
                 )}
 
-                <CatalogProductPagination
-                  page={safeCatalogPage}
-                  totalPages={catalogTotalPages}
-                  totalItems={paginationProducts.length}
-                  pageSize={catalogPageSize}
-                  onPageChange={setCatalogPage}
-                  className="mt-6"
-                />
+                {!showFormatSections ? (
+                  <CatalogProductPagination
+                    page={safeCatalogPage}
+                    totalPages={catalogTotalPages}
+                    totalItems={paginationProducts.length}
+                    pageSize={catalogPageSize}
+                    onPageChange={setCatalogPage}
+                    className="mt-6"
+                  />
+                ) : null}
               </>
             ) : null}
           </section>

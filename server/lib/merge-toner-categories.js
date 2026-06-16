@@ -6,8 +6,7 @@ import {
   concatenateRicohModelos,
 } from './ricoh-lp-web-excel.js';
 
-export const CATEGORY_TONER = 'Toner';
-export const CATEGORY_TONER_ORIGINALES = 'Toner originales';
+export const CATEGORY_TONER = 'Toner Original';
 
 const MODELO_ATTR = 'Modelo de equipo';
 const RENDIMIENTO_ATTR = 'Rendimiento (5%)';
@@ -67,7 +66,6 @@ export function extractYieldFromProduct(product) {
 export function pickPrimaryTonerProduct(products) {
   return (
     products.find((row) => row.category === CATEGORY_TONER) ??
-    products.find((row) => row.category === CATEGORY_TONER_ORIGINALES) ??
     products[0]
   );
 }
@@ -182,7 +180,7 @@ export function mergeTonerProductsByCode(group) {
  * @param {Array<Record<string, unknown>>} products
  */
 export function mergeTonerOriginalesIntoToner(products) {
-  const tonerCategories = new Set([CATEGORY_TONER, CATEGORY_TONER_ORIGINALES]);
+  const tonerCategories = new Set([CATEGORY_TONER]);
   /** @type {Map<string, Array<Record<string, unknown>>>} */
   const byCode = new Map();
   /** @type {Array<Record<string, unknown>>} */
@@ -217,9 +215,7 @@ export function mergeTonerOriginalesIntoToner(products) {
   let movedFromOriginales = 0;
 
   for (const group of byCode.values()) {
-    const hadOriginales = group.some((row) => row.category === CATEGORY_TONER_ORIGINALES);
     const hadDuplicate = group.length > 1;
-    if (hadOriginales) movedFromOriginales += group.filter((row) => row.category === CATEGORY_TONER_ORIGINALES).length;
     if (hadDuplicate) fusedByCode += 1;
 
     const product = mergeTonerProductsByCode(group);

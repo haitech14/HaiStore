@@ -6,6 +6,7 @@ import {
   writeInventory,
 } from './inventory-store.js';
 import { seedProducts } from './seed-products.js';
+import { sanitizeStoredProductMedia } from '../../shared/product-media-sanitize.js';
 import { shouldPreferSupabaseCatalog } from './catalog-source.js';
 import { getSupabaseAdmin } from './supabase-auth.js';
 import { normalizeWarehouses } from './inventory-warehouses.js';
@@ -14,37 +15,37 @@ import { resolveProductGallery, resolveProductImageUrl } from './product-image-u
 export { shouldPreferSupabaseCatalog };
 
 export function withResolvedMedia(product) {
-  const image_url = resolveProductImageUrl(product);
-  const gallery = resolveProductGallery(product);
-  return { ...product, image_url, gallery };
+  const stored = sanitizeStoredProductMedia(product);
+  const image_url = resolveProductImageUrl(stored) ?? resolveProductImageUrl(product);
+  const gallery = resolveProductGallery(stored);
+  return { ...product, ...stored, image_url, gallery };
 }
 
 export function buildSupabaseProductRow(product) {
   const migrated = migrateInventoryProduct(product);
-  const withMedia = withResolvedMedia(migrated);
-  const attributes = Array.isArray(withMedia.attributes) ? withMedia.attributes : [];
+  const attributes = Array.isArray(migrated.attributes) ? migrated.attributes : [];
 
   return {
-    id: withMedia.id,
-    name: withMedia.name,
-    description: withMedia.description ?? null,
-    price: withMedia.prices?.public ?? withMedia.price ?? 0,
-    prices: withMedia.prices ?? ensureFullPrices({ public: withMedia.price ?? 0 }),
-    currency: withMedia.currency ?? 'USD',
-    image_url: withMedia.image_url,
-    gallery: withMedia.gallery,
-    sort_order: Number.isFinite(Number(withMedia.sort_order))
-      ? Math.max(0, Math.floor(Number(withMedia.sort_order)))
+    id: migrated.id,
+    name: migrated.name,
+    description: migrated.description ?? null,
+    price: migrated.prices?.public ?? migrated.price ?? 0,
+    prices: migrated.prices ?? ensureFullPrices({ public: migrated.price ?? 0 }),
+    currency: migrated.currency ?? 'USD',
+    image_url: migrated.image_url,
+    gallery: migrated.gallery,
+    sort_order: Number.isFinite(Number(migrated.sort_order))
+      ? Math.max(0, Math.floor(Number(migrated.sort_order)))
       : 0,
-    is_featured: withMedia.is_featured === true,
-    view_count: Number.isFinite(Number(withMedia.view_count))
-      ? Math.max(0, Math.floor(Number(withMedia.view_count)))
+    is_featured: migrated.is_featured === true,
+    view_count: Number.isFinite(Number(migrated.view_count))
+      ? Math.max(0, Math.floor(Number(migrated.view_count)))
       : 0,
     attributes,
-    stock: withMedia.stock ?? 0,
-    category: withMedia.category ?? null,
-    brand: withMedia.brand ?? null,
-    inventory_snapshot: withMedia,
+    stock: migrated.stock ?? 0,
+    category: migrated.category ?? null,
+    brand: migrated.brand ?? null,
+    inventory_snapshot: migrated,
     updated_at: new Date().toISOString(),
   };
 }
@@ -157,7 +158,7 @@ async function listFromSupabase(role, adminView) {
 async function listFromInventory(role, adminView) {
   const { products } = await readInventory();
   if (adminView) {
-    return products.map((product) => withResolvedMedia(product));
+    return products.map((product) => migrateInventoryProduct(product));
   }
   return products.map((product) => toPublicProduct(withResolvedMedia(product), role));
 }

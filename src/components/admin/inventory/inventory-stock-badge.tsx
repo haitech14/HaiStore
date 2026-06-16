@@ -15,7 +15,15 @@ export function InventoryStockBadge({ product, warehouses }: InventoryStockBadge
   const hasMultiple = breakdown.filter((line) => line.quantity > 0).length > 1;
 
   const badge = (
-    <Badge variant={total > 0 ? 'secondary' : 'destructive'} className="tabular-nums">
+    <Badge
+      variant="outline"
+      className={cn(
+        'min-w-[2rem] justify-center border px-2.5 tabular-nums font-semibold',
+        total > 0
+          ? 'border-green-200 bg-green-50 text-green-800'
+          : 'border-destructive/30 bg-destructive/10 text-destructive',
+      )}
+    >
       {total}
     </Badge>
   );

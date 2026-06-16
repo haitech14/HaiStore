@@ -22,17 +22,17 @@ export const INVENTORY_PRICE_COLUMN_ORDER: readonly InventoryReorderableColumnId
 ];
 
 export const DEFAULT_INVENTORY_COLUMN_ORDER: InventoryReorderableColumnId[] = [
-  'media',
   'code',
-  'product',
-  'attributes',
   'category',
+  'product',
+  'media',
   'stock',
+  'attributes',
   ...INVENTORY_PRICE_COLUMN_ORDER,
 ];
 
-const STORAGE_KEY = 'haistore-inventory-column-order-v5';
-const LEGACY_STORAGE_KEY = 'haistore-inventory-column-order-v4';
+const STORAGE_KEY = 'haistore-inventory-column-order-v6';
+const LEGACY_STORAGE_KEY = 'haistore-inventory-column-order-v5';
 
 const COLUMN_LABELS: Record<InventoryReorderableColumnId, string> = {
   media: 'Imágenes',
@@ -59,17 +59,17 @@ export function isInventoryPriceColumn(
 }
 
 const COLUMN_CELL_CLASS: Record<InventoryReorderableColumnId, string> = {
-  media: 'w-[6.5rem] min-w-[6.5rem] max-w-[6.5rem]',
-  code: 'w-[5.25rem] min-w-[5.25rem] max-w-[5.25rem]',
-  product: 'min-w-[11rem] max-w-[15rem] w-[15rem]',
-  attributes: 'w-[9rem] min-w-[9rem] max-w-[11rem]',
-  category: 'w-[8.5rem] min-w-[8.5rem] max-w-[10rem]',
-  stock: 'w-[4.25rem] min-w-[4.25rem] text-center',
-  purchase: 'w-[6.25rem] min-w-[6.25rem] text-right',
-  price_mayorista: 'w-[6.25rem] min-w-[6.25rem] text-right',
-  price_tecnico: 'w-[6.25rem] min-w-[6.25rem] text-right',
-  price_distribuidor: 'w-[6.25rem] min-w-[6.25rem] text-right',
-  price_public: 'w-[6.25rem] min-w-[6.25rem] text-right',
+  media: 'w-[5.5rem] min-w-[5.5rem] max-w-[5.5rem]',
+  code: 'w-[5rem] min-w-[5rem] max-w-[5.5rem]',
+  product: 'min-w-[12rem] max-w-[16rem] w-[16rem]',
+  attributes: 'w-[9.5rem] min-w-[9.5rem] max-w-[11rem]',
+  category: 'w-[8rem] min-w-[8rem] max-w-[9.5rem]',
+  stock: 'w-[4.5rem] min-w-[4.5rem] text-center',
+  purchase: 'w-[6.5rem] min-w-[6.5rem] text-right',
+  price_mayorista: 'w-[6.5rem] min-w-[6.5rem] text-right',
+  price_tecnico: 'w-[6.5rem] min-w-[6.5rem] text-right',
+  price_distribuidor: 'w-[6.5rem] min-w-[6.5rem] text-right',
+  price_public: 'w-[6.5rem] min-w-[6.5rem] text-right',
 };
 
 /** Clases de ancho y alineación para `<th>` y `<td>` del inventario. */
@@ -78,7 +78,7 @@ export function getInventoryColumnCellClass(columnId: InventoryReorderableColumn
 }
 
 export const INVENTORY_ACTIONS_COLUMN_CLASS =
-  'sticky right-0 z-10 w-[9.5rem] min-w-[9.5rem] bg-background shadow-[-6px_0_10px_-6px_hsl(var(--border))]';
+  'sticky right-0 z-10 w-[7.5rem] min-w-[7.5rem] bg-background shadow-[-6px_0_10px_-6px_hsl(var(--border))]';
 
 function isValidColumnId(value: string): value is InventoryReorderableColumnId {
   return (DEFAULT_INVENTORY_COLUMN_ORDER as string[]).includes(value);

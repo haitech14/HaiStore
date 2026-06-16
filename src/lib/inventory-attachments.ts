@@ -61,6 +61,26 @@ export function normalizeAttachments(value: unknown): ProductAttachment[] {
   return attachments;
 }
 
+const PUBLIC_ATTACHMENT_KINDS: ProductAttachmentKind[] = [
+  'technical_sheet',
+  'manual',
+  'brochure',
+];
+
+export function findTechnicalSheetAttachment(
+  product: { attachments?: ProductAttachment[] | null },
+): ProductAttachment | undefined {
+  return product.attachments?.find((attachment) => attachment.kind === 'technical_sheet');
+}
+
+export function publicProductAttachments(
+  product: { attachments?: ProductAttachment[] | null },
+): ProductAttachment[] {
+  return normalizeAttachments(product.attachments).filter((attachment) =>
+    PUBLIC_ATTACHMENT_KINDS.includes(attachment.kind),
+  );
+}
+
 export function guessAttachmentKind(fileName: string): ProductAttachmentKind {
   const lower = fileName.toLowerCase();
   if (lower.includes('ficha') || lower.includes('datasheet') || lower.includes('spec')) {

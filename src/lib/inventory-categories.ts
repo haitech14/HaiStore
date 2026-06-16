@@ -1,7 +1,7 @@
 import { categories } from '@/data/categories';
 import { normalizeCategoryName } from '@/lib/catalog-featured';
 import { buildCategorySelectOptions } from '@/lib/inventory-category-options';
-import { categoryInventoryLabel } from '@/lib/inventory-product-category';
+import { nodeMatchesLabel } from '@/lib/inventory-product-category';
 import { collectInventoryLabels } from '@/lib/store-category-display';
 import { parseInventoryTagList } from '@/lib/inventory-tags';
 import { flattenCategoryTree } from '@/lib/store-category-tree';
@@ -38,16 +38,22 @@ export function resolveCategoryFilterLabels(
 ): string[] {
   if (filterValue === 'all') return [];
 
+  const trimmed = filterValue.trim();
   const flat = flattenCategoryTree(tree);
-  const match = flat.find((node) => categoryInventoryLabel(node) === filterValue.trim());
-  if (match) {
-    const node = findNodeInTree(tree, match.id);
-    if (node && (node.children?.length ?? 0) > 0) {
-      return collectInventoryLabels(node);
-    }
+  const matches = flat.filter((node) => nodeMatchesLabel(node, trimmed));
+
+  if (matches.length === 0) return [trimmed];
+
+  const match = matches.reduce((best, node) => (node.depth >= best.depth ? node : best));
+  const node = findNodeInTree(tree, match.id);
+  if (!node) return [trimmed];
+
+  if ((node.children?.length ?? 0) > 0) {
+    return collectInventoryLabels(node);
   }
 
-  return [filterValue.trim()];
+  const labels = (node.inventoryLabels ?? []).map((label) => label.trim()).filter(Boolean);
+  return labels.length > 0 ? [...new Set(labels)] : [trimmed];
 }
 
 function findNodeInTree(

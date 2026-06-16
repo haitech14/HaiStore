@@ -14,6 +14,7 @@ import {
 import { seedProducts } from './seed-products.js';
 import { ensureProductSortOrders, sortProductsByOrder } from './inventory-product-order.js';
 import { resolveProductGallery, resolveProductImageUrl } from './product-image-url.js';
+import { sanitizeStoredProductMedia } from '../../shared/product-media-sanitize.js';
 import { ensureFullPrices, resolvePriceRole } from './roles.js';
 import { shouldPreferSupabaseCatalog } from './catalog-source.js';
 import { getInventoryPath } from './server-paths.js';
@@ -132,7 +133,7 @@ export function migrateInventoryProduct(product, warehouses = normalizeWarehouse
     ? Math.max(0, Math.floor(Number(product.sort_order)))
     : undefined;
 
-  return {
+  const merged = {
     ...product,
     ...(sort_order !== undefined ? { sort_order } : {}),
     prices,
@@ -146,6 +147,9 @@ export function migrateInventoryProduct(product, warehouses = normalizeWarehouse
     stock_by_warehouse,
     stock,
   };
+
+  const media = sanitizeStoredProductMedia(merged);
+  return { ...merged, image_url: media.image_url, gallery: media.gallery };
 }
 
 function normalizeDeletedIds(value) {
@@ -263,11 +267,11 @@ async function readInventoryFromLocalFile() {
 function mergeInventoryProductLists(supabaseProducts, fileProducts, warehouses) {
   const byId = new Map();
 
-  for (const product of supabaseProducts) {
+  for (const product of fileProducts) {
     byId.set(product.id, migrateInventoryProduct(product, warehouses));
   }
 
-  for (const product of fileProducts) {
+  for (const product of supabaseProducts) {
     byId.set(product.id, migrateInventoryProduct(product, warehouses));
   }
 
@@ -430,6 +434,9 @@ export function toPublicProduct(product, role) {
       ? Math.max(0, Math.floor(Number(product.view_count)))
       : 0,
     attributes: product.attributes ?? [],
+    attachments: normalizeAttachments(product.attachments).filter((attachment) =>
+      ['technical_sheet', 'manual', 'brochure'].includes(attachment.kind),
+    ),
   };
 }
 

@@ -25,15 +25,9 @@ const PARENT_CATEGORY_ID = 'cat-toner';
 const SUBCATEGORIES = [
   {
     id: 'cat-toner-general',
-    name: 'Toner',
+    name: 'Toner Original',
     slug: 'toner',
-    inventoryLabels: ['Toner'],
-  },
-  {
-    id: 'cat-toner-originales',
-    name: 'Toner originales',
-    slug: 'toner-originales',
-    inventoryLabels: ['Toner originales'],
+    inventoryLabels: ['Toner Original', 'Toner'],
   },
   {
     id: 'cat-toner-suministros',
@@ -47,10 +41,11 @@ async function ensureTonerSubcategories() {
   let categories = await readStoreCategories();
   const parent = categories.find((row) => row.id === PARENT_CATEGORY_ID);
   if (!parent) {
-    throw new Error('No se encontró la categoría padre «Toner y Suministros» (cat-toner).');
+    throw new Error('No se encontró la categoría padre «Suministros» (cat-toner).');
   }
 
   const parentLabels = new Set(parent.inventoryLabels ?? []);
+  parentLabels.add('Suministros');
   parentLabels.add('Toner y suministros');
   parentLabels.add('Tóner y Suministros');
 
@@ -94,8 +89,8 @@ async function ensureTonerSubcategories() {
       inventoryLabels: spec.inventoryLabels,
       image: '/categories/toner-suministros.png',
       tagline:
-        spec.id === 'cat-toner-originales'
-          ? 'Cartuchos y consumibles originales Ricoh'
+        spec.id === 'cat-toner-general'
+          ? 'Tóner y cartuchos originales Ricoh'
           : spec.id === 'cat-toner-suministros'
             ? 'Grapas, kits y suministros Ricoh'
             : 'Tóner compatibles y suministros relacionados',
@@ -184,7 +179,7 @@ async function main() {
 
   await ensureTonerSubcategories();
   console.log(
-    'Subcategorías «Toner», «Toner originales» y «Suministros» listas bajo Toner y Suministros.',
+    'Subcategorías «Toner Original» y «Suministros» listas bajo Suministros.',
   );
 
   const inventory = await readInventory();

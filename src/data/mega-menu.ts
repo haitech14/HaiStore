@@ -173,7 +173,7 @@ export const megaMenuHighlightCategories: readonly MegaMenuHighlightCategory[] =
   },
   {
     slug: 'toner-suministros',
-    name: 'Tóner y Suministros',
+    name: 'Suministros',
     tagline: 'Originales y compatibles',
     image: '/categories/toner-suministros.png',
     href: categoryPath('toner-suministros'),

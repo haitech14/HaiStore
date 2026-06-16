@@ -36,7 +36,6 @@ export async function regenerateProformaPdf(
   company: CompanySettings,
 ): Promise<{ blob: Blob; filename: string }> {
   if (proforma.source === 'product' && proforma.lineItems.length > 0) {
-    const line = proforma.lineItems[0]!;
     const generated = await buildProductQuotePdf(
       {
         razonSocial: proforma.customer.razonSocial,
@@ -45,14 +44,14 @@ export async function regenerateProformaPdf(
         celular: proforma.customer.celular,
         ciudad: proforma.customer.ciudad ?? proforma.customer.direccion ?? 'Lima',
       },
-      {
+      proforma.lineItems.map((line) => ({
         name: line.name,
         sku: line.sku,
         brand: line.brand,
         pricePen: line.unitPricePen,
         quantity: line.quantity,
         imageUrl: line.imageUrl ?? null,
-      },
+      })),
       company,
     );
     return { blob: generated.blob, filename: generated.filename };

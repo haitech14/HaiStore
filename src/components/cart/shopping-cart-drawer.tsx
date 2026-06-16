@@ -9,7 +9,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { useCart } from '@/context/cart-context';
+import { useCart, cartLineUnitUsd } from '@/context/cart-context';
+import { getPaidEquipmentOptions } from '@/lib/equipment-config-selection';
 import { resolveProductImageUrl } from '@/lib/product-image-url';
 import { productPath } from '@/lib/product-path';
 import { cn, formatUsd } from '@/lib/utils';
@@ -57,13 +58,16 @@ export function ShoppingCartDrawer() {
             </div>
           ) : (
             <ul className="flex-1 overflow-y-auto px-4 py-3" aria-label="Productos en el carrito">
-              {items.map(({ product, quantity }) => {
+              {items.map((item) => {
+                const { product, quantity, lineId, configuration } = item;
                 const imageUrl = resolveProductImageUrl(product);
                 const isHighlighted = highlightProductId === product.id;
+                const lineUnitUsd = cartLineUnitUsd(item);
+                const paidOptions = getPaidEquipmentOptions(configuration?.options ?? []);
 
                 return (
                   <li
-                    key={product.id}
+                    key={lineId}
                     className={cn(
                       'mb-3 rounded-lg border border-border p-3 transition-colors duration-500 motion-reduce:transition-none',
                       isHighlighted && 'cart-line-highlight border-red-300 bg-red-50/80',
@@ -98,11 +102,24 @@ export function ShoppingCartDrawer() {
                           {product.name}
                         </Link>
                         <p className="mt-1 text-sm font-bold">
-                          <DualPrice usd={product.price * quantity} />
+                          <DualPrice usd={lineUnitUsd * quantity} />
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {formatUsd(product.price)} c/u
+                          {formatUsd(lineUnitUsd)} c/u
                         </p>
+
+                        {paidOptions.length > 0 ? (
+                          <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+                            {paidOptions.map((option) => (
+                              <li key={option.optionId}>
+                                + {option.optionName}{' '}
+                                <span className="font-semibold text-[#0f1f3d]">
+                                  (S/ {option.pricePen.toLocaleString('es-PE')})
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
 
                         <div className="mt-2 flex items-center justify-between gap-2">
                           <div className="inline-flex items-center rounded-md border border-border">
@@ -112,7 +129,7 @@ export function ShoppingCartDrawer() {
                               size="icon"
                               className="size-9 shrink-0 rounded-none"
                               aria-label={`Quitar una unidad de ${product.name}`}
-                              onClick={() => updateQuantity(product.id, quantity - 1)}
+                              onClick={() => updateQuantity(lineId, quantity - 1)}
                             >
                               <Minus className="size-4" aria-hidden="true" />
                             </Button>
@@ -128,7 +145,7 @@ export function ShoppingCartDrawer() {
                               size="icon"
                               className="size-9 shrink-0 rounded-none"
                               aria-label={`Añadir una unidad de ${product.name}`}
-                              onClick={() => updateQuantity(product.id, quantity + 1)}
+                              onClick={() => updateQuantity(lineId, quantity + 1)}
                             >
                               <Plus className="size-4" aria-hidden="true" />
                             </Button>
@@ -140,7 +157,7 @@ export function ShoppingCartDrawer() {
                             size="icon"
                             className="size-9 shrink-0 text-muted-foreground hover:text-destructive"
                             aria-label={`Eliminar ${product.name} del carrito`}
-                            onClick={() => removeItem(product.id)}
+                            onClick={() => removeItem(lineId)}
                           >
                             <Trash2 className="size-4" aria-hidden="true" />
                           </Button>

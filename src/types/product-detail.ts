@@ -29,10 +29,27 @@ export interface ProductWarrantyOption {
 
 export interface ProductComboItem {
   id: string;
+  /** Producto real del catálogo cuando está disponible. */
+  productId?: string;
   name: string;
   image: string;
   pricePen: number;
+  priceUsd?: number;
   defaultSelected: boolean;
+}
+
+export interface EquipmentConfigOption {
+  id: string;
+  name: string;
+  description?: string;
+  pricePen: number;
+  /** Opción incluida en el equipo base (sin costo adicional). */
+  included?: boolean;
+  /** Producto del inventario enlazado. */
+  productId?: string;
+  sku?: string;
+  image?: string;
+  priceUsd?: number;
 }
 
 export interface EquipmentConfigStep {
@@ -43,6 +60,7 @@ export interface EquipmentConfigStep {
   pricePen: number;
   icon: LucideIcon;
   defaultSelected: boolean;
+  options: EquipmentConfigOption[];
 }
 
 export interface ProductSpecRow {
@@ -90,6 +108,16 @@ export interface ProductDetailViewModel {
   colorLabel: string;
   breadcrumbs: ProductBreadcrumb[];
   displayTitle: string;
+  /** Título corto para breadcrumb y encabezado (p. ej. RICOH IM 430F). */
+  shortTitle: string;
+  /** Título principal en hero (nombre completo con capitalización). */
+  heroTitle: string;
+  /** Píldoras bajo la marca (Nuevo, ppm, A4, etc.). */
+  tagPills: string[];
+  /** Tarjetas de características en el hero (4 en 1, velocidad, etc.). */
+  heroHighlights: ProductDescriptionHighlight[];
+  /** Subtítulo bajo el nombre del producto. */
+  displaySubtitle: string;
   categoryLabel: string;
   rating: number;
   reviews: number;
@@ -111,4 +139,8 @@ export interface ProductDetailViewModel {
   isOnOffer: boolean;
   oldPricePen: number | null;
   discountPercent: number | null;
+  /** URL del PDF de ficha técnica cuando está cargado en inventario. */
+  technicalSheetUrl: string | null;
+  /** Precio mayorista (USD) para mostrar junto al precio público. */
+  wholesalePriceUsd: number | null;
 }

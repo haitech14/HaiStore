@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { FileDown } from 'lucide-react';
 
 import { HaitechClientForm } from '@/components/admin/shared/haitech-client-form';
@@ -14,6 +14,7 @@ import type { QuotePdfPreview } from '@/components/product-detail/product-quote-
 import { useCompanySettings } from '@/hooks/use-company-settings';
 import { useProformaMutations } from '@/hooks/use-admin-proformas';
 import { buildProformaPayloadFromProductQuote } from '@/lib/build-proforma-payload';
+import { buildProductQuoteLines } from '@/lib/equipment-config-selection';
 import { buildProductQuotePdf } from '@/lib/generate-product-quote-pdf';
 import {
   haitechClientSchema,
@@ -21,7 +22,7 @@ import {
 } from '@/lib/haitech-client-schema';
 import { usdToPen } from '@/lib/utils';
 import { DEFAULT_COMPANY_SETTINGS } from '@/types/company-settings';
-import type { Product } from '@/types/product';
+import type { CartConfigurationLine, Product } from '@/types/product';
 
 interface ProductQuoteDialogProps {
   open: boolean;
@@ -30,6 +31,7 @@ interface ProductQuoteDialogProps {
   displayTitle: string;
   sku: string;
   brandLabel: string;
+  equipmentConfiguration?: CartConfigurationLine | undefined;
   onGenerated: (preview: QuotePdfPreview) => void;
 }
 
@@ -40,6 +42,7 @@ export function ProductQuoteDialog({
   displayTitle,
   sku,
   brandLabel,
+  equipmentConfiguration,
   onGenerated,
 }: ProductQuoteDialogProps) {
   const { data: companySettings } = useCompanySettings();
@@ -47,6 +50,24 @@ export function ProductQuoteDialog({
   const [client, setClient] = useState(EMPTY_HAITECH_CLIENT);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const quoteLines = useMemo(
+    () =>
+      buildProductQuoteLines(
+        {
+          name: displayTitle,
+          sku,
+          brand: brandLabel,
+          pricePen: usdToPen(product.price),
+          quantity: 1,
+          imageUrl: product.image_url,
+        },
+        equipmentConfiguration,
+      ),
+    [brandLabel, displayTitle, equipmentConfiguration, product.image_url, product.price, sku],
+  );
+
+  const paidOptionsCount = equipmentConfiguration?.options.filter((option) => option.pricePen > 0).length ?? 0;
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -70,18 +91,7 @@ export function ProductQuoteDialog({
 
     try {
       const company = companySettings ?? DEFAULT_COMPANY_SETTINGS;
-      const generated = await buildProductQuotePdf(
-        values,
-        {
-          name: displayTitle,
-          sku,
-          brand: brandLabel,
-          pricePen: usdToPen(product.price),
-          quantity: 1,
-          imageUrl: product.image_url,
-        },
-        company,
-      );
+      const generated = await buildProductQuotePdf(values, quoteLines, company);
 
       const url = URL.createObjectURL(generated.blob);
       onGenerated({
@@ -96,14 +106,15 @@ export function ProductQuoteDialog({
           buildProformaPayloadFromProductQuote(
             generated.quoteNumber,
             values,
-            {
-              id: product.id,
-              name: displayTitle,
-              sku,
-              brand: brandLabel,
-              pricePen: usdToPen(product.price),
-              imageUrl: product.image_url,
-            },
+            quoteLines.map((line, index) => ({
+              id: index === 0 ? product.id : `${product.id}::${line.sku}`,
+              name: line.name,
+              sku: line.sku,
+              brand: line.brand,
+              pricePen: line.pricePen,
+              quantity: line.quantity ?? 1,
+              imageUrl: line.imageUrl ?? null,
+            })),
             company.quoteValidityDays,
           ),
         );
@@ -126,11 +137,14 @@ export function ProductQuoteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[92vh] overflow-y-auto">
+      <DialogContent className="max-h-[92vh] max-w-md overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Descargar cotización</DialogTitle>
           <DialogDescription>
             Complete los datos del cliente (mismo formulario que HaiSupport) para generar el PDF.
+            {paidOptionsCount > 0
+              ? ` Incluye ${paidOptionsCount} accesorio${paidOptionsCount === 1 ? '' : 's'} de configuración.`
+              : null}
           </DialogDescription>
         </DialogHeader>
 

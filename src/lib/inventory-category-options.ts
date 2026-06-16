@@ -7,6 +7,8 @@ import type { StoreCategoryTreeNode } from '@/types/store-category';
 export interface InventorySelectOption {
   value: string;
   label: string;
+  /** 0 = categoría raíz del grupo; >0 = subcategoría. */
+  depth?: number;
 }
 
 export interface InventoryCategorySelectGroup {
@@ -30,26 +32,26 @@ export function buildCategorySelectOptions(
   const seen = new Set<string>();
   const options: InventorySelectOption[] = [];
 
-  const add = (value: string, label: string) => {
+  const add = (value: string, label: string, depth = 0) => {
     const key = value.trim();
     if (!key || seen.has(key)) return;
     seen.add(key);
-    options.push({ value: key, label });
+    options.push({ value: key, label, depth });
   };
 
   for (const node of flattenCategoryTree(tree)) {
     const value = categoryInventoryLabel(node);
-    add(value, indentLabel(node.depth, value));
+    add(value, indentLabel(node.depth, value), node.depth);
   }
 
   for (const category of categories) {
-    add(category.name, category.name);
+    add(category.name, category.name, 0);
   }
 
   for (const label of extraLabels) {
     for (const part of parseInventoryTagList(label)) {
       if (!seen.has(part)) {
-        add(part, part);
+        add(part, part, 0);
       }
     }
   }
@@ -71,7 +73,7 @@ export function buildCategorySelectGroups(
     const key = value.trim();
     if (!key || seen.has(key)) return;
     seen.add(key);
-    options.push({ value: key, label: indentLabel(depth, key) });
+    options.push({ value: key, label: indentLabel(depth, key), depth });
   };
 
   const walk = (node: StoreCategoryTreeNode, depth: number) => {
@@ -80,7 +82,7 @@ export function buildCategorySelectGroups(
       const value = categoryInventoryLabel(node);
       groups.push({
         label: node.name,
-        options: [{ value, label: indentLabel(depth, value) }],
+        options: [{ value, label: indentLabel(depth, value), depth: 0 }],
       });
       return;
     }
@@ -100,11 +102,11 @@ export function buildCategorySelectGroups(
   const orphanOptions: InventorySelectOption[] = [];
   for (const label of extraLabels) {
     for (const part of parseInventoryTagList(label)) {
-      addOption(orphanOptions, part, 0);
+      addOption(orphanOptions, part, 1);
     }
   }
   for (const category of categories) {
-    addOption(orphanOptions, category.name, 0);
+    addOption(orphanOptions, category.name, 1);
   }
   if (orphanOptions.length > 0) {
     groups.push({ label: 'Otras etiquetas', options: orphanOptions });

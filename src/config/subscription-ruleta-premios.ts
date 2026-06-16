@@ -115,10 +115,17 @@ export const SUBSCRIPTION_RULETA_PREMIOS: RuletaPremio[] = [
 
 export const RULETA_SEGMENT_COUNT = SUBSCRIPTION_RULETA_PREMIOS.length;
 export const RULETA_SEGMENT_ANGLE = 360 / RULETA_SEGMENT_COUNT;
+/** Desplazamiento del anillo de iconos respecto al centro del sector (° horario). */
+export const RULETA_ICON_RING_OFFSET_DEG = -8;
+
+/** Centro del sector en ° horario desde las 12 en punto (marco local del disco). */
+export function getRuletaSegmentCenterFromTopDeg(index: number): number {
+  return index * RULETA_SEGMENT_ANGLE + RULETA_SEGMENT_ANGLE / 2;
+}
 
 /** Ángulo del centro de un sector (mismo origen que `conic-gradient(from -90deg)`). */
 export function getRuletaSegmentMidAngleDeg(index: number): number {
-  return index * RULETA_SEGMENT_ANGLE + RULETA_SEGMENT_ANGLE / 2 - 90;
+  return getRuletaSegmentCenterFromTopDeg(index) - 90;
 }
 
 export function getRuletaConicGradient(): string {
@@ -143,9 +150,28 @@ export function getPremioByIndex(index: number): RuletaPremio {
 }
 
 /** Grados adicionales para que el premio quede bajo el puntero superior. */
-export function computeRuletaSpinDeltaDeg(targetIndex: number, extraSpins = 6): number {
-  const segmentCenter = targetIndex * RULETA_SEGMENT_ANGLE + RULETA_SEGMENT_ANGLE / 2;
-  return extraSpins * 360 + (360 - segmentCenter);
+export function computeRuletaSpinDeltaDeg(
+  targetIndex: number,
+  startRotationDeg = 0,
+  extraSpins = 6,
+): number {
+  const segmentCenter =
+    getRuletaSegmentCenterFromTopDeg(targetIndex) + RULETA_ICON_RING_OFFSET_DEG;
+  const startNorm = ((startRotationDeg % 360) + 360) % 360;
+  const alignMod = (((-startNorm - segmentCenter) % 360) + 360) % 360;
+  return extraSpins * 360 + alignMod;
+}
+
+/** Comprueba alineación puntero ↔ sector (útil para depuración). */
+export function isRuletaSegmentAlignedWithPointer(
+  targetIndex: number,
+  totalRotationDeg: number,
+): boolean {
+  const segmentCenter =
+    getRuletaSegmentCenterFromTopDeg(targetIndex) + RULETA_ICON_RING_OFFSET_DEG;
+  const totalNorm = ((totalRotationDeg % 360) + 360) % 360;
+  const atPointer = (totalNorm + segmentCenter) % 360;
+  return Math.abs(atPointer) < 0.001 || Math.abs(atPointer - 360) < 0.001;
 }
 
 export function formatPremioLabel(premio: RuletaPremio): string {

@@ -1,4 +1,7 @@
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
+
+import { formatInventoryProductName } from '@/lib/inventory-product-name';
 
 import { InventoryInlinePriceEdit } from '@/components/admin/inventory/inventory-inline-price-edit';
 import { useCompanySettings } from '@/hooks/use-company-settings';
@@ -106,15 +109,44 @@ export function InventoryRowCells({
   };
 
   const savePriceUsd = async (role: PriceRole, usd: number) => {
-    await onPatch({
-      prices: { ...product.prices, [role]: usd },
-    });
-    close();
+    const currentUsd = product.prices[role] ?? 0;
+    if (Math.abs(currentUsd - usd) < 0.0001) return;
+
+    try {
+      await onPatch({
+        prices: { ...product.prices, [role]: usd },
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'No se pudo guardar el precio del producto',
+      );
+      throw error;
+    }
   };
 
   const savePurchaseUsd = async (usd: number) => {
-    await onPatch({ purchase_price_usd: usd });
-    close();
+    const currentUsd = product.purchase_price_usd ?? 0;
+    if (Math.abs(currentUsd - usd) < 0.0001) return;
+
+    const suppliers = product.suppliers ?? [];
+    const syncedSuppliers =
+      suppliers.length > 0
+        ? suppliers.map((supplier, index) =>
+            index === 0 ? { ...supplier, purchase_price_usd: usd } : supplier,
+          )
+        : suppliers;
+
+    try {
+      await onPatch({
+        purchase_price_usd: usd,
+        ...(syncedSuppliers.length > 0 ? { suppliers: syncedSuppliers } : {}),
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'No se pudo guardar el precio de compra',
+      );
+      throw error;
+    }
   };
 
   const saveParentCategory = async (parentId: string) => {
@@ -146,21 +178,34 @@ export function InventoryRowCells({
       await onPatch({ image_url: payload.image_url, gallery: payload.gallery });
     };
 
-    const handleAddGallery = async (files: FileList) => {
+    const persistUploadedFiles = async (files: FileList, limit?: number) => {
+      const selected = limit ? [files[0]].filter((file): file is File => Boolean(file)) : [...files];
+      if (selected.length === 0) return;
+
       setAddingGallery(true);
       try {
-        const media = await appendGalleryImagesToProduct(product, [...files]);
+        const media = await appendGalleryImagesToProduct(product, selected);
         await saveMedia(media);
+        toast.success(selected.length === 1 ? 'Imagen guardada' : 'Imágenes guardadas');
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : 'No se pudo guardar la imagen del producto',
+        );
+        throw error;
       } finally {
         setAddingGallery(false);
       }
     };
+
+    const handleUploadMain = (files: FileList) => persistUploadedFiles(files, 1);
+    const handleAddGallery = (files: FileList) => persistUploadedFiles(files);
 
     return (
       <>
         <InventoryMediaCell
           product={product}
           onPreview={() => setPreviewOpen(true)}
+          onUploadMain={handleUploadMain}
           onAddGallery={handleAddGallery}
           isAddingGallery={addingGallery}
         />
@@ -207,7 +252,9 @@ export function InventoryRowCells({
         onClose={close}
         display={
           <div>
-            <p className="line-clamp-2 font-medium leading-snug">{product.name}</p>
+            <p className="line-clamp-2 font-semibold leading-snug">
+              {formatInventoryProductName(product.name)}
+            </p>
             {product.brand ? (
               <p className="text-xs text-muted-foreground">{product.brand}</p>
             ) : null}
@@ -258,14 +305,27 @@ export function InventoryRowCells({
         onClose={close}
         display={
           placement.parent || placement.sub || placement.raw ? (
-            <div className="flex flex-col items-start gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               {placement.parent ? (
-                <Badge variant="secondary">{placement.parent.name}</Badge>
+                <Badge
+                  variant="secondary"
+                  className="rounded-md bg-muted px-2 py-0.5 text-[0.65rem] font-medium text-muted-foreground shadow-none"
+                >
+                  {placement.parent.name}
+                </Badge>
               ) : placement.raw ? (
-                <Badge variant="outline">{placement.raw}</Badge>
+                <Badge
+                  variant="outline"
+                  className="rounded-md bg-muted px-2 py-0.5 text-[0.65rem] font-medium text-muted-foreground shadow-none"
+                >
+                  {placement.raw}
+                </Badge>
               ) : null}
               {placement.sub ? (
-                <Badge variant="outline" className="font-normal">
+                <Badge
+                  variant="outline"
+                  className="rounded-md bg-muted px-2 py-0.5 text-[0.65rem] font-normal text-muted-foreground shadow-none"
+                >
                   {placement.sub.name}
                 </Badge>
               ) : null}
@@ -361,6 +421,7 @@ export function InventoryRowCells({
             exchangeRate={purchaseExchangeRate}
             ariaLabel="Precio de compra"
             onSave={savePurchaseUsd}
+            onClose={close}
           />
         }
       />
@@ -392,6 +453,7 @@ export function InventoryRowCells({
             exchangeRate={saleExchangeRate}
             ariaLabel={PRICE_ROLE_LABELS[role]}
             onSave={(usd) => savePriceUsd(role, usd)}
+            onClose={close}
           />
         }
       />

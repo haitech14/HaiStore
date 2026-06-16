@@ -34,10 +34,11 @@ async function ensureTonerCompatiblesSubcategory() {
   let categories = await readStoreCategories();
   const parent = categories.find((row) => row.id === PARENT_CATEGORY_ID);
   if (!parent) {
-    throw new Error('No se encontró la categoría padre «Toner y Suministros» (cat-toner).');
+    throw new Error('No se encontró la categoría padre «Suministros» (cat-toner).');
   }
 
   const parentLabels = new Set(parent.inventoryLabels ?? []);
+  parentLabels.add('Suministros');
   parentLabels.add('Toner y suministros');
   parentLabels.add('Tóner y Suministros');
   parentLabels.add('Toner Compatibles');
@@ -185,7 +186,7 @@ async function main() {
   }
 
   await ensureTonerCompatiblesSubcategory();
-  console.log('Subcategoría «Toner Compatibles» lista bajo Toner y Suministros.');
+  console.log('Subcategoría «Toner Compatibles» lista bajo Suministros.');
 
   const inventory = await readInventory();
   const codesBefore = new Set(

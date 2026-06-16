@@ -91,11 +91,15 @@ export function SubscriptionPopup() {
   const revealTimerRef = useRef<number | null>(null);
   const spinFallbackTimerRef = useRef<number | null>(null);
   const spinCompletedRef = useRef(false);
+  const phaseRef = useRef<FormPhase>('idle');
+  const diskRotationRef = useRef(0);
 
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<FormPhase>('idle');
   const [diskRotation, setDiskRotation] = useState(0);
   const [isSpinAnimating, setIsSpinAnimating] = useState(false);
+  const [spinDeltaDeg, setSpinDeltaDeg] = useState<number | null>(null);
+  const [spinToken, setSpinToken] = useState(0);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [wonPremio, setWonPremio] = useState<RuletaPremio | null>(null);
   const [winningIndex, setWinningIndex] = useState<number | null>(null);
@@ -121,6 +125,14 @@ export function SubscriptionPopup() {
   const onStorePage = isStoreRoute(pathname);
 
   useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+
+  useEffect(() => {
+    diskRotationRef.current = diskRotation;
+  }, [diskRotation]);
+
+  useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
     const update = () => setPrefersReducedMotion(media.matches);
     update();
@@ -143,6 +155,7 @@ export function SubscriptionPopup() {
     if (!open || phase !== 'idle' || prefersReducedMotion) return;
 
     const interval = window.setInterval(() => {
+      if (phaseRef.current !== 'idle') return;
       setDiskRotation((current) => current + IDLE_STEP_DEG);
     }, IDLE_INTERVAL_MS);
 
@@ -164,7 +177,7 @@ export function SubscriptionPopup() {
     }, REVEAL_DELAY_MS);
   }, []);
 
-  const handleSpinComplete = useCallback(() => {
+  const handleSpinComplete = useCallback((finalRotationDeg: number) => {
     if (spinCompletedRef.current) return;
     spinCompletedRef.current = true;
 
@@ -172,6 +185,9 @@ export function SubscriptionPopup() {
       window.clearTimeout(spinFallbackTimerRef.current);
       spinFallbackTimerRef.current = null;
     }
+
+    setDiskRotation(finalRotationDeg);
+    setSpinDeltaDeg(null);
     setIsSpinAnimating(false);
     setPhase('landed');
     scheduleFelicidades();
@@ -184,36 +200,38 @@ export function SubscriptionPopup() {
     setWonPremio(null);
     setWinningIndex(null);
     setIsSpinAnimating(false);
+    setSpinDeltaDeg(null);
     if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
     if (spinFallbackTimerRef.current) window.clearTimeout(spinFallbackTimerRef.current);
   }, [phase]);
 
   const runSpin = useCallback(
     (prizeIndex: number, premio: RuletaPremio) => {
-      const delta = computeRuletaSpinDeltaDeg(prizeIndex);
+      const startRotation = diskRotationRef.current;
+      const delta = computeRuletaSpinDeltaDeg(prizeIndex, startRotation);
 
       spinCompletedRef.current = false;
       setWonPremio(premio);
       setWinningIndex(prizeIndex);
       setPhase('spinning');
+
+      if (prefersReducedMotion) {
+        const finalRotation = startRotation + delta;
+        setDiskRotation(finalRotation);
+        setSpinDeltaDeg(null);
+        setIsSpinAnimating(false);
+        window.requestAnimationFrame(() => handleSpinComplete(finalRotation));
+        return;
+      }
+
+      setSpinDeltaDeg(delta);
+      setSpinToken((token) => token + 1);
       setIsSpinAnimating(true);
 
       if (spinFallbackTimerRef.current) window.clearTimeout(spinFallbackTimerRef.current);
       spinFallbackTimerRef.current = window.setTimeout(() => {
-        handleSpinComplete();
-      }, SPIN_DURATION_MS + 120);
-
-      if (prefersReducedMotion) {
-        setDiskRotation((current) => current + delta);
-        window.requestAnimationFrame(() => handleSpinComplete());
-        return;
-      }
-
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          setDiskRotation((current) => current + delta);
-        });
-      });
+        handleSpinComplete(startRotation + delta);
+      }, SPIN_DURATION_MS + 200);
     },
     [handleSpinComplete, prefersReducedMotion],
   );
@@ -319,6 +337,8 @@ export function SubscriptionPopup() {
             <SubscriptionRuletaWheel
               diskRotation={diskRotation}
               isSpinAnimating={isSpinAnimating}
+              spinDeltaDeg={spinDeltaDeg}
+              spinToken={spinToken}
               highlightIndex={showWheelHighlight ? winningIndex : null}
               onSpinComplete={handleSpinComplete}
               className="relative z-10"
@@ -558,41 +578,53 @@ export function SubscriptionPopup() {
           {phase === 'won' && wonPremio ? (
             <div
               className={cn(
-                'absolute inset-0 z-20 flex flex-col items-center justify-center gap-6 px-6 py-10 sm:px-10 sm:py-12',
-                'animate-in fade-in zoom-in-95 duration-500',
-                'bg-gradient-to-b from-[#F5F5F5]/75 via-[#F5F5F5]/88 to-[#F5F5F5]/95 backdrop-blur-[1px]',
+                'absolute inset-0 z-20 flex items-center justify-center overflow-y-auto',
+                'bg-background/90 p-4 backdrop-blur-md sm:p-6',
               )}
               role="status"
               aria-live="polite"
             >
               <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(220,38,38,0.12),transparent_55%)]"
-              />
-              <span className="relative z-10 flex size-16 items-center justify-center rounded-full bg-red-600/10 text-red-600">
-                <PartyPopper className="size-8" aria-hidden="true" />
-              </span>
-              <div className="relative z-10 text-center">
-                <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-                  ¡Felicidades!
-                </h2>
-                <p className="mt-2 text-base text-muted-foreground sm:text-lg">
-                  Has ganado un premio en la{' '}
-                  <span className="font-semibold text-red-600">Ruleta del Color</span>
-                </p>
-              </div>
-              <RuletaCouponCard premio={wonPremio} className="relative z-10" />
-              <p className="relative z-10 max-w-sm text-center text-sm text-muted-foreground">
-                <Mail className="mb-1 inline size-4 text-blue-500" aria-hidden="true" />{' '}
-                Te enviaremos el cupón a tu correo en las próximas 48 a 72 horas.
-              </p>
-              <Button
-                type="button"
-                onClick={handleClose}
-                className="relative z-10 h-12 min-w-[200px] bg-red-600 text-base font-semibold text-white hover:bg-red-500 focus-visible:ring-red-600"
+                className={cn(
+                  'relative my-auto w-full max-w-md animate-in fade-in zoom-in-95 duration-500',
+                  'rounded-2xl border border-border bg-card px-5 py-8 shadow-2xl sm:px-8 sm:py-10',
+                )}
               >
-                Entendido
-              </Button>
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_50%_0%,hsl(var(--primary)/0.08),transparent_55%)]"
+                />
+                <div className="relative flex flex-col items-center gap-5 sm:gap-6">
+                  <span className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <PartyPopper className="size-8" aria-hidden="true" />
+                  </span>
+                  <div className="text-center">
+                    <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+                      ¡Felicidades!
+                    </h2>
+                    <p className="mt-2 text-base text-muted-foreground sm:text-lg">
+                      Has ganado un premio en la{' '}
+                      <span className="font-semibold text-primary">Ruleta del Color</span>
+                    </p>
+                  </div>
+                  <RuletaCouponCard
+                    premio={wonPremio}
+                    notchBackgroundClassName="bg-card"
+                    className="w-full shadow-md"
+                  />
+                  <p className="max-w-sm text-center text-sm leading-relaxed text-muted-foreground">
+                    <Mail className="mb-0.5 inline size-4 text-primary" aria-hidden="true" />{' '}
+                    Te enviaremos el cupón a tu correo en las próximas 48 a 72 horas.
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={handleClose}
+                    className="h-12 w-full min-w-[200px] max-w-xs bg-primary text-base font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary"
+                  >
+                    Entendido
+                  </Button>
+                </div>
+              </div>
             </div>
           ) : null}
         </div>

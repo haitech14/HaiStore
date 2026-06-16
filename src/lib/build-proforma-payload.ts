@@ -46,16 +46,31 @@ export function buildProformaPayloadFromProductQuote(
     celular: string;
     ciudad: string;
   },
-  product: {
+  lines: Array<{
     id: string;
     name: string;
     sku: string;
     brand: string;
     pricePen: number;
+    quantity?: number;
     imageUrl?: string | null;
-  },
+  }>,
   validityDays: number,
 ): CreateProformaPayload {
+  const lineItems = lines.map((line) => ({
+    productId: line.id,
+    name: line.name,
+    sku: line.sku,
+    brand: line.brand,
+    quantity: line.quantity ?? 1,
+    unitPricePen: line.pricePen,
+    imageUrl: line.imageUrl ?? null,
+  }));
+  const subtotalPen = lineItems.reduce(
+    (sum, line) => sum + line.unitPricePen * line.quantity,
+    0,
+  );
+
   return {
     documentNumber: quoteNumber,
     source: 'product',
@@ -68,20 +83,10 @@ export function buildProformaPayloadFromProductQuote(
       ciudad: client.ciudad.trim(),
       direccion: client.ciudad.trim(),
     },
-    lineItems: [
-      {
-        productId: product.id,
-        name: product.name,
-        sku: product.sku,
-        brand: product.brand,
-        quantity: 1,
-        unitPricePen: product.pricePen,
-        imageUrl: product.imageUrl ?? null,
-      },
-    ],
+    lineItems,
     currency: 'PEN',
-    subtotalPen: product.pricePen,
-    totalPen: product.pricePen,
+    subtotalPen,
+    totalPen: subtotalPen,
     validityDays,
   };
 }

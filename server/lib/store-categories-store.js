@@ -34,11 +34,11 @@ const DEFAULT_CATEGORIES = [
   },
   {
     id: 'cat-toner',
-    name: 'Toner y Suministros',
+    name: 'Suministros',
     slug: 'toner-suministros',
     parentId: null,
     sortOrder: 2,
-    inventoryLabels: ['Toner y suministros', 'Tóner y Suministros'],
+    inventoryLabels: ['Suministros', 'Toner y suministros', 'Tóner y Suministros'],
     image: '/categories/toner-suministros.png',
     tagline: 'Consumibles originales y compatibles',
   },

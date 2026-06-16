@@ -4,19 +4,25 @@ import { cn } from '@/lib/utils';
 
 interface RuletaCouponCardProps {
   premio: RuletaPremio;
+  /** Color de fondo detrás de las muescas del ticket (debe coincidir con el panel contenedor). */
+  notchBackgroundClassName?: string;
   className?: string;
 }
 
-export function RuletaCouponCard({ premio, className }: RuletaCouponCardProps) {
+export function RuletaCouponCard({
+  premio,
+  notchBackgroundClassName = 'bg-card',
+  className,
+}: RuletaCouponCardProps) {
   const label = formatPremioLabel(premio);
   const Icon = premio.icon;
 
   return (
     <div
       className={cn(
-        'relative mx-auto w-full max-w-[280px] overflow-hidden rounded-xl',
-        'border-2 border-dashed border-red-300 bg-gradient-to-br from-white via-red-50/80 to-amber-50',
-        'shadow-[0_8px_32px_rgba(220,38,38,0.18)]',
+        'relative mx-auto w-full max-w-[320px] rounded-xl',
+        'border-2 border-dashed border-primary/30 bg-background',
+        'shadow-[0_8px_32px_hsl(var(--primary)/0.15)]',
         className,
       )}
       role="img"
@@ -25,43 +31,54 @@ export function RuletaCouponCard({ premio, className }: RuletaCouponCardProps) {
       {/* Muescas laterales tipo ticket */}
       <span
         aria-hidden="true"
-        className="absolute left-0 top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F5F5F5]"
+        className={cn(
+          'absolute left-0 top-1/2 z-10 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full',
+          notchBackgroundClassName,
+        )}
       />
       <span
         aria-hidden="true"
-        className="absolute right-0 top-1/2 size-5 translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F5F5F5]"
+        className={cn(
+          'absolute right-0 top-1/2 z-10 size-5 translate-x-1/2 -translate-y-1/2 rounded-full',
+          notchBackgroundClassName,
+        )}
       />
 
-      <div className="border-b border-dashed border-red-200 px-5 py-4 text-center">
-        <p className="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-red-600">
+      <div className="overflow-hidden rounded-t-[10px] border-b border-dashed border-primary/20 bg-primary/5 px-5 py-4 text-center">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
           Ruleta del Color
         </p>
-        <p className="mt-0.5 text-[0.6rem] font-medium uppercase tracking-wider text-muted-foreground">
+        <p className="mt-1 text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
           Cupón de premio
         </p>
       </div>
 
-      <div className="flex flex-col items-center gap-3 px-5 py-6">
+      <div className="flex flex-col items-center gap-4 px-5 py-7">
         <span
-          className="flex size-14 items-center justify-center rounded-full shadow-md"
+          className="flex size-16 items-center justify-center rounded-full shadow-lg ring-4 ring-primary/10 sm:size-[4.5rem]"
           style={{ backgroundColor: premio.sectorColor }}
           aria-hidden="true"
         >
-          <Icon className="size-7 text-white" strokeWidth={1.5} />
+          <Icon className="size-8 text-white sm:size-9" strokeWidth={1.75} />
         </span>
-        <p className="text-center text-xl font-extrabold leading-tight text-foreground sm:text-2xl">
-          {label}
-        </p>
-        <p className="text-center text-xs text-muted-foreground">
-          Válido por 48 a 72 horas · Te lo enviamos por correo
+        <div className="space-y-1 text-center">
+          <p className="text-2xl font-extrabold leading-none tracking-tight text-foreground sm:text-3xl">
+            {premio.label}
+          </p>
+          <p className="text-lg font-bold uppercase tracking-wide text-primary sm:text-xl">
+            {premio.sublabel}
+          </p>
+        </div>
+        <p className="max-w-[16rem] text-center text-sm leading-snug text-muted-foreground">
+          Válido por 48 a 72 horas. Te lo enviamos por correo.
         </p>
       </div>
 
       <div
         aria-hidden="true"
-        className="border-t border-dashed border-red-200 bg-red-600/5 px-5 py-2.5 text-center"
+        className="overflow-hidden rounded-b-[10px] border-t border-dashed border-primary/20 bg-primary/5 px-5 py-3 text-center"
       >
-        <p className="font-mono text-[0.6rem] font-semibold uppercase tracking-widest text-red-700/70">
+        <p className="font-mono text-[0.65rem] font-semibold uppercase tracking-widest text-primary/70">
           HAISTORE · PROMO 2026
         </p>
       </div>

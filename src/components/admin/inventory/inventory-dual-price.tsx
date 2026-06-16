@@ -14,10 +14,10 @@ export function InventoryDualPrice({ usd, exchangeRate }: InventoryDualPriceProp
 
   return (
     <div className="inline-block text-right leading-tight tabular-nums">
-      <p className="whitespace-nowrap font-medium">{formatUsd(usd)}</p>
-      <p className="whitespace-nowrap text-[0.65rem] text-muted-foreground">
+      <p className="whitespace-nowrap font-semibold text-foreground">
         {pen > 0 ? formatPenInteger(pen) : 'S/ —'}
       </p>
+      <p className="whitespace-nowrap text-[0.65rem] text-muted-foreground">{formatUsd(usd)}</p>
     </div>
   );
 }

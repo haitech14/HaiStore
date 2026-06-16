@@ -1,6 +1,7 @@
 import { optimizeImageDataUrl, optimizeImageFile } from '@/lib/optimize-image-for-web';
 import { randomId } from '@/lib/random-id';
 import { normalizeAttributes } from '@/lib/inventory-attributes';
+import { sanitizeStoredProductMedia } from '@/lib/product-media-sanitize';
 import { normalizeAttachments } from '@/lib/inventory-attachments';
 import { normalizeSuppliers, resolvePurchasePriceUsd } from '@/lib/inventory-suppliers';
 import { applyStockFields, DEFAULT_WAREHOUSES } from '@/lib/inventory-stock';
@@ -132,7 +133,36 @@ export function normalizeInventoryProduct(
       prices,
   };
 
-  return applyStockFields(withStock, warehouses);
+  return applyStockFields(
+    {
+      ...withStock,
+      ...sanitizeStoredProductMedia(withStock),
+    },
+    warehouses,
+  );
+}
+
+/** Fusiona un patch parcial sin perder precios u otros campos anidados. */
+export function mergeInventoryProductPatch(
+  product: InventoryProduct,
+  patch: Partial<InventoryProduct>,
+  warehouses = DEFAULT_WAREHOUSES,
+): InventoryProduct {
+  const merged: InventoryProduct = {
+    ...product,
+    ...patch,
+    prices: patch.prices ? { ...product.prices, ...patch.prices } : product.prices,
+  };
+
+  if (patch.gallery !== undefined) merged.gallery = patch.gallery;
+  if (patch.attributes !== undefined) merged.attributes = patch.attributes;
+  if (patch.suppliers !== undefined) merged.suppliers = patch.suppliers;
+  if (patch.attachments !== undefined) merged.attachments = patch.attachments;
+  if (patch.stock_by_warehouse !== undefined) {
+    merged.stock_by_warehouse = patch.stock_by_warehouse;
+  }
+
+  return normalizeInventoryProduct(merged, warehouses);
 }
 
 /** Añade imágenes a la galería (y foto principal si no había). */
@@ -224,9 +254,10 @@ export function removeProductMediaUrl(
 }
 
 export function getProductMediaUrls(product: InventoryProduct): string[] {
+  const { image_url, gallery } = sanitizeStoredProductMedia(product);
   const seen = new Set<string>();
   const urls: string[] = [];
-  for (const url of [product.image_url, ...product.gallery]) {
+  for (const url of [image_url, ...gallery]) {
     if (!url || seen.has(url)) continue;
     seen.add(url);
     urls.push(url);

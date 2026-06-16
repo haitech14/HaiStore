@@ -6,12 +6,31 @@ export const COMMON_ATTRIBUTE_NAMES = [
   'Color',
   'Velocidad',
   'Formato papel',
+  'Producción',
   'Impresión dúplex',
   'Alimentador (ADF)',
   'Conectividad',
   'Memoria',
   'Capacidad bandeja',
 ] as const;
+
+/** Valores sugeridos por nombre de atributo (listas desplegables). */
+export const ATTRIBUTE_PRESET_VALUES: Record<string, readonly string[]> = {
+  Color: ['B/N', 'Color'],
+  'Formato papel': ['A4', 'A3'],
+  Producción: [
+    'Basico (>5000 páginas)',
+    'Mediano (15,000 páginas aprox)',
+    'Alta Producción (50,000 páginas aprox)',
+    'Producción (200,000 a 500,000 páginas aprox)',
+  ],
+  'Alimentador (ADF)': ['Estándar', 'Doble Scan'],
+  'Impresión dúplex': ['Sí', 'No', 'Automático'],
+  Tecnología: ['Láser', 'Inkjet', 'Plotter'],
+  Conectividad: ['USB', 'Ethernet', 'Wi-Fi', 'Wi-Fi Direct'],
+};
+
+export const ATTRIBUTE_CUSTOM_OPTION = '__custom__';
 
 export function createEmptyAttribute(): ProductAttribute {
   return {
@@ -60,4 +79,33 @@ export function buildAttributeNameCatalog(
   }
 
   return [...seen].sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+export function getAttributeValueOptions(
+  attributeName: string,
+  products: readonly { attributes?: ProductAttribute[] }[],
+): string[] {
+  const name = attributeName.trim();
+  if (!name) return [];
+
+  const seen = new Set<string>(ATTRIBUTE_PRESET_VALUES[name] ?? []);
+
+  for (const product of products) {
+    for (const attribute of product.attributes ?? []) {
+      if (attribute.name?.trim() === name && attribute.value?.trim()) {
+        seen.add(attribute.value.trim());
+      }
+    }
+  }
+
+  return [...seen].sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+export function mergeSelectOptions(
+  options: readonly string[],
+  currentValue: string,
+): string[] {
+  const value = currentValue.trim();
+  if (!value || options.includes(value)) return [...options];
+  return [...options, value];
 }

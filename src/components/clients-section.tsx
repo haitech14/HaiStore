@@ -10,7 +10,7 @@ function ClientLogo({ client }: { client: Client }) {
   return (
     <div
       className={cn(
-        'flex h-14 w-28 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-white px-2 shadow-sm sm:h-16 sm:w-32 md:h-[4.5rem] md:w-36',
+        'flex h-[4.25rem] w-[8.5rem] shrink-0 items-center justify-center rounded-lg border border-border/50 bg-white px-3 shadow-sm sm:h-20 sm:w-40 md:h-24 md:w-44',
         client.logoSurface === 'dark' && 'bg-neutral-950',
       )}
     >
@@ -70,22 +70,22 @@ export function ClientsSection() {
       className="border-y border-border/40 bg-white py-5 sm:py-6"
     >
       <div className="container">
-        <header className="mb-4 text-center sm:mb-5">
-          <div className="flex items-center justify-center gap-3 sm:gap-4">
-            <span className="h-px w-8 bg-red-600/70 sm:w-12" aria-hidden="true" />
+        <header className="mb-5 text-center sm:mb-6">
+          <div className="flex items-center justify-center gap-3 sm:gap-5">
+            <span className="h-px w-10 bg-red-600/70 sm:w-16" aria-hidden="true" />
             <h2
               id="clientes-titulo"
-              className="text-sm font-bold text-[#0f1f3d] sm:text-base"
+              className="text-balance text-lg font-extrabold tracking-tight text-[#0f1f3d] sm:text-xl md:text-2xl"
             >
               Algunos de nuestros{' '}
               <span className="text-red-600">clientes</span>
             </h2>
-            <span className="h-px w-8 bg-red-600/70 sm:w-12" aria-hidden="true" />
+            <span className="h-px w-10 bg-red-600/70 sm:w-16" aria-hidden="true" />
           </div>
         </header>
 
         <div className="overflow-hidden" ref={emblaRef}>
-          <ul className="flex touch-pan-y gap-5 sm:gap-7">
+          <ul className="flex touch-pan-y gap-6 sm:gap-8">
             {clients.map((client) => (
               <li key={client.id} className="min-w-0 shrink-0">
                 <ClientLogo client={client} />

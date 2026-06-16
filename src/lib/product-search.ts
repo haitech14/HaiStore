@@ -1,9 +1,13 @@
+import { categories } from '@/data/categories';
+import { megaMenuServiceLinks } from '@/data/mega-menu';
 import { productMatchesCategoryFilter, productMatchesCategoryFilterTree } from '@/lib/inventory-categories';
 import type { Product } from '@/types/product';
 import type { StoreCategoryTreeNode } from '@/types/store-category';
 
 export const MIN_PRODUCT_SEARCH_LENGTH = 3;
 export const PRODUCT_SEARCH_SUGGESTION_LIMIT = 8;
+export const SEARCH_CATEGORY_SUGGESTION_LIMIT = 3;
+export const SEARCH_SERVICE_SUGGESTION_LIMIT = 2;
 
 export function normalizeSearchText(value: string): string {
   return value
@@ -11,6 +15,10 @@ export function normalizeSearchText(value: string): string {
     .toLowerCase()
     .normalize('NFD')
     .replace(/\p{M}/gu, '');
+}
+
+function searchTerms(query: string): string[] {
+  return normalizeSearchText(query).split(/\s+/).filter(Boolean);
 }
 
 function productSearchHaystack(product: Product): string {
@@ -26,12 +34,77 @@ function productSearchHaystack(product: Product): string {
     .join(' ');
 }
 
+function textMatchesSearchQuery(haystack: string, query: string): boolean {
+  const terms = searchTerms(query);
+  if (terms.length === 0) return false;
+  const normalizedHaystack = normalizeSearchText(haystack);
+  return terms.every((term) => normalizedHaystack.includes(term));
+}
+
 export function productMatchesSearchQuery(product: Product, query: string): boolean {
   const normalizedQuery = normalizeSearchText(query);
   if (normalizedQuery.length < MIN_PRODUCT_SEARCH_LENGTH) {
     return false;
   }
-  return normalizeSearchText(productSearchHaystack(product)).includes(normalizedQuery);
+  return textMatchesSearchQuery(productSearchHaystack(product), query);
+}
+
+export interface SearchCategorySuggestion {
+  type: 'category';
+  slug: string;
+  name: string;
+  subtitle: string;
+}
+
+export interface SearchServiceSuggestion {
+  type: 'service';
+  href: string;
+  name: string;
+  subtitle: string;
+}
+
+export function filterCategoriesBySearch(
+  query: string,
+  limit = SEARCH_CATEGORY_SUGGESTION_LIMIT,
+): SearchCategorySuggestion[] {
+  const normalizedQuery = normalizeSearchText(query);
+  if (normalizedQuery.length < MIN_PRODUCT_SEARCH_LENGTH) {
+    return [];
+  }
+
+  return categories
+    .filter(
+      (category) =>
+        textMatchesSearchQuery(`${category.name} ${category.tagline}`, query) ||
+        category.inventoryCategories?.some((label) => textMatchesSearchQuery(label, query)),
+    )
+    .slice(0, limit)
+    .map((category) => ({
+      type: 'category' as const,
+      slug: category.slug,
+      name: category.name,
+      subtitle: category.tagline,
+    }));
+}
+
+export function filterServicesBySearch(
+  query: string,
+  limit = SEARCH_SERVICE_SUGGESTION_LIMIT,
+): SearchServiceSuggestion[] {
+  const normalizedQuery = normalizeSearchText(query);
+  if (normalizedQuery.length < MIN_PRODUCT_SEARCH_LENGTH) {
+    return [];
+  }
+
+  return megaMenuServiceLinks
+    .filter((service) => textMatchesSearchQuery(`${service.label} ${service.description}`, query))
+    .slice(0, limit)
+    .map((service) => ({
+      type: 'service' as const,
+      href: service.href,
+      name: service.label,
+      subtitle: service.description,
+    }));
 }
 
 export function filterProductsBySearch(

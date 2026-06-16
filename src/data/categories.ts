@@ -49,17 +49,17 @@ export const categories: Category[] = [
   },
   {
     slug: 'toner-suministros',
-    name: 'Toner y Suministros',
+    name: 'Suministros',
     tagline: 'Consumibles originales y compatibles',
     icon: PackageOpen,
     image: '/categories/toner-suministros.png',
     inventoryCategories: [
+      'Suministros',
       'Toner y suministros',
       'Tóner y Suministros',
+      'Toner Original',
       'Toner',
-      'Toner originales',
       'Toner Compatibles',
-      'Suministros',
     ],
   },
   {
@@ -76,7 +76,7 @@ export const categories: Category[] = [
     tagline: 'Partes y componentes para impresoras',
     icon: Cog,
     image: '/categories/repuestos.png',
-    inventoryCategories: ['Repuestos'],
+    inventoryCategories: ['Repuestos', 'Repuestos Originales'],
   },
   {
     slug: 'servicio-tecnico',

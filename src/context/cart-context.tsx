@@ -1,11 +1,16 @@
 import * as React from 'react';
 
-import type { CartItem, Product } from '@/types/product';
+import { buildEquipmentCartLineId, getPaidEquipmentOptions } from '@/lib/equipment-config-selection';
+import { penToUsd } from '@/lib/utils';
+import type { CartConfigurationLine, CartItem, Product } from '@/types/product';
 
 export interface AddToCartOptions {
   quantity?: number;
   /** Abre el panel lateral tras agregar (por defecto true). */
   openDrawer?: boolean;
+  configuration?: CartConfigurationLine;
+  /** Accesorios del inventario a añadir como líneas separadas. */
+  accessoryProducts?: Product[];
 }
 
 interface CartContextValue {
@@ -16,8 +21,8 @@ interface CartContextValue {
   /** Producto recién añadido (resaltado breve en el panel). */
   highlightProductId: string | null;
   addItem: (product: Product, options?: AddToCartOptions) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
-  removeItem: (productId: string) => void;
+  updateQuantity: (lineId: string, quantity: number) => void;
+  removeItem: (lineId: string) => void;
   clear: () => void;
   openCart: () => void;
   closeCart: () => void;
@@ -27,6 +32,11 @@ interface CartContextValue {
 const CartContext = React.createContext<CartContextValue | null>(null);
 
 const HIGHLIGHT_MS = 2200;
+
+function cartLineUnitUsd(item: CartItem): number {
+  const extrasUsd = penToUsd(item.configuration?.extrasPen ?? 0);
+  return item.product.price + extrasUsd;
+}
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = React.useState<CartItem[]>([]);
@@ -58,17 +68,50 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     (product: Product, options?: AddToCartOptions) => {
       const quantity = Math.max(1, Math.floor(options?.quantity ?? 1));
       const openDrawer = options?.openDrawer !== false;
+      const configuration = options?.configuration;
+      const accessoryProducts = options?.accessoryProducts ?? [];
+      const hasLinkedAccessories = accessoryProducts.length > 0;
 
       setItems((prev) => {
-        const existing = prev.find((item) => item.product.id === product.id);
-        if (existing) {
-          return prev.map((item) =>
-            item.product.id === product.id
-              ? { ...item, quantity: item.quantity + quantity }
-              : item,
-          );
-        }
-        return [...prev, { product, quantity }];
+        let next = prev;
+
+        const upsertLine = (targetProduct: Product, lineConfiguration?: CartConfigurationLine, lineQuantity = quantity) => {
+          const targetLineId = lineConfiguration
+            ? buildEquipmentCartLineId(
+                targetProduct.id,
+                getPaidEquipmentOptions(lineConfiguration.options),
+              )
+            : targetProduct.id;
+          const existing = next.find((item) => item.lineId === targetLineId);
+          if (existing) {
+            next = next.map((item) =>
+              item.lineId === targetLineId
+                ? { ...item, quantity: item.quantity + lineQuantity }
+                : item,
+            );
+          } else {
+            const nextItem: CartItem = {
+              product: targetProduct,
+              quantity: lineQuantity,
+              lineId: targetLineId,
+              ...(lineConfiguration ? { configuration: lineConfiguration } : {}),
+            };
+            next = [...next, nextItem];
+          }
+        };
+
+        const bundledConfiguration =
+          configuration && hasLinkedAccessories
+            ? { ...configuration, extrasPen: 0 }
+            : configuration;
+
+        upsertLine(product, bundledConfiguration, quantity);
+
+        accessoryProducts.forEach((accessory) => {
+          upsertLine(accessory, undefined, quantity);
+        });
+
+        return next;
       });
 
       flashHighlight(product.id);
@@ -77,19 +120,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     [flashHighlight],
   );
 
-  const updateQuantity = React.useCallback((productId: string, quantity: number) => {
+  const updateQuantity = React.useCallback((lineId: string, quantity: number) => {
     setItems((prev) => {
       if (quantity <= 0) {
-        return prev.filter((item) => item.product.id !== productId);
+        return prev.filter((item) => item.lineId !== lineId);
       }
-      return prev.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item,
-      );
+      return prev.map((item) => (item.lineId === lineId ? { ...item, quantity } : item));
     });
   }, []);
 
-  const removeItem = React.useCallback((productId: string) => {
-    setItems((prev) => prev.filter((item) => item.product.id !== productId));
+  const removeItem = React.useCallback((lineId: string) => {
+    setItems((prev) => prev.filter((item) => item.lineId !== lineId));
   }, []);
 
   const clear = React.useCallback(() => setItems([]), []);
@@ -97,7 +138,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const value = React.useMemo<CartContextValue>(() => {
     const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
     const totalPrice = items.reduce(
-      (sum, item) => sum + item.product.price * item.quantity,
+      (sum, item) => sum + cartLineUnitUsd(item) * item.quantity,
       0,
     );
     return {
@@ -130,10 +171,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
-export function useCart() {
+export function useCart(): CartContextValue {
   const context = React.useContext(CartContext);
   if (!context) {
-    throw new Error('useCart debe usarse dentro de <CartProvider>');
+    throw new Error('useCart debe usarse dentro de CartProvider');
   }
   return context;
 }
+
+export { cartLineUnitUsd };

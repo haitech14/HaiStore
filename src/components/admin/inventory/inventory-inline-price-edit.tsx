@@ -1,14 +1,17 @@
-import { useEffect, useId, useState, type FocusEvent, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FocusEvent, type FormEvent } from 'react';
 
 import { Input } from '@/components/ui/input';
 import { penCharmToUsd, roundPenCharm99, usdToPenCharm } from '@/lib/pen-pricing';
 import { cn } from '@/lib/utils';
+
+const SAVE_DEBOUNCE_MS = 350;
 
 interface InventoryInlinePriceEditProps {
   usd: number;
   exchangeRate: number;
   ariaLabel: string;
   onSave: (usd: number) => void | Promise<void>;
+  onClose?: () => void;
   className?: string;
 }
 
@@ -17,6 +20,7 @@ export function InventoryInlinePriceEdit({
   exchangeRate,
   ariaLabel,
   onSave,
+  onClose,
   className,
 }: InventoryInlinePriceEditProps) {
   const usdId = useId();
@@ -24,50 +28,123 @@ export function InventoryInlinePriceEdit({
   const penFromUsd = usdToPenCharm(usd, exchangeRate);
   const [usdDraft, setUsdDraft] = useState(usd > 0 ? String(usd) : '');
   const [penDraft, setPenDraft] = useState(penFromUsd > 0 ? String(penFromUsd) : '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const usdDraftRef = useRef(usdDraft);
+  const isDirtyRef = useRef(false);
+  const saveTimerRef = useRef<number | null>(null);
+  const savingRef = useRef(false);
+  const pendingCloseRef = useRef(false);
+  const lastCommittedUsdRef = useRef(usd);
 
   useEffect(() => {
+    usdDraftRef.current = usdDraft;
+  }, [usdDraft]);
+
+  useEffect(() => {
+    if (isDirtyRef.current) return;
+    if (Math.abs(usd - lastCommittedUsdRef.current) > 0.0001) {
+      lastCommittedUsdRef.current = usd;
+    }
     setUsdDraft(usd > 0 ? String(usd) : '');
     const pen = usdToPenCharm(usd, exchangeRate);
     setPenDraft(pen > 0 ? String(pen) : '');
   }, [usd, exchangeRate]);
 
-  const commit = () => {
-    void onSave(Math.max(0, Number(usdDraft) || 0));
+  useEffect(
+    () => () => {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    },
+    [],
+  );
+
+  const readUsdValue = () => Math.max(0, Number(usdDraftRef.current) || 0);
+
+  const persist = async (closeAfter = false) => {
+    if (closeAfter) pendingCloseRef.current = true;
+
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+
+    const nextUsd = readUsdValue();
+    if (!isDirtyRef.current && Math.abs(nextUsd - lastCommittedUsdRef.current) < 0.0001) {
+      if (closeAfter) {
+        pendingCloseRef.current = false;
+        onClose?.();
+      }
+      return;
+    }
+
+    if (savingRef.current) return;
+
+    savingRef.current = true;
+    setIsSaving(true);
+    try {
+      await onSave(nextUsd);
+      isDirtyRef.current = false;
+      lastCommittedUsdRef.current = nextUsd;
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+      const shouldClose = pendingCloseRef.current;
+      pendingCloseRef.current = false;
+      if (shouldClose) onClose?.();
+
+      if (isDirtyRef.current || Math.abs(readUsdValue() - lastCommittedUsdRef.current) > 0.0001) {
+        void persist(false);
+      }
+    }
+  };
+
+  const scheduleSave = () => {
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => {
+      saveTimerRef.current = null;
+      void persist(false);
+    }, SAVE_DEBOUNCE_MS);
   };
 
   const handleUsdChange = (raw: string) => {
+    isDirtyRef.current = true;
     setUsdDraft(raw);
     const parsed = Number(raw);
     if (!raw.trim() || !Number.isFinite(parsed) || parsed < 0) {
       if (!raw.trim()) setPenDraft('');
+      scheduleSave();
       return;
     }
     const pen = usdToPenCharm(parsed, exchangeRate);
     setPenDraft(pen > 0 ? String(pen) : '');
+    scheduleSave();
   };
 
   const handlePenChange = (raw: string) => {
+    isDirtyRef.current = true;
     setPenDraft(raw);
     const parsed = Number(raw);
     if (!raw.trim() || !Number.isFinite(parsed) || parsed < 0) {
       if (!raw.trim()) setUsdDraft('');
+      scheduleSave();
       return;
     }
     const charm = roundPenCharm99(parsed);
     setPenDraft(String(charm));
     const nextUsd = penCharmToUsd(charm, exchangeRate);
     setUsdDraft(nextUsd > 0 ? String(nextUsd) : '');
+    scheduleSave();
   };
 
   const handleBlur = (event: FocusEvent<HTMLFormElement>) => {
     const next = event.relatedTarget;
     if (next && event.currentTarget.contains(next)) return;
-    commit();
+    void persist(true);
   };
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    commit();
+    void persist(true);
   };
 
   return (
@@ -95,6 +172,7 @@ export function InventoryInlinePriceEdit({
           className="h-8 w-full pl-4 pr-1 text-right text-xs tabular-nums"
           autoFocus
           aria-label={`${ariaLabel} en dólares`}
+          aria-busy={isSaving}
         />
       </div>
       <div className="relative w-full min-w-[4.75rem]">
@@ -114,6 +192,7 @@ export function InventoryInlinePriceEdit({
           onChange={(event) => handlePenChange(event.target.value)}
           className="h-8 w-full pl-6 pr-1 text-right text-xs tabular-nums"
           aria-label={`${ariaLabel} en soles`}
+          aria-busy={isSaving}
         />
       </div>
     </form>

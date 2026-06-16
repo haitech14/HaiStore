@@ -8,7 +8,7 @@ export interface ProductCategoryPlacement {
   sub: StoreCategory | null;
 }
 
-function nodeMatchesLabel(node: StoreCategory, label: string): boolean {
+export function nodeMatchesLabel(node: StoreCategory, label: string): boolean {
   const normalized = normalizeCategoryName(label);
   if (!normalized) return false;
   if (normalizeCategoryName(node.name) === normalized) return true;

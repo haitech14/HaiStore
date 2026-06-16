@@ -3,6 +3,7 @@ import {
   BookOpen,
   Cloud,
   FileText,
+  FlipHorizontal2,
   Gauge,
   Inbox,
   Layers,
@@ -12,21 +13,27 @@ import {
   Settings,
   Shield,
   Smartphone,
+  Timer,
   Wifi,
 } from 'lucide-react';
 
 import type { FeaturedProduct } from '@/data/featured-products';
+import { buildProductBreadcrumbs } from '@/lib/build-product-breadcrumbs';
 import type {
   EquipmentConfigStep,
   ProductComboItem,
   ProductDescriptionContent,
+  ProductDescriptionHighlight,
   ProductDetailViewModel,
   ProductFeatureIcon,
   ProductGalleryItem,
   ProductSpecRow,
 } from '@/types/product-detail';
 import type { Product } from '@/types/product';
+import { productHasNuevoCornerBadge } from '@/lib/product-detail-badges';
+import { findTechnicalSheetAttachment } from '@/lib/inventory-attachments';
 import { collectProductImageUrls } from '@/lib/product-media';
+import { ensureFullPrices } from '@/lib/roles';
 import { usdToPen } from '@/lib/utils';
 
 const SUPPLY_FEATURES: ProductFeatureIcon[] = [
@@ -51,6 +58,66 @@ const PRINTER_BULLETS = [
   'Compatible con soluciones cloud y gestión remota Ricoh.',
 ];
 
+const IM430F_BULLETS = [
+  'Hasta 45 páginas por minuto.',
+  'Escaneo dúplex automático de doble paso.',
+  'Bandeja de 500 hojas y alimentador automático.',
+  'Conectividad Wi-Fi, Ethernet y móvil.',
+  'Pantalla táctil a color de 4.3" para operación intuitiva.',
+  'Compatible con soluciones cloud y gestión remota Ricoh.',
+];
+
+function buildHeroHighlights(
+  specs: ProductSpecRow[],
+  isPrinter: boolean,
+): ProductDescriptionHighlight[] {
+  if (!isPrinter) return [];
+
+  const speedRaw = specs.find((row) => row.label === 'Velocidad')?.value ?? '40 ppm';
+  const speedSubtitle = /^hasta\s/i.test(speedRaw) ? speedRaw : `Hasta ${speedRaw}`;
+
+  const connectivityRaw =
+    specs.find((row) => row.label === 'Conectividad')?.value ?? 'Wi-Fi / Red / Móvil';
+  const connectivitySubtitle = connectivityRaw
+    .replace(/\s*\/\s*/g, ', ')
+    .replace(/\s+y\s+/i, ', ')
+    .replace(/Red/gi, 'Ethernet');
+
+  return [
+    {
+      icon: Printer,
+      title: '4 EN 1',
+      subtitle: 'Imprime, copia, escanea y faxea',
+    },
+    {
+      icon: Timer,
+      title: 'ALTA VELOCIDAD',
+      subtitle: speedSubtitle,
+    },
+    {
+      icon: FlipHorizontal2,
+      title: 'DÚPLEX AUTOMÁTICO',
+      subtitle: 'Ahorro de papel',
+    },
+    {
+      icon: Cloud,
+      title: 'CONECTIVIDAD TOTAL',
+      subtitle: connectivitySubtitle,
+    },
+  ];
+}
+
+const IM430F_SPECS: ProductSpecRow[] = [
+  { label: 'Velocidad', value: '45 ppm' },
+  { label: 'Funciones', value: 'Impresión / Copia / Escaneo / Fax' },
+  { label: 'Pantalla', value: '10.1 pulgadas (Smart Operation Panel)' },
+  { label: 'Tipo', value: 'Monocromática' },
+  { label: 'Conectividad', value: 'Wi-Fi / Red / Móvil' },
+  { label: 'Resolución de impresión', value: 'Hasta 1200 x 1200 dpi' },
+  { label: 'Capacidad de papel estándar', value: '550 hojas (expandible a 2,300 hojas)' },
+  { label: 'Volumen mensual recomendado', value: 'Hasta 10,000 páginas' },
+];
+
 const WARRANTY_BULLETS = [
   'Garantía oficial de 12 meses por defecto de fábrica.',
   'Cobertura en piezas, mano de obra y desplazamiento en Lima Metropolitana.',
@@ -59,15 +126,16 @@ const WARRANTY_BULLETS = [
 ];
 
 const DEFAULT_BULK_TIERS = [
-  { range: '2-4 unidades', discount: '5% dscto.', discountPercent: 5 },
-  { range: '5-9 unidades', discount: '10% dscto.', discountPercent: 10 },
-  { range: '10+ unidades', discount: '15% dscto.', discountPercent: 15 },
+  { range: 'Compra 2', discount: '5% dscto.', discountPercent: 5 },
+  { range: 'Compra 4', discount: '12% dscto.', discountPercent: 12 },
+  { range: 'Compra 6+', discount: '18% dscto.', discountPercent: 18 },
+  { range: 'Compra 10+', discount: '30% dscto.', discountPercent: 30 },
 ];
 
 const IM430F_DESCRIPTION: ProductDescriptionContent = {
   paragraphs: [
-    'La Impresora Multifuncional Nueva RICOH IM 430F (SPDF) es una multifuncional profesional pensada para oficinas y equipos de trabajo que requieren rendimiento constante. Ofrece hasta 40 ppm y un panel táctil de 10.1" para agilizar flujos de impresión, copiado y escaneo.',
-    'Ideal para integrar impresión móvil, escaneo a carpetas y servicios en la nube, con calidad homogénea y control de costos operativos.',
+    'La RICOH IM 430F es una impresora multifuncional inteligente diseñada para oficinas que buscan productividad, velocidad y eficiencia. Ofrece hasta 45 ppm, pantalla Smart Operation Panel de 10.1" y conectividad móvil y en la nube para flujos de trabajo modernos.',
+    'Ideal para equipos que necesitan impresión, copiado, escaneo y fax en un solo equipo compacto, con calidad homogénea y control de costos operativos.',
   ],
   youtubeVideoId: 'zlmBXCWnR20',
   youtubeTitle: 'Ricoh IM 430F | Productividad y eficiencia en una sola impresora multifuncional',
@@ -128,7 +196,7 @@ function soldCountFromId(id: string): number {
   return 4 + (hash % 24);
 }
 
-function isPrinterEquipment(product: Product): boolean {
+export function isPrinterEquipment(product: Product): boolean {
   const cat = (product.category ?? '').toLowerCase();
   const name = product.name.toLowerCase();
   return (
@@ -156,6 +224,82 @@ function isSupplyProduct(product: Product): boolean {
 
 function isIm430f(product: Product): boolean {
   return product.id === 'ricoh-im-430f' || product.name.toLowerCase().includes('im 430f');
+}
+
+function resolveShortTitle(product: Product, isPrinter: boolean): string {
+  if (isIm430f(product)) return 'RICOH IM 430F';
+  if (isPrinter && product.brand) {
+    const model = product.name.replace(new RegExp(product.brand, 'i'), '').trim();
+    return model ? `${product.brand.toUpperCase()} ${model.toUpperCase()}` : product.name;
+  }
+  return product.name;
+}
+
+function stripBrandFromName(name: string, brand: string | null | undefined): string {
+  if (!brand?.trim()) return name.trim();
+  const escaped = brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return name
+    .trim()
+    .replace(new RegExp(escaped, 'gi'), '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+/** Título en ficha: nombre del producto sin marca, en minúsculas. */
+function resolveDetailDisplayTitle(product: Product, brandLabel: string): string {
+  const withoutBrand = stripBrandFromName(product.name, brandLabel);
+  return (withoutBrand || product.name).toLowerCase();
+}
+
+function resolveDisplaySubtitle(product: Product, isPrinter: boolean, isSupply: boolean): string {
+  if (isIm430f(product)) {
+    return 'Multifuncional 4 en 1 para oficinas y empresas que necesitan velocidad, eficiencia y confiabilidad.';
+  }
+  if (isPrinter) {
+    return (
+      product.description ??
+      'Equipo multifuncional profesional diseñado para oficinas que buscan productividad y confiabilidad.'
+    );
+  }
+  if (isSupply) return 'Consumible compatible de alta calidad';
+  return product.category ?? 'Producto HaiStore';
+}
+
+function toHeroTitle(name: string): string {
+  return name
+    .split(/\s+/)
+    .map((word) => {
+      if (!word) return word;
+      const upper = word.toUpperCase();
+      if (upper === 'IM' || /^IM\d/.test(upper) || /^\d+[A-Z]?$/.test(upper)) {
+        return upper;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
+
+function buildTagPills(
+  specs: ProductSpecRow[],
+  isPrinter: boolean,
+  showNuevo: boolean,
+): string[] {
+  const pills: string[] = [];
+  if (showNuevo) pills.push('Nuevo');
+
+  if (!isPrinter) return pills;
+
+  const speed = specs.find((row) => row.label === 'Velocidad')?.value;
+  if (speed) pills.push(speed);
+
+  const formato =
+    specs.find((row) => row.label === 'Formatos' || row.label === 'Formato')?.value ?? 'A4';
+  if (formato.toLowerCase().includes('a4')) pills.push('A4');
+
+  const tipo = specs.find((row) => row.label === 'Tipo')?.value;
+  if (tipo) pills.push(tipo);
+
+  return pills;
 }
 
 function buildGallery(product: Product): ProductGalleryItem[] {
@@ -256,13 +400,15 @@ function buildGenericSpecs(product: Product, brandLabel: string, sku: string): P
 
 function buildPrinterSpecs(product: Product, brandLabel: string, sku: string): ProductSpecRow[] {
   return [
+    { label: 'Velocidad', value: '40 ppm' },
     { label: 'Marca', value: brandLabel },
     { label: 'Modelo', value: product.name },
     { label: 'SKU', value: sku },
     { label: 'Categoría', value: product.category ?? 'Multifuncionales' },
+    { label: 'Tipo', value: 'Monocromática' },
+    { label: 'Formatos', value: 'A4, oficio, sobres' },
     { label: 'Conectividad', value: 'Wi-Fi, Ethernet, USB' },
     { label: 'Funciones', value: 'Impresión, copia, escaneo, fax' },
-    { label: 'Formatos', value: 'A4, oficio, sobres' },
     { label: 'Garantía', value: '12 meses' },
   ];
 }
@@ -345,67 +491,170 @@ function buildEquipmentConfigSteps(isPrinter: boolean, isSupply: boolean): Equip
 
   return [
     {
-      id: 'equipo-base',
-      stepNumber: 1,
-      title: 'Equipo base',
-      subtitle: 'Configuración estándar',
-      pricePen: 0,
-      icon: Layers,
-      defaultSelected: true,
-    },
-    {
-      id: 'casetera',
+      id: 'bandeja-accesorios',
       stepNumber: 2,
-      title: 'Casetera',
-      subtitle: 'Bandejas adicionales',
+      title: 'Bandeja de papel y accesorios opcionales',
+      subtitle: 'Bandejas, pedestal y alimentadores',
       pricePen: 0,
       icon: Inbox,
       defaultSelected: true,
+      options: [
+        {
+          id: 'bandeja-estandar',
+          name: 'Bandeja estándar 550 hojas',
+          description: 'Configuración de fábrica incluida.',
+          pricePen: 0,
+          included: true,
+        },
+        {
+          id: 'bandeja-500',
+          name: 'Bandeja adicional 500 hojas',
+          description: 'Amplía la capacidad de papel.',
+          pricePen: 420,
+        },
+        {
+          id: 'pedestal',
+          name: 'Pedestal / soporte de piso',
+          description: 'Eleva el equipo y libera espacio en escritorio.',
+          pricePen: 890,
+        },
+        {
+          id: 'adf-alto-volumen',
+          name: 'Alimentador automático de alto volumen',
+          description: 'Para lotes de escaneo y copiado frecuentes.',
+          pricePen: 1250,
+        },
+      ],
     },
     {
       id: 'acabado',
       stepNumber: 3,
-      title: 'Acabado',
-      subtitle: 'Grapado y perforado',
+      title: 'Opciones de acabado',
+      subtitle: 'Grapado, perforado y finisher',
       pricePen: 0,
       icon: Settings,
       defaultSelected: true,
+      options: [
+        {
+          id: 'sin-acabado',
+          name: 'Sin unidad de acabado',
+          description: 'Impresión y copiado sin grapado.',
+          pricePen: 0,
+          included: true,
+        },
+        {
+          id: 'finisher-grapado',
+          name: 'Finisher con grapado',
+          description: 'Agrupa y grapa documentos automáticamente.',
+          pricePen: 1680,
+        },
+        {
+          id: 'finisher-grapado-perforado',
+          name: 'Finisher grapado + perforado',
+          description: 'Acabado profesional para carpetas y reportes.',
+          pricePen: 2190,
+        },
+      ],
     },
     {
-      id: 'imp-esc',
+      id: 'impresion-escaneo',
       stepNumber: 4,
-      title: 'Imp./Esc.',
-      subtitle: 'Impresión y escaneo',
+      title: 'Opciones de impresión/escaneo',
+      subtitle: 'Escaneo, OCR y funciones avanzadas',
       pricePen: 0,
       icon: ScanLine,
       defaultSelected: true,
+      options: [
+        {
+          id: 'escaneo-duplex',
+          name: 'Escaneo dúplex automático',
+          description: 'Digitaliza ambas caras en un solo paso.',
+          pricePen: 0,
+          included: true,
+        },
+        {
+          id: 'kit-ocr',
+          name: 'Kit OCR / escaneo buscable',
+          description: 'Convierte documentos en PDF editables.',
+          pricePen: 540,
+        },
+        {
+          id: 'impresion-segura',
+          name: 'Impresión segura con marca de agua',
+          description: 'Protege documentos confidenciales.',
+          pricePen: 320,
+        },
+      ],
     },
     {
-      id: 'seguridad',
+      id: 'seguridad-accesorios',
       stepNumber: 5,
-      title: 'Seguridad',
-      subtitle: 'Control de acceso',
+      title: 'Accesorios de seguridad y otros accesorios',
+      subtitle: 'Control de acceso y almacenamiento',
       pricePen: 0,
       icon: Lock,
       defaultSelected: true,
+      options: [
+        {
+          id: 'sin-seguridad-extra',
+          name: 'Sin accesorios de seguridad adicionales',
+          pricePen: 0,
+          included: true,
+        },
+        {
+          id: 'hdd-cifrado',
+          name: 'Disco duro cifrado',
+          description: 'Almacenamiento local con cifrado de datos.',
+          pricePen: 760,
+        },
+        {
+          id: 'auth-tarjeta',
+          name: 'Autenticación por tarjeta / PIN',
+          description: 'Libera trabajos solo con credencial autorizada.',
+          pricePen: 480,
+        },
+        {
+          id: 'bandeja-bypass',
+          name: 'Bandeja bypass para formatos especiales',
+          description: 'Sobres, etiquetas y papeles de distinto gramaje.',
+          pricePen: 290,
+        },
+      ],
     },
     {
-      id: 'toner',
+      id: 'suministros',
       stepNumber: 6,
-      title: 'Toner',
-      subtitle: 'Consumibles recomendados',
+      title: 'Suministros',
+      subtitle: 'Tóner y kits de mantenimiento',
       pricePen: 0,
       icon: Printer,
       defaultSelected: true,
-    },
-    {
-      id: 'garantia-extendida',
-      stepNumber: 7,
-      title: 'Garantía extendida',
-      subtitle: 'Cobertura adicional',
-      pricePen: 0,
-      icon: Shield,
-      defaultSelected: true,
+      options: [
+        {
+          id: 'starter-kit',
+          name: 'Kit de inicio incluido',
+          description: 'Tóner y unidad de imagen de fábrica.',
+          pricePen: 0,
+          included: true,
+        },
+        {
+          id: 'toner-extra',
+          name: 'Cartucho de tóner negro adicional',
+          description: 'Alto rendimiento para puesta en marcha.',
+          pricePen: 185,
+        },
+        {
+          id: 'kit-mantenimiento',
+          name: 'Kit de mantenimiento preventivo',
+          description: 'Repuestos de desgaste para el primer año.',
+          pricePen: 340,
+        },
+        {
+          id: 'waste-bottle',
+          name: 'Botella de tóner residual adicional',
+          pricePen: 95,
+        },
+      ],
     },
   ];
 }
@@ -467,42 +716,60 @@ export function buildProductDetail(
     : (product.category ?? 'Productos');
 
   const pricing = resolvePricing(product, featuredMeta);
-  const breadcrumbMiddle = isSupply || featuredMeta || pricing.isOnOffer ? 'Ofertas' : (product.category ?? 'Tienda');
   const sku = isIm430f(product) ? '9900129' : skuFromId(product.id);
   const colorLabel = isIm430f(product)
     ? 'Blanco/Negro'
     : isSupply
       ? 'Varios'
       : 'Estándar';
-  const specs = isSupply
-    ? buildSupplySpecs(product)
-    : isPrinter
-      ? buildPrinterSpecs(product, brandLabel, sku)
-      : buildGenericSpecs(product, brandLabel, sku);
-
   const bullets = isSupply
     ? buildSupplyBullets()
     : product.description && !isPrinter
       ? [product.description, ...CONSUMER_BULLETS.slice(0, 3)]
-      : isPrinter
-        ? PRINTER_BULLETS
-        : CONSUMER_BULLETS;
+      : isIm430f(product)
+        ? IM430F_BULLETS
+        : isPrinter
+          ? PRINTER_BULLETS
+          : CONSUMER_BULLETS;
 
-  const displayTitle = isIm430f(product)
-    ? 'Impresora Multifuncional RICOH IM 430F'
-    : product.name;
+  const shortTitle = resolveShortTitle(product, isPrinter);
+  const displaySubtitle = resolveDisplaySubtitle(product, isPrinter, isSupply);
+
+  const displayTitle = resolveDetailDisplayTitle(product, brandLabel);
+
+  const specs = isIm430f(product)
+    ? IM430F_SPECS
+    : isSupply
+      ? buildSupplySpecs(product)
+      : isPrinter
+        ? buildPrinterSpecs(product, brandLabel, sku)
+        : buildGenericSpecs(product, brandLabel, sku);
+
+  const showNuevo = productHasNuevoCornerBadge(product);
+
+  const heroTitle = toHeroTitle(product.name);
+  const tagPills = buildTagPills(specs, isPrinter, showNuevo);
+  const heroHighlights = buildHeroHighlights(specs, isPrinter);
+
+  const breadcrumbs = buildProductBreadcrumbs(product, displayTitle, []);
+
+  const fullPrices = ensureFullPrices(product.prices ?? { public: product.price });
+  const technicalSheet = findTechnicalSheetAttachment(product);
+  const technicalSheetUrl = technicalSheet?.url ?? null;
+  const wholesalePriceUsd = fullPrices.mayorista > 0 ? fullPrices.mayorista : null;
 
   return {
     product,
     sku,
     brandLabel,
     colorLabel,
-    breadcrumbs: [
-      { label: 'Inicio', href: '/' },
-      { label: breadcrumbMiddle, href: '/tienda' },
-      { label: displayTitle },
-    ],
+    breadcrumbs,
     displayTitle,
+    shortTitle,
+    heroTitle,
+    tagPills,
+    heroHighlights,
+    displaySubtitle,
     categoryLabel,
     rating: featuredMeta?.rating ?? 4,
     reviews: featuredMeta?.reviews ?? soldCountFromId(product.id) + 2,
@@ -514,8 +781,13 @@ export function buildProductDetail(
     gallery: buildGallery(product),
     features: isSupply ? SUPPLY_FEATURES : isPrinter ? PRINTER_FEATURES : SUPPLY_FEATURES,
     resourceLinks: [
-      { label: 'Ficha Técnica', subtitle: 'PDF', icon: FileText, href: '#' },
-      { label: 'Descargar Cotización', subtitle: 'PDF', icon: FileText, action: 'quote' },
+      {
+        label: 'Ficha Técnica',
+        subtitle: 'PDF',
+        icon: FileText,
+        href: technicalSheetUrl ?? '#',
+      },
+      { label: 'Solicitar cotización', subtitle: 'PDF', icon: FileText, action: 'quote' },
       { label: 'Manual de Usuario', subtitle: 'PDF', icon: BookOpen, href: '#' },
     ],
     warrantyOptions: [
@@ -533,5 +805,7 @@ export function buildProductDetail(
     isOnOffer: pricing.isOnOffer,
     oldPricePen: pricing.oldPricePen,
     discountPercent: pricing.discountPercent,
+    technicalSheetUrl,
+    wholesalePriceUsd,
   };
 }

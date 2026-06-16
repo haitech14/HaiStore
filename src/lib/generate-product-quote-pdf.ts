@@ -164,9 +164,10 @@ function buildQuoteNumber(company: CompanySettings): string {
 
 export async function buildProductQuotePdf(
   client: QuoteClientData,
-  product: QuoteProductData,
+  lines: QuoteProductData[],
   company: CompanySettings,
 ): Promise<GeneratedQuotePdf> {
+  const quoteLines = lines.length > 0 ? lines : [];
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const primary = hexToRgb(company.primaryColor);
   const primarySoft = tintRgb(primary, 0.88);
@@ -177,15 +178,18 @@ export async function buildProductQuotePdf(
   const expiryDate = new Date(issueDate);
   expiryDate.setDate(expiryDate.getDate() + company.quoteValidityDays);
 
-  const quantity = product.quantity ?? 1;
-  const lineTotal = product.pricePen * quantity;
-  const gravada = Math.round((lineTotal / 1.18) * 100) / 100;
-  const igv = Math.round((lineTotal - gravada) * 100) / 100;
-  const total = lineTotal;
+  const subtotalPen = quoteLines.reduce(
+    (sum, line) => sum + line.pricePen * (line.quantity ?? 1),
+    0,
+  );
+  const gravada = Math.round((subtotalPen / 1.18) * 100) / 100;
+  const igv = Math.round((subtotalPen - gravada) * 100) / 100;
+  const total = subtotalPen;
 
   const quoteNumber = buildQuoteNumber(company);
   const logo = company.logoUrl ? await loadImageDataUrl(company.logoUrl) : null;
-  const productImage = product.imageUrl ? await loadImageDataUrl(product.imageUrl) : null;
+  const firstLineImageUrl = quoteLines[0]?.imageUrl ?? null;
+  const productImage = firstLineImageUrl ? await loadImageDataUrl(firstLineImageUrl) : null;
 
   let y = MARGIN;
 
@@ -314,55 +318,63 @@ export async function buildProductQuotePdf(
 
   y += headerH;
   const rowH = 18;
-  doc.setDrawColor(226, 232, 240);
-  doc.setFillColor(255, 255, 255);
-  doc.rect(tableX, y, tableW, rowH, 'FD');
 
-  cx = tableX + 2;
-  doc.setTextColor(23, 23, 23);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.text('1', cx + 3, y + 10);
-  cx += col.n;
+  quoteLines.forEach((line, index) => {
+    const quantity = line.quantity ?? 1;
+    const lineTotal = line.pricePen * quantity;
 
-  doc.setDrawColor(241, 245, 249);
-  doc.roundedRect(cx + 1, y + 3, col.img - 2, rowH - 6, 1, 1, 'FD');
-  if (productImage) {
-    addFittedImage(doc, productImage, cx + 2, y + 4, col.img - 4, rowH - 8);
-  } else {
+    doc.setDrawColor(226, 232, 240);
+    doc.setFillColor(255, 255, 255);
+    doc.rect(tableX, y, tableW, rowH, 'FD');
+
+    let cx = tableX + 2;
+    doc.setTextColor(23, 23, 23);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text(String(index + 1), cx + 3, y + 10);
+    cx += col.n;
+
+    doc.setDrawColor(241, 245, 249);
+    doc.roundedRect(cx + 1, y + 3, col.img - 2, rowH - 6, 1, 1, 'FD');
+    if (index === 0 && productImage) {
+      addFittedImage(doc, productImage, cx + 2, y + 4, col.img - 4, rowH - 8);
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text('S/IMG', cx + 4, y + 10);
+    }
+    cx += col.img;
+
+    doc.setTextColor(23, 23, 23);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.text(line.sku, cx + 1, y + 8);
+    cx += col.code;
+
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(5.5);
-    doc.setTextColor(148, 163, 184);
-    doc.text('S/IMG', cx + 4, y + 10);
-  }
-  cx += col.img;
+    doc.setFontSize(7.2);
+    const productDesc = doc.splitTextToSize(`${line.name} / ${line.brand}`, col.desc - 2);
+    doc.text(productDesc, cx + 1, y + 7);
+    cx += col.desc;
 
-  doc.setTextColor(23, 23, 23);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.text(product.sku, cx + 1, y + 8);
-  cx += col.code;
+    doc.setFont('helvetica', 'bold');
+    doc.text(String(quantity), cx + 4, y + 10);
+    cx += col.qty;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.2);
-  const productDesc = doc.splitTextToSize(`${product.name} / ${product.brand}`, col.desc - 2);
-  doc.text(productDesc, cx + 1, y + 7);
-  cx += col.desc;
+    doc.setFont('helvetica', 'normal');
+    doc.text('UNIDAD', cx + 1, y + 10);
+    cx += col.um;
 
-  doc.setFont('helvetica', 'bold');
-  doc.text(String(quantity), cx + 4, y + 10);
-  cx += col.qty;
+    doc.setFont('helvetica', 'bold');
+    doc.text(formatPen(line.pricePen), cx + 1, y + 10);
+    cx += col.unit;
+    doc.text(formatPen(lineTotal), cx + 1, y + 10);
 
-  doc.setFont('helvetica', 'normal');
-  doc.text('UNIDAD', cx + 1, y + 10);
-  cx += col.um;
+    y += rowH;
+  });
 
-  doc.setFont('helvetica', 'bold');
-  doc.text(formatPen(product.pricePen), cx + 1, y + 10);
-  cx += col.unit;
-  doc.text(formatPen(lineTotal), cx + 1, y + 10);
-
-  y += rowH + 4;
+  y += 4;
 
   const totalsW = 62;
   const totalsX = PAGE_W - MARGIN - totalsW;

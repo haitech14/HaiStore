@@ -1,4 +1,5 @@
 import { normalizeAttributes } from '@/lib/inventory-attributes';
+import { publicProductAttachments } from '@/lib/inventory-attachments';
 import {
   ensureFullPrices,
   resolvePriceRole,
@@ -17,11 +18,13 @@ export function getEffectivePrice(product: InventoryProduct, role: string): numb
 
 export function toPublicProduct(product: InventoryProduct, role: string): Product {
   const priceRole = resolvePriceRole(role);
+  const prices = ensureFullPrices(product.prices);
   return {
     id: product.id,
     name: product.name,
     description: product.description,
     price: getEffectivePrice(product, role),
+    prices,
     currency: product.currency,
     image_url: product.image_url,
     gallery: product.gallery?.length ? [...product.gallery] : product.image_url ? [product.image_url] : [],
@@ -36,6 +39,7 @@ export function toPublicProduct(product: InventoryProduct, role: string): Produc
       ? Math.max(0, Math.floor(Number(product.view_count)))
       : 0,
     attributes: normalizeAttributes(product.attributes),
+    attachments: publicProductAttachments(product),
   };
 }
 

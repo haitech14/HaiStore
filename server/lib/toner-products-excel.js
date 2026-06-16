@@ -2,16 +2,17 @@ import XLSX from 'xlsx';
 
 import { normalizeAttributes } from './inventory-attributes.js';
 import { normalizeProductInput } from './inventory-store.js';
+import { normalizeTonerColorProductName, moveParentheticalSuffixToEnd } from '../../shared/inventory-product-name.js';
 import { formatRendLabel } from './repuestos-products-excel.js';
 
-export const CATEGORY_ORIGINAL = 'Toner originales';
-export const CATEGORY_TONER = 'Toner';
+export const CATEGORY_ORIGINAL = 'Toner Original';
+export const CATEGORY_TONER = 'Toner Original';
 export const CATEGORY_SUMINISTROS = 'Suministros';
 export const SUPPLIER_RICOH_PERU = 'RICOH DEL PERU SAC';
 
 /**
  * @param {string} description
- * @returns {'Suministros' | 'Toner originales' | 'Toner'}
+ * @returns {'Suministros' | 'Toner Original'}
  */
 export function classifyTonerInventoryCategory(description) {
   const desc = String(description ?? '').trim();
@@ -83,7 +84,7 @@ export function buildTonerProductName({ descripcion, rend, modelo }) {
   if (modelSuffix && !name.toUpperCase().includes(modelSuffix.toUpperCase().slice(0, 12))) {
     name = `${name} — ${modelSuffix}`;
   }
-  return name;
+  return moveParentheticalSuffixToEnd(normalizeTonerColorProductName(name));
 }
 
 /**

@@ -1,13 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import {
-  ChevronLeft,
-  ChevronRight,
   Copy,
+  Info,
   Layers,
-  PackagePlus,
-  Paperclip,
   Pencil,
+  Plus,
   RefreshCw,
   Search,
   SlidersHorizontal,
@@ -17,13 +15,17 @@ import {
 import { InventoryAttachmentsDialog } from '@/components/admin/inventory/inventory-attachments-dialog';
 import { InventoryBulkEditDialog } from '@/components/admin/inventory/inventory-bulk-edit-dialog';
 import { InventoryDraggableHeader } from '@/components/admin/inventory/inventory-draggable-header';
-import { InventoryOrderCell } from '@/components/admin/inventory/inventory-order-cell';
+import {
+  InventoryTablePagination,
+  INVENTORY_PAGE_SIZE_OPTIONS,
+} from '@/components/admin/inventory/inventory-table-pagination';
 import {
   ALL_INVENTORY_CATEGORIES,
   InventoryCategoryFilterSelect,
 } from '@/components/admin/inventory/inventory-category-filter-select';
 import { InventoryProductFormDialog } from '@/components/admin/inventory/inventory-product-form-dialog';
 import { InventoryRowCells } from '@/components/admin/inventory/inventory-row-cells';
+import { InventoryTableSectionHeadingRow } from '@/components/admin/inventory/inventory-table-section-heading-row';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -42,12 +44,17 @@ import {
 import { buildAttributeNameCatalog } from '@/lib/inventory-attributes';
 import { buildCategorySelectOptions } from '@/lib/inventory-category-options';
 import { productMatchesCategoryFilterTree } from '@/lib/inventory-categories';
+import {
+  buildInventoryEquipmentSections,
+  flattenInventoryEquipmentSections,
+  shouldShowInventoryEquipmentSections,
+} from '@/lib/inventory-equipment-sections';
 import { sortProductsByPublicPriceAsc } from '@/lib/inventory-product-order';
 import { cn } from '@/lib/utils';
 import type { InventoryBulkPatch } from '@/types/inventory-bulk';
 import type { InventoryProduct } from '@/types/product';
 
-const PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = INVENTORY_PAGE_SIZE_OPTIONS[0];
 
 function productMatchesSearch(product: InventoryProduct, query: string): boolean {
   const haystack = [
@@ -80,6 +87,7 @@ export function InventoryPanel() {
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryProduct | null>(null);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [categoryFilter, setCategoryFilter] = useState(ALL_INVENTORY_CATEGORIES);
   const [searchQuery, setSearchQuery] = useState('');
   const [batchMode, setBatchMode] = useState(false);
@@ -124,16 +132,35 @@ export function InventoryPanel() {
     );
   }, [products, categoryFilter, normalizedSearch, categoryTree]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const showEquipmentSections = useMemo(
+    () => shouldShowInventoryEquipmentSections(categoryFilter, categoryTree),
+    [categoryFilter, categoryTree],
+  );
+
+  const equipmentSections = useMemo(
+    () => (showEquipmentSections ? buildInventoryEquipmentSections(filteredProducts) : []),
+    [filteredProducts, showEquipmentSections],
+  );
 
   const pageProducts = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filteredProducts.slice(start, start + PAGE_SIZE);
-  }, [filteredProducts, page]);
+    const start = (page - 1) * pageSize;
+    return filteredProducts.slice(start, start + pageSize);
+  }, [filteredProducts, page, pageSize]);
+
+  const tableProducts = useMemo(() => {
+    if (showEquipmentSections) {
+      return flattenInventoryEquipmentSections(equipmentSections);
+    }
+    return pageProducts;
+  }, [equipmentSections, pageProducts, showEquipmentSections]);
+
+  const totalPages = showEquipmentSections
+    ? 1
+    : Math.max(1, Math.ceil(filteredProducts.length / pageSize));
 
   useEffect(() => {
     setPage(1);
-  }, [categoryFilter, normalizedSearch]);
+  }, [categoryFilter, normalizedSearch, pageSize]);
 
   useEffect(() => {
     if (page > totalPages) {
@@ -142,7 +169,7 @@ export function InventoryPanel() {
   }, [page, totalPages]);
 
   const selectedCount = selectedIds.size;
-  const pageIds = pageProducts.map((product) => product.id);
+  const pageIds = tableProducts.map((product) => product.id);
   const allPageSelected =
     pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
   const somePageSelected = pageIds.some((id) => selectedIds.has(id));
@@ -278,12 +305,128 @@ export function InventoryPanel() {
     }
   };
 
-  const colCount = columnOrder.length + 2 + (batchMode ? 1 : 0);
+  const colCount = columnOrder.length + 1 + (batchMode ? 1 : 0);
+
+  const renderProductRow = (product: InventoryProduct) => {
+    const isSelected = selectedIds.has(product.id);
+    return (
+      <tr
+        key={product.id}
+        className={cn(
+          'border-b border-border/70 last:border-b-0 hover:bg-muted/20',
+          batchMode && isSelected && 'bg-red-50/50 dark:bg-red-950/20',
+        )}
+      >
+        {batchMode ? (
+          <td className="px-2 py-2.5 align-middle">
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={(checked) => toggleRow(product.id, checked === true)}
+              aria-label={`Seleccionar ${product.name}`}
+            />
+          </td>
+        ) : null}
+        {columnOrder.map((columnId) => (
+          <td
+            key={columnId}
+            className={cn(
+              'px-2 py-2.5 align-middle',
+              getInventoryColumnCellClass(columnId),
+              isInventoryPriceColumn(columnId) && 'overflow-visible text-right',
+              columnId === 'stock' && 'text-center',
+            )}
+          >
+            <InventoryRowCells
+              product={product}
+              columnId={columnId}
+              categoryTree={categoryTree}
+              warehouses={warehouses}
+              onPatch={(patch) => patchProduct(product, patch)}
+            />
+          </td>
+        ))}
+        <td
+          className={cn(
+            INVENTORY_ACTIONS_COLUMN_CLASS,
+            'px-2 py-2.5 align-middle',
+            isSelected && 'bg-red-50/50 dark:bg-red-950/20',
+          )}
+        >
+          <div className="flex flex-nowrap items-center justify-center gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-8 shrink-0"
+              aria-label={`Editar ${product.name}`}
+              onClick={() => openEdit(product)}
+            >
+              <Pencil className="size-4" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-8 shrink-0"
+              aria-label={`Duplicar ${product.name}`}
+              disabled={rowBusyId === product.id || bulkBusy}
+              onClick={() => void handleDuplicate(product)}
+            >
+              <Copy className="size-4" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-8 shrink-0 text-destructive hover:text-destructive"
+              aria-label={`Eliminar ${product.name}`}
+              onClick={() => void handleDelete(product)}
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+            </Button>
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
+  const renderGroupedTableBody = () => {
+    const rows: ReactNode[] = [];
+
+    for (const section of equipmentSections) {
+      rows.push(
+        <InventoryTableSectionHeadingRow
+          key={`section-${section.id}`}
+          colSpan={colCount}
+          title={section.title}
+          count={section.subsections.reduce((total, item) => total + item.products.length, 0)}
+          level="main"
+        />,
+      );
+
+      for (const subsection of section.subsections) {
+        rows.push(
+          <InventoryTableSectionHeadingRow
+            key={`subsection-${subsection.id}`}
+            colSpan={colCount}
+            title={subsection.title}
+            count={subsection.products.length}
+            level="sub"
+          />,
+        );
+        for (const product of subsection.products) {
+          rows.push(renderProductRow(product));
+        }
+      }
+    }
+
+    return rows;
+  };
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="rounded-lg border bg-muted/20 p-3 sm:p-4">
-        <div className="flex flex-row flex-wrap items-center gap-2 sm:gap-3">
+    <div className="flex flex-col gap-4">
+      <div className="rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="flex min-w-0 items-center gap-2 lg:w-auto lg:shrink-0">
             <Label htmlFor="inv-category-filter" className="shrink-0 text-sm font-medium">
               Categoría
@@ -294,7 +437,7 @@ export function InventoryPanel() {
               onValueChange={setCategoryFilter}
               categoryTree={categoryTree}
               productCategoryLabels={productCategoryLabels}
-              className="h-10 min-w-[10rem] bg-background sm:min-w-[12rem]"
+              className="h-10 min-w-[11rem] bg-background sm:min-w-[14rem]"
             />
           </div>
 
@@ -303,7 +446,7 @@ export function InventoryPanel() {
               Buscador
             </Label>
             <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden="true"
             />
             <Input
@@ -316,7 +459,7 @@ export function InventoryPanel() {
             />
           </div>
 
-          <div className="flex shrink-0 flex-wrap items-center gap-2 lg:ml-0">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             <Button
               type="button"
               variant={batchMode ? 'default' : 'outline'}
@@ -341,8 +484,8 @@ export function InventoryPanel() {
               <span className="hidden xl:inline">Sincronizar con tienda</span>
               <span className="xl:hidden">Sincronizar</span>
             </Button>
-            <Button onClick={openCreate} className="h-10 bg-red-600 hover:bg-red-500">
-              <PackagePlus aria-hidden="true" />
+            <Button onClick={openCreate} className="h-10 gap-1.5 bg-red-600 hover:bg-red-500">
+              <Plus className="size-4" aria-hidden="true" />
               Nuevo producto
             </Button>
           </div>
@@ -413,11 +556,23 @@ export function InventoryPanel() {
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground">
-        Administra stock y precios por rol. Usa Lotes para acciones masivas. Los productos se
-        muestran por precio público de menor a mayor; la columna Orden indica la posición. Los
-        encabezados se pueden reordenar (se guarda en este navegador).
-      </p>
+      <div
+        className="flex gap-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"
+        role="status"
+      >
+        <Info className="mt-0.5 size-5 shrink-0 text-sky-600" aria-hidden="true" />
+        <p>
+          Administra stock y precios por rol. Usa <strong>Lotes</strong> para acciones masivas. Los
+          productos se muestran por precio público de menor a mayor.
+          {showEquipmentSections ? (
+            <>
+              {' '}
+              En equipos se agrupan por <strong>B/N</strong>, <strong>Color</strong>,{' '}
+              <strong>Formato A4</strong> y <strong>Formato A3</strong>.
+            </>
+          ) : null}
+        </p>
+      </div>
 
       {isError && (
         <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -442,16 +597,11 @@ export function InventoryPanel() {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="overflow-x-auto">
         <table className="w-full min-w-[1180px] table-fixed text-left text-sm">
-          <thead className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+          <thead className="border-b bg-muted/30 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             <tr>
-              <th
-                scope="col"
-                className="w-12 min-w-12 px-1 py-2.5 text-center align-middle font-medium"
-              >
-                Orden
-              </th>
               {batchMode ? (
                 <th className="w-10 px-2 py-2.5 align-middle">
                   <Checkbox
@@ -489,7 +639,7 @@ export function InventoryPanel() {
                 </tr>
               ))}
 
-            {!isLoading && pageProducts.length === 0 && (
+            {!isLoading && tableProducts.length === 0 && (
               <tr>
                 <td colSpan={colCount} className="px-4 py-12 text-center text-muted-foreground">
                   {normalizedSearch
@@ -501,152 +651,28 @@ export function InventoryPanel() {
               </tr>
             )}
 
-            {!isLoading &&
-              pageProducts.map((product, rowIndex) => {
-                const isSelected = selectedIds.has(product.id);
-                const displayPosition = (page - 1) * PAGE_SIZE + rowIndex + 1;
-                return (
-                  <tr
-                    key={product.id}
-                    className={cn(
-                      'border-b last:border-b-0',
-                      batchMode && isSelected && 'bg-red-50/50 dark:bg-red-950/20',
-                    )}
-                  >
-                    <td className="px-1 py-2.5 text-center align-middle">
-                      <InventoryOrderCell displayPosition={displayPosition} />
-                    </td>
-                    {batchMode ? (
-                      <td className="px-2 py-2.5 align-middle">
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={(checked) => toggleRow(product.id, checked === true)}
-                          aria-label={`Seleccionar ${product.name}`}
-                        />
-                      </td>
-                    ) : null}
-                    {columnOrder.map((columnId) => (
-                      <td
-                        key={columnId}
-                        className={cn(
-                          'px-2 py-2.5 align-middle',
-                          getInventoryColumnCellClass(columnId),
-                          isInventoryPriceColumn(columnId) && 'overflow-visible text-right',
-                          columnId === 'stock' && 'text-center',
-                        )}
-                      >
-                        <InventoryRowCells
-                          product={product}
-                          columnId={columnId}
-                          categoryTree={categoryTree}
-                          warehouses={warehouses}
-                          onPatch={(patch) => patchProduct(product, patch)}
-                        />
-                      </td>
-                    ))}
-                    <td
-                      className={cn(
-                        INVENTORY_ACTIONS_COLUMN_CLASS,
-                        'px-2 py-2.5 align-middle',
-                        isSelected && 'bg-red-50/50 dark:bg-red-950/20',
-                      )}
-                    >
-                      <div className="flex flex-nowrap items-center justify-center gap-0.5">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="size-8 shrink-0"
-                          aria-label={`Editar ${product.name}`}
-                          onClick={() => openEdit(product)}
-                        >
-                          <Pencil className="size-4" aria-hidden="true" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="size-8 shrink-0"
-                          aria-label={`Duplicar ${product.name}`}
-                          disabled={rowBusyId === product.id || bulkBusy}
-                          onClick={() => void handleDuplicate(product)}
-                        >
-                          <Copy className="size-4" aria-hidden="true" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="size-8 shrink-0"
-                          aria-label={`Adjuntar archivos a ${product.name}${
-                            (product.attachments?.length ?? 0) > 0
-                              ? ` (${product.attachments?.length} adjuntos)`
-                              : ''
-                          }`}
-                          onClick={() => setAttachmentsProduct(product)}
-                        >
-                          <Paperclip className="size-4" aria-hidden="true" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="size-8 shrink-0"
-                          aria-label={`Eliminar ${product.name}`}
-                          onClick={() => void handleDelete(product)}
-                        >
-                          <Trash2 className="size-4" aria-hidden="true" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+            {!isLoading && showEquipmentSections
+              ? renderGroupedTableBody()
+              : null}
+
+            {!isLoading && !showEquipmentSections
+              ? tableProducts.map((product) => renderProductRow(product))
+              : null}
           </tbody>
         </table>
-      </div>
+        </div>
 
-      {!isLoading && filteredProducts.length > 0 && (
-        <nav
-          className="flex flex-wrap items-center justify-between gap-3"
-          aria-label="Paginación del inventario"
-        >
-          <p className="text-sm text-muted-foreground">
-            {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredProducts.length)} de{' '}
-            {filteredProducts.length} producto{filteredProducts.length === 1 ? '' : 's'}
-            {(categoryFilter !== ALL_INVENTORY_CATEGORIES || normalizedSearch) && products
-              ? ` (filtrado de ${products.length})`
-              : ''}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-              aria-label="Página anterior"
-            >
-              <ChevronLeft className="size-4" aria-hidden="true" />
-              Anterior
-            </Button>
-            <span className="min-w-[4.5rem] text-center text-sm tabular-nums">
-              {page} / {totalPages}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-              aria-label="Página siguiente"
-            >
-              Siguiente
-              <ChevronRight className="size-4" aria-hidden="true" />
-            </Button>
-          </div>
-        </nav>
-      )}
+        {!isLoading && filteredProducts.length > 0 && !showEquipmentSections ? (
+          <InventoryTablePagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={filteredProducts.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        ) : null}
+      </div>
 
       <InventoryProductFormDialog
         open={dialogOpen}

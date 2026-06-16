@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pencil } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,7 @@ interface InventoryAttributesCellProps {
 }
 
 const VISIBLE_COUNT = 2;
+const TEXT_SAVE_MS = 350;
 
 function AttributesPreview({ attributes }: { attributes: ProductAttribute[] }) {
   if (attributes.length === 0) {
@@ -53,8 +54,19 @@ export function InventoryAttributesCell({ attributes, onSave }: InventoryAttribu
   const { data: products = [] } = useAdminInventory();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(attributes);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  const saveTimerRef = useRef<number | null>(null);
+  const savedTimerRef = useRef<number | null>(null);
+  const draftRef = useRef(draft);
+  const wasOpenRef = useRef(false);
 
   const normalized = useMemo(() => normalizeAttributes(attributes), [attributes]);
+
+  const displayAttributes = useMemo(
+    () => (open ? normalizeAttributes(draft) : normalized),
+    [open, draft, normalized],
+  );
 
   const nameOptions = useMemo(() => {
     const catalog = buildAttributeNameCatalog(products);
@@ -66,17 +78,88 @@ export function InventoryAttributesCell({ attributes, onSave }: InventoryAttribu
   }, [products, draft]);
 
   useEffect(() => {
-    if (open) setDraft(normalized);
+    draftRef.current = draft;
+  }, [draft]);
+
+  useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      setDraft(normalized);
+    }
+    wasOpenRef.current = open;
   }, [open, normalized]);
 
-  const commit = async () => {
-    await onSave(normalizeAttributes(draft));
-    setOpen(false);
+  useEffect(() => {
+    if (!open) setDraft(normalized);
+  }, [normalized, open]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      if (savedTimerRef.current) window.clearTimeout(savedTimerRef.current);
+    };
+  }, []);
+
+  const persist = useCallback(
+    async (next: ProductAttribute[]) => {
+      setSaveState('saving');
+      try {
+        await onSave(normalizeAttributes(next));
+        setSaveState('saved');
+        if (savedTimerRef.current) window.clearTimeout(savedTimerRef.current);
+        savedTimerRef.current = window.setTimeout(() => setSaveState('idle'), 1500);
+      } catch {
+        setSaveState('error');
+      }
+    },
+    [onSave],
+  );
+
+  const scheduleSave = useCallback(
+    (next: ProductAttribute[], immediate = false) => {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      if (immediate) {
+        void persist(next);
+        return;
+      }
+      saveTimerRef.current = window.setTimeout(() => {
+        void persist(next);
+      }, TEXT_SAVE_MS);
+    },
+    [persist],
+  );
+
+  const handleDraftChange = (next: ProductAttribute[], immediate = false) => {
+    setDraft(next);
+    scheduleSave(next, immediate);
   };
+
+  const flushSave = useCallback(async () => {
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    await persist(draftRef.current);
+  }, [persist]);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && open) {
+      void flushSave();
+    }
+    setOpen(nextOpen);
+  };
+
+  const saveHint =
+    saveState === 'saving'
+      ? 'Guardando…'
+      : saveState === 'saved'
+        ? 'Guardado'
+        : saveState === 'error'
+          ? 'Error al guardar'
+          : null;
 
   return (
     <div className="group relative min-h-9 min-w-0 pr-7">
-      <Popover open={open} onOpenChange={setOpen} modal={false}>
+      <Popover open={open} onOpenChange={handleOpenChange} modal={false}>
         <PopoverAnchor asChild>
           <button
             type="button"
@@ -87,7 +170,7 @@ export function InventoryAttributesCell({ attributes, onSave }: InventoryAttribu
             onClick={() => setOpen(true)}
             aria-label="Editar atributos"
           >
-            <AttributesPreview attributes={normalized} />
+            <AttributesPreview attributes={displayAttributes} />
           </button>
         </PopoverAnchor>
         <PopoverContent
@@ -97,19 +180,31 @@ export function InventoryAttributesCell({ attributes, onSave }: InventoryAttribu
           onOpenAutoFocus={(event) => event.preventDefault()}
           onCloseAutoFocus={(event) => event.preventDefault()}
         >
-          <p className="mb-2 text-sm font-medium">Atributos del producto</p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">Atributos del producto</p>
+            {saveHint ? (
+              <span
+                className={cn(
+                  'text-[0.65rem] font-medium',
+                  saveState === 'error' ? 'text-destructive' : 'text-muted-foreground',
+                )}
+                role="status"
+                aria-live="polite"
+              >
+                {saveHint}
+              </span>
+            ) : null}
+          </div>
           <InventoryAttributesEditor
             attributes={draft}
-            onChange={setDraft}
+            onChange={handleDraftChange}
             nameOptions={nameOptions}
+            products={products}
             idPrefix="table-attr"
           />
-          <div className="mt-3 flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
-              Cancelar
-            </Button>
-            <Button type="button" size="sm" onClick={() => void commit()}>
-              Guardar
+          <div className="mt-3 flex justify-end">
+            <Button type="button" variant="outline" size="sm" onClick={() => handleOpenChange(false)}>
+              Cerrar
             </Button>
           </div>
         </PopoverContent>

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { ScrollReveal } from '@/components/ui/scroll-reveal';
 import { catalogGridClassName, type CatalogGridColumns } from '@/lib/category-grid-layout';
 import type { CatalogFormatSectionGroup } from '@/lib/category-catalog-filters';
 import { cn } from '@/lib/utils';
@@ -58,6 +59,8 @@ export function CategoryCatalogFormatSections({
 
   if (visibleSections.length === 0) return null;
 
+  let revealIndex = 0;
+
   return (
     <div className={cn('space-y-8 sm:space-y-10', className)}>
       {visibleSections.map((section) => (
@@ -83,11 +86,15 @@ export function CategoryCatalogFormatSections({
                   {subsection.title}
                 </span>
                 <div className={catalogGridClassName(gridColumns)}>
-                  {subsection.products.map((product) => (
-                    <div key={product.id} className="min-w-0">
-                      {renderProduct(product)}
-                    </div>
-                  ))}
+                  {subsection.products.map((product) => {
+                    const delayMs = Math.min(revealIndex * 55, 440);
+                    revealIndex += 1;
+                    return (
+                      <ScrollReveal key={product.id} delayMs={delayMs} className="min-w-0">
+                        {renderProduct(product)}
+                      </ScrollReveal>
+                    );
+                  })}
                 </div>
               </div>
             ))}

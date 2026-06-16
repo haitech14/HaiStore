@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/context/auth-context';
 import { apiFetch } from '@/lib/api';
-import { normalizeInventoryProduct } from '@/lib/inventory-product';
+import { normalizeInventoryProduct, mergeInventoryProductPatch } from '@/lib/inventory-product';
 import { DEFAULT_WAREHOUSES } from '@/lib/inventory-stock';
 import { applyViewAsPriceToProducts } from '@/lib/view-as-role';
 import type { InventoryBulkPatch } from '@/types/inventory-bulk';
@@ -44,7 +44,9 @@ export function useAdminInventory() {
     queryKey: ['admin-inventory'],
     queryFn: fetchAdminInventory,
     enabled: isAdmin,
-    refetchInterval: isAdmin ? 8000 : false,
+    staleTime: 60_000,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
     retry: (failureCount, error) => {
       const message = error instanceof Error ? error.message : '';
       if (message.includes('Sesión') || message.includes('permisos')) return false;
@@ -77,7 +79,41 @@ export function useInventoryMutations() {
         method: 'PATCH',
         body: JSON.stringify(payload),
       }),
-    onSuccess: invalidate,
+    onMutate: async ({ id, payload }) => {
+      await queryClient.cancelQueries({ queryKey: ['admin-inventory'] });
+      const previousInventory = queryClient.getQueryData<InventoryProduct[]>(['admin-inventory']);
+
+      queryClient.setQueryData<InventoryProduct[]>(['admin-inventory'], (current) =>
+        current?.map((product) => {
+          if (product.id !== id) return product;
+          try {
+            return mergeInventoryProductPatch(product, payload, DEFAULT_WAREHOUSES);
+          } catch {
+            return { ...product, ...payload };
+          }
+        }),
+      );
+
+      return { previousInventory };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousInventory) {
+        queryClient.setQueryData(['admin-inventory'], context.previousInventory);
+      }
+    },
+    onSuccess: (updated, { id }) => {
+      queryClient.setQueryData<InventoryProduct[]>(['admin-inventory'], (current) =>
+        current?.map((product) => {
+          if (product.id !== id) return product;
+          try {
+            return mergeInventoryProductPatch(product, updated, DEFAULT_WAREHOUSES);
+          } catch {
+            return updated;
+          }
+        }),
+      );
+      void queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
   });
 
   const deleteProduct = useMutation({

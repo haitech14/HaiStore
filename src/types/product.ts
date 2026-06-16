@@ -17,6 +17,9 @@ export {
 } from '@/lib/roles';
 
 import type { PriceRole, ProductRolePrices } from '@/lib/roles';
+import type { SelectedEquipmentOption } from '@/lib/equipment-config-selection';
+
+export type { SelectedEquipmentOption };
 
 export interface Product {
   id: string;
@@ -43,6 +46,8 @@ export interface Product {
   /** Visitas acumuladas a la ficha del producto. */
   view_count?: number;
   attributes?: ProductAttribute[];
+  /** Documentos públicos (ficha técnica, manual, etc.). */
+  attachments?: ProductAttachment[];
 }
 
 export interface InventorySupplier {
@@ -107,9 +112,17 @@ export interface InventoryProduct extends Omit<Product, 'price' | 'price_role' |
   prices: ProductRolePrices;
 }
 
+export interface CartConfigurationLine {
+  options: SelectedEquipmentOption[];
+  extrasPen: number;
+}
+
 export interface CartItem {
   product: Product;
   quantity: number;
+  /** Identificador único de línea (producto + configuración opcional). */
+  lineId: string;
+  configuration?: CartConfigurationLine;
 }
 
 export interface UserProfile {

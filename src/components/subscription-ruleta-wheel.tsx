@@ -1,8 +1,9 @@
-import { useMemo, type TransitionEvent } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 
 import {
   getRuletaConicGradient,
   getRuletaSegmentMidAngleDeg,
+  RULETA_ICON_RING_OFFSET_DEG,
   SUBSCRIPTION_RULETA_PREMIOS,
 } from '@/config/subscription-ruleta-premios';
 import { cn } from '@/lib/utils';
@@ -23,18 +24,19 @@ const SEGMENT_RING_OUTER_PERCENT = 48.5;
 const SEGMENT_ICON_RADIUS_PERCENT =
   (SEGMENT_RING_INNER_PERCENT + SEGMENT_RING_OUTER_PERCENT) / 2;
 const WHEEL_CENTER_PERCENT = 50;
-/** Desplazamiento del anillo de iconos (negativo = ligeramente a la izquierda). */
-const ICON_RING_OFFSET_DEG = -8;
 
-const SPIN_TRANSITION =
-  'transition-transform duration-[5200ms] ease-[cubic-bezier(0.08,0.82,0.12,1)] motion-reduce:transition-none motion-reduce:duration-0';
+const SPIN_EASING = 'cubic-bezier(0.08, 0.82, 0.12, 1)';
 
 interface SubscriptionRuletaWheelProps {
   diskRotation: number;
   isSpinAnimating: boolean;
+  /** Grados a sumar en el giro actual (null = sin giro programado). */
+  spinDeltaDeg?: number | null;
+  /** Incrementa en cada giro para disparar la animación una sola vez. */
+  spinToken?: number;
   /** Índice del sector ganador (resalta al detenerse). */
   highlightIndex?: number | null;
-  onSpinComplete?: () => void;
+  onSpinComplete?: (finalRotationDeg: number) => void;
   className?: string;
 }
 
@@ -53,16 +55,67 @@ const WHEEL_PIVOT_TRANSFORM = 'translate(-50%, -50%)';
 export function SubscriptionRuletaWheel({
   diskRotation,
   isSpinAnimating,
+  spinDeltaDeg = null,
+  spinToken = 0,
   highlightIndex = null,
   onSpinComplete,
   className,
 }: SubscriptionRuletaWheelProps) {
   const gradient = useMemo(() => getRuletaConicGradient(), []);
+  const diskRef = useRef<HTMLDivElement>(null);
+  const spinAnimationRef = useRef<Animation | null>(null);
+  const activeSpinTokenRef = useRef(0);
+  const onSpinCompleteRef = useRef(onSpinComplete);
 
-  const handleTransitionEnd = (event: TransitionEvent<HTMLDivElement>) => {
-    if (event.propertyName !== 'transform' || !isSpinAnimating) return;
-    onSpinComplete?.();
-  };
+  useLayoutEffect(() => {
+    onSpinCompleteRef.current = onSpinComplete;
+  }, [onSpinComplete]);
+
+  useLayoutEffect(() => {
+    if (!isSpinAnimating || spinDeltaDeg == null || spinDeltaDeg === 0) return;
+
+    const disk = diskRef.current;
+    if (!disk) return;
+
+    activeSpinTokenRef.current = spinToken;
+    spinAnimationRef.current?.cancel();
+
+    const fromDeg = diskRotation;
+    const toDeg = fromDeg + spinDeltaDeg;
+    const fromTransform = `${WHEEL_PIVOT_TRANSFORM} rotate(${fromDeg}deg)`;
+    const toTransform = `${WHEEL_PIVOT_TRANSFORM} rotate(${toDeg}deg)`;
+
+    disk.style.transform = fromTransform;
+
+    const animation = disk.animate(
+      [{ transform: fromTransform }, { transform: toTransform }],
+      {
+        duration: SPIN_DURATION_MS,
+        easing: SPIN_EASING,
+        fill: 'forwards',
+      },
+    );
+
+    spinAnimationRef.current = animation;
+
+    const finish = () => {
+      if (activeSpinTokenRef.current !== spinToken) return;
+      disk.style.transform = toTransform;
+      onSpinCompleteRef.current?.(toDeg);
+    };
+
+    animation.onfinish = finish;
+    animation.oncancel = () => {
+      spinAnimationRef.current = null;
+    };
+
+    return () => {
+      animation.cancel();
+      spinAnimationRef.current = null;
+    };
+    // diskRotation: valor al iniciar el giro (cuando cambia spinToken).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo reaccionar al token de giro
+  }, [isSpinAnimating, spinDeltaDeg, spinToken]);
 
   return (
     <div className={cn('relative mx-auto w-full max-w-[430px] px-1 pb-6 pt-1', className)}>
@@ -108,14 +161,15 @@ export function SubscriptionRuletaWheel({
             <div className="relative size-full overflow-hidden rounded-full shadow-[inset_0_0_18px_rgba(0,0,0,0.35)]">
               {/* Disco giratorio: eje de rotación = centro del hub «Ruleta del Color» */}
               <div
-                className={cn(
-                  'pointer-events-none absolute left-1/2 top-1/2 size-full origin-center rounded-full',
-                  isSpinAnimating ? SPIN_TRANSITION : 'transition-none',
-                )}
-                style={{
-                  transform: `${WHEEL_PIVOT_TRANSFORM} rotate(${diskRotation}deg)`,
-                }}
-                onTransitionEnd={handleTransitionEnd}
+                ref={diskRef}
+                className="pointer-events-none absolute left-1/2 top-1/2 size-full origin-center rounded-full will-change-transform"
+                style={
+                  isSpinAnimating
+                    ? undefined
+                    : {
+                        transform: `${WHEEL_PIVOT_TRANSFORM} rotate(${diskRotation}deg)`,
+                      }
+                }
               >
                 <div
                   className="absolute inset-0 rounded-full"
@@ -127,7 +181,7 @@ export function SubscriptionRuletaWheel({
                   const midAngle =
                     getRuletaSegmentMidAngleDeg(index) +
                     (premio.angleOffsetDeg ?? 0) +
-                    ICON_RING_OFFSET_DEG;
+                    RULETA_ICON_RING_OFFSET_DEG;
                   const radius =
                     SEGMENT_ICON_RADIUS_PERCENT + (premio.radiusOffsetPercent ?? 0);
                   const { left, top } = polarPositionFromWheelCenter(midAngle, radius);
@@ -138,7 +192,7 @@ export function SubscriptionRuletaWheel({
                       key={premio.id}
                       aria-hidden="true"
                       className={cn(
-                        'absolute flex w-[4.1rem] flex-col items-center justify-center sm:w-[4.35rem]',
+                        'absolute flex w-[5rem] flex-col items-center justify-center sm:w-[5.5rem]',
                         isWinner && 'z-20 scale-110 transition-transform duration-500',
                       )}
                       style={{
@@ -149,18 +203,18 @@ export function SubscriptionRuletaWheel({
                     >
                       <Icon
                         className={cn(
-                          'size-6 shrink-0 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.65)] sm:size-7',
+                          'size-8 shrink-0 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.65)] sm:size-9',
                           isWinner &&
                             'drop-shadow-[0_0_12px_rgba(255,255,255,0.95),0_0_20px_rgba(251,191,36,0.85)]',
                         )}
-                        strokeWidth={1.5}
+                        strokeWidth={1.75}
                         aria-hidden="true"
                       />
-                      <span className="mt-0.5 w-full text-center leading-[1.05] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65),0_0_6px_rgba(0,0,0,0.35)]">
-                        <span className="block text-[0.52rem] font-extrabold uppercase tracking-tight sm:text-[0.58rem]">
+                      <span className="mt-1 w-full text-center leading-[1.08] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65),0_0_6px_rgba(0,0,0,0.35)]">
+                        <span className="block text-[0.62rem] font-extrabold uppercase tracking-tight sm:text-[0.7rem]">
                           {premio.label}
                         </span>
-                        <span className="mt-0.5 block text-[0.46rem] font-bold uppercase sm:text-[0.52rem]">
+                        <span className="mt-0.5 block text-[0.56rem] font-bold uppercase sm:text-[0.64rem]">
                           {premio.sublabel}
                         </span>
                       </span>

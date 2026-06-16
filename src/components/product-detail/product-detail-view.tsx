@@ -1,181 +1,194 @@
-import { useState } from 'react';
-import { Home } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
 
-import { ProductDetailAttributeBadges } from '@/components/product-detail/product-detail-attribute-badges';
+import { ProductDetailBreadcrumbs } from '@/components/product-detail/product-detail-breadcrumbs';
 import { ProductDetailCombo } from '@/components/product-detail/product-detail-combo';
-import { ProductDetailDescription } from '@/components/product-detail/product-detail-description';
-import { ProductDetailFeatures } from '@/components/product-detail/product-detail-features';
+import { ProductDetailEquipmentConfig } from '@/components/product-detail/product-detail-equipment-config';
 import { ProductDetailGallery } from '@/components/product-detail/product-detail-gallery';
-import { ProductDetailPurchaseBox } from '@/components/product-detail/product-detail-purchase-box';
-import { ProductDetailRentalOption } from '@/components/product-detail/product-detail-rental-option';
-import { ProductDetailResources } from '@/components/product-detail/product-detail-resources';
+import { ProductDetailHeroInfo } from '@/components/product-detail/product-detail-hero-info';
+import { ProductDetailRentalBanner } from '@/components/product-detail/product-detail-rental-banner';
+import { ProductDetailRelated } from '@/components/product-detail/product-detail-related';
+import { ProductDetailSpecsTable } from '@/components/product-detail/product-detail-specs-table';
+import { productHasNuevoCornerBadge } from '@/lib/product-detail-badges';
 import { buildProductDetail } from '@/lib/build-product-detail';
+import { buildProductBreadcrumbs } from '@/lib/build-product-breadcrumbs';
+import {
+  resolveAccessoryProducts,
+  resolveEquipmentConfigSteps,
+} from '@/lib/equipment-config-catalog';
+import {
+  buildInitialEquipmentSelection,
+  computeEquipmentExtrasPen,
+  resolveSelectedEquipmentOptions,
+} from '@/lib/equipment-config-selection';
+import { resolveFrequentlyBoughtItems } from '@/lib/product-compatible-toners';
 import { useRentalPlans } from '@/hooks/use-rental-plans';
+import { useProducts } from '@/hooks/use-products';
+import { useStoreCategoriesTree } from '@/hooks/use-store-categories';
 import { cn } from '@/lib/utils';
+import type { CartConfigurationLine } from '@/types/product';
 import type { FeaturedProduct } from '@/data/featured-products';
-import type { ProductSpecRow } from '@/types/product-detail';
 import type { Product } from '@/types/product';
 
-type DetailTab = 'description' | 'specs' | 'warranty' | 'consumables';
+type DetailTab = 'description' | 'specs' | 'reviews';
 
 interface ProductDetailViewProps {
   product: Product;
   featuredMeta?: FeaturedProduct | undefined;
 }
 
-function SpecList({ specs }: { specs: ProductSpecRow[] }) {
-  return (
-    <ul className="space-y-2.5 text-sm text-neutral-600">
-      {specs.map((row) => (
-        <li key={row.label} className="flex gap-2.5">
-          <span className="mt-2 size-1.5 shrink-0 rounded-full bg-red-600" aria-hidden="true" />
-          <span>
-            <span className="font-medium text-neutral-800">{row.label}:</span> {row.value}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function BulletList({ bullets }: { bullets: string[] }) {
-  return (
-    <ul className="space-y-2.5 text-sm text-neutral-600">
-      {bullets.map((bullet) => (
-        <li key={bullet} className="flex gap-2.5">
-          <span
-            className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-red-600 text-[0.6rem] font-bold text-white"
-            aria-hidden="true"
-          >
-            ✓
-          </span>
-          <span>{bullet}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
+const MOCK_REVIEWS = [
+  {
+    id: '1',
+    author: 'Carlos M.',
+    city: 'Lima',
+    rating: 5,
+    text: 'Excelente equipo, llegó a tiempo y la instalación fue muy profesional.',
+  },
+  {
+    id: '2',
+    author: 'María G.',
+    city: 'Arequipa',
+    rating: 5,
+    text: 'Muy buena calidad de impresión y el soporte técnico respondió rápido.',
+  },
+  {
+    id: '3',
+    author: 'Luis R.',
+    city: 'Trujillo',
+    rating: 4,
+    text: 'Ideal para nuestra oficina. Fácil de usar y confiable.',
+  },
+];
 
 export function ProductDetailView({ product, featuredMeta }: ProductDetailViewProps) {
   const { data: rentalPlansRaw = [] } = useRentalPlans({ activeOnly: true });
+  const { data: catalogProducts = [] } = useProducts();
   const rentalPlansFromApi = rentalPlansRaw.map((plan) => ({
     pagesPerMonth: plan.pagesPerMonth,
     monthlyPricePen: plan.monthlyPricePen,
   }));
   const detail = buildProductDetail(product, featuredMeta, rentalPlansFromApi);
+  const frequentlyBought = useMemo(
+    () => resolveFrequentlyBoughtItems(product, catalogProducts),
+    [product, catalogProducts],
+  );
+  const { data: categoryTree = [] } = useStoreCategoriesTree();
+  const breadcrumbs = useMemo(
+    () => buildProductBreadcrumbs(product, detail.displayTitle, categoryTree),
+    [product, detail.displayTitle, categoryTree],
+  );
   const [activeTab, setActiveTab] = useState<DetailTab>('description');
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+
+  const descriptionText =
+    detail.descriptionContent?.paragraphs.join(' ') ??
+    detail.bullets.slice(0, 2).join(' ');
 
   const tabs = [
     { id: 'description' as const, label: 'Descripción' },
     { id: 'specs' as const, label: 'Especificaciones' },
-    { id: 'warranty' as const, label: 'Garantía' },
-    { id: 'consumables' as const, label: 'Toner y Consumibles' },
+    { id: 'reviews' as const, label: `Opiniones (${detail.reviews})` },
   ];
 
+  const equipmentSteps = useMemo(
+    () => resolveEquipmentConfigSteps(detail.equipmentConfigSteps, catalogProducts, product),
+    [detail.equipmentConfigSteps, catalogProducts, product],
+  );
+
+  const [equipmentSelection, setEquipmentSelection] = useState(() =>
+    buildInitialEquipmentSelection(equipmentSteps),
+  );
+
+  useEffect(() => {
+    setEquipmentSelection(buildInitialEquipmentSelection(equipmentSteps));
+  }, [product.id, equipmentSteps]);
+
+  const selectedEquipmentOptions = useMemo(
+    () => resolveSelectedEquipmentOptions(equipmentSteps, equipmentSelection),
+    [equipmentSteps, equipmentSelection],
+  );
+
+  const equipmentConfiguration = useMemo<CartConfigurationLine | undefined>(() => {
+    if (selectedEquipmentOptions.length === 0) return undefined;
+    return {
+      options: selectedEquipmentOptions,
+      extrasPen: computeEquipmentExtrasPen(selectedEquipmentOptions),
+    };
+  }, [selectedEquipmentOptions]);
+
+  const accessoryProducts = useMemo(
+    () => resolveAccessoryProducts(selectedEquipmentOptions, catalogProducts),
+    [selectedEquipmentOptions, catalogProducts],
+  );
+
+  const showBottomRow =
+    detail.isPrinterEquipment &&
+    (frequentlyBought.length > 0 || equipmentSteps.length > 0);
+
+  const heroGridClass =
+    'grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-10 xl:gap-12';
+
   return (
-    <div className="container py-4 sm:py-6">
-      <nav aria-label="Migas de pan" className="mb-4 text-xs text-neutral-400 sm:text-sm">
-        <ol className="flex flex-wrap items-center gap-1.5">
-          {detail.breadcrumbs.map((crumb, index) => (
-            <li key={`${crumb.label}-${index}`} className="flex items-center gap-1.5">
-              {index > 0 && (
-                <span className="text-neutral-300" aria-hidden="true">
-                  &gt;
-                </span>
-              )}
-              {index === 0 ? (
-                crumb.href ? (
-                  <Link
-                    to={crumb.href}
-                    className="inline-flex items-center gap-1 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
-                  >
-                    <Home className="size-3.5" aria-hidden="true" />
-                    {crumb.label}
-                  </Link>
-                ) : (
-                  <span className="inline-flex items-center gap-1">
-                    <Home className="size-3.5" aria-hidden="true" />
-                    {crumb.label}
-                  </span>
-                )
-              ) : crumb.href ? (
-                <Link
-                  to={crumb.href}
-                  className="hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
-                >
-                  {crumb.label}
-                </Link>
-              ) : (
-                <span className="line-clamp-1 max-w-[min(100%,28rem)] text-neutral-600">{crumb.label}</span>
-              )}
-            </li>
-          ))}
-        </ol>
-      </nav>
+    <div className="bg-white">
+      <div className="container py-4 sm:py-6">
+        <ProductDetailBreadcrumbs items={breadcrumbs} />
 
-      <div className="rounded-2xl bg-white p-4 sm:p-6 lg:p-8">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,520px)_1fr_minmax(0,300px)] lg:gap-6 xl:grid-cols-[minmax(0,580px)_1fr_minmax(0,320px)]">
-          <div className="flex flex-col gap-3">
-            <ProductDetailGallery items={detail.gallery} productName={product.name} />
-            <ProductDetailFeatures features={detail.features} />
-          </div>
-
-          <div className="flex flex-col gap-4">
-            {detail.isOnOffer && (
-              <span className="inline-flex w-fit rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
-                Oferta especial
-              </span>
-            )}
-
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <h1 className="text-xl font-bold leading-tight text-neutral-900 sm:text-2xl lg:text-[1.65rem]">
-                  {detail.displayTitle}
-                </h1>
-
-                <ProductDetailAttributeBadges product={product} />
-
-                <p className="text-xs text-neutral-500">
-                  Marca: {detail.brandLabel} | SKU: {detail.sku} | Color: {detail.colorLabel}
-                </p>
-              </div>
-
-              {detail.bullets.length > 0 && (
-                <div className="rounded-lg border border-neutral-100 bg-neutral-50/80 px-3 py-3 sm:px-4">
-                  <BulletList bullets={detail.bullets} />
-                </div>
-              )}
-            </div>
-
-            {detail.rentalPlans.length > 0 && (
-              <ProductDetailRentalOption plans={detail.rentalPlans} className="w-full sm:max-w-md" />
-            )}
-
-            <ProductDetailResources
-              links={detail.resourceLinks}
-              product={product}
-              displayTitle={detail.displayTitle}
-              sku={detail.sku}
-              brandLabel={detail.brandLabel}
-            />
-          </div>
-
-          <div className="lg:row-span-2 lg:self-start">
-            <ProductDetailPurchaseBox product={product} detail={detail} />
-          </div>
-
+        <div className={heroGridClass}>
+          <ProductDetailGallery
+            items={detail.gallery}
+            productName={product.name}
+            showNuevo={productHasNuevoCornerBadge(product)}
+          />
+          <ProductDetailHeroInfo
+            product={product}
+            detail={detail}
+            equipmentConfiguration={equipmentConfiguration}
+            accessoryProducts={accessoryProducts}
+          />
         </div>
 
+        {showBottomRow ? (
+          <div className={cn(heroGridClass, 'mt-6 items-start sm:mt-8')}>
+            <div className="min-w-0">
+              {frequentlyBought.length > 0 ? (
+                <ProductDetailCombo
+                  items={frequentlyBought}
+                  mainProduct={product}
+                  catalogProducts={catalogProducts}
+                  title="Suelen comprar frecuentemente"
+                  subtitle={`Toner y consumibles compatibles con ${detail.shortTitle}`}
+                />
+              ) : null}
+            </div>
+            <div className="min-w-0">
+              {equipmentSteps.length > 0 ? (
+                <ProductDetailEquipmentConfig
+                  steps={equipmentSteps}
+                  selection={equipmentSelection}
+                  onSelectionChange={setEquipmentSelection}
+                />
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {detail.isPrinterEquipment && detail.rentalPlans.length > 0 ? (
+          <ProductDetailRentalBanner
+            product={product}
+            plans={detail.rentalPlans}
+            className="mt-6 sm:mt-8"
+          />
+        ) : null}
+
         <section
-          className="mt-8 border-t border-neutral-200 pt-6"
+          className="mt-10 border-t border-border/60 pt-6 sm:mt-12"
           aria-label="Información del producto"
         >
-          <div className="border-b border-neutral-200">
+          <div className="border-b border-border/60">
             <div
               role="tablist"
               aria-label="Secciones del producto"
-              className="flex gap-4 overflow-x-auto sm:gap-6 lg:gap-8"
+              className="flex gap-6 overflow-x-auto sm:gap-8"
             >
               {tabs.map((tab) => (
                 <button
@@ -187,10 +200,10 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
                   id={`tab-${tab.id}`}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    'shrink-0 border-b-2 pb-2.5 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600',
+                    'shrink-0 border-b-2 pb-3 text-sm font-bold whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600',
                     activeTab === tab.id
-                      ? 'border-red-600 text-neutral-900'
-                      : 'border-transparent text-neutral-400 hover:text-neutral-600',
+                      ? 'border-red-600 text-[#0f1f3d]'
+                      : 'border-transparent text-muted-foreground hover:text-[#0f1f3d]',
                   )}
                 >
                   {tab.label}
@@ -203,26 +216,58 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
             role="tabpanel"
             id={`panel-${activeTab}`}
             aria-labelledby={`tab-${activeTab}`}
-            className="pt-5"
+            className="pt-6"
           >
-            {activeTab === 'description' &&
-              (detail.descriptionContent ? (
-                <ProductDetailDescription content={detail.descriptionContent} />
-              ) : (
-                <BulletList bullets={detail.bullets} />
-              ))}
-            {activeTab === 'specs' && <SpecList specs={detail.specs} />}
-            {activeTab === 'warranty' && <BulletList bullets={detail.warrantyBullets} />}
-            {activeTab === 'consumables' &&
-              (detail.comboItems.length > 0 ? (
-                <ProductDetailCombo items={detail.comboItems} mainProduct={product} embedded />
-              ) : (
-                <p className="text-sm text-neutral-500">
-                  No hay toner ni consumibles recomendados para este producto.
-                </p>
-              ))}
+            {activeTab === 'description' ? (
+              <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+                <div className="space-y-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+                  <p className={cn(!descriptionExpanded && 'line-clamp-6')}>{descriptionText}</p>
+                  {descriptionText.length > 280 ? (
+                    <button
+                      type="button"
+                      onClick={() => setDescriptionExpanded((value) => !value)}
+                      className="text-sm font-bold text-red-600 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+                    >
+                      {descriptionExpanded ? 'Ver menos' : 'Ver más'}
+                    </button>
+                  ) : null}
+                </div>
+                <ProductDetailSpecsTable specs={detail.specs} />
+              </div>
+            ) : null}
+
+            {activeTab === 'specs' ? (
+              <div className="max-w-3xl">
+                <ProductDetailSpecsTable specs={detail.specs} />
+              </div>
+            ) : null}
+
+            {activeTab === 'reviews' ? (
+              <ul className="grid max-w-3xl gap-4">
+                {MOCK_REVIEWS.map((review) => (
+                  <li
+                    key={review.id}
+                    className="rounded-xl border border-border/60 bg-muted/15 px-4 py-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-bold text-[#0f1f3d]">
+                        {review.author}
+                        <span className="font-normal text-muted-foreground"> · {review.city}</span>
+                      </p>
+                      <p className="text-xs font-semibold text-red-600" aria-label={`${review.rating} de 5 estrellas`}>
+                        {'★'.repeat(review.rating)}
+                        <span className="text-muted-foreground/40">{'★'.repeat(5 - review.rating)}</span>
+                      </p>
+                    </div>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{review.text}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         </section>
+
+        <ProductDetailRelated product={product} />
       </div>
     </div>
   );

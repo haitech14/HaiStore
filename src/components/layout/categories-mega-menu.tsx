@@ -19,6 +19,7 @@ import {
 } from '@/data/mega-menu';
 import { useStoreCategoriesTree } from '@/hooks/use-store-categories';
 import { buildMegaMenuFromStoreCategories } from '@/lib/mega-menu-from-store-categories';
+import { mainNavLinkClass } from '@/components/layout/main-nav-styles';
 import { cn } from '@/lib/utils';
 
 const HOVER_CLOSE_DELAY_MS = 180;
@@ -110,7 +111,11 @@ function PlatformCard({
   );
 }
 
-export function CategoriesMegaMenu() {
+interface CategoriesMegaMenuProps {
+  triggerVariant?: 'button' | 'nav';
+}
+
+export function CategoriesMegaMenu({ triggerVariant = 'button' }: CategoriesMegaMenuProps) {
   const { data: categoryTree = [] } = useStoreCategoriesTree();
   const { columns, sidebarSectionIds } = useMemo(
     () => buildMegaMenuFromStoreCategories(categoryTree),
@@ -137,8 +142,14 @@ export function CategoriesMegaMenu() {
   const updateMenuWidth = useCallback(() => {
     const trigger = triggerRef.current;
     if (!trigger) return;
-    const rect = trigger.getBoundingClientRect();
-    setMenuWidth(Math.max(720, window.innerWidth - rect.left - 8));
+    const container = trigger.closest('.container');
+    const containerRect = container?.getBoundingClientRect();
+    const triggerRect = trigger.getBoundingClientRect();
+    const left = containerRect?.left ?? triggerRect.left;
+    const rightMargin = containerRect
+      ? Math.max(12, window.innerWidth - containerRect.right)
+      : 12;
+    setMenuWidth(Math.max(960, window.innerWidth - left - rightMargin));
   }, []);
 
   const activeColumn = useMemo(
@@ -193,22 +204,41 @@ export function CategoriesMegaMenu() {
   return (
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button
-          ref={triggerRef}
-          aria-haspopup="true"
-          aria-expanded={open}
-          onMouseEnter={openMenu}
-          onMouseLeave={scheduleClose}
-          onFocus={openMenu}
-          className="h-full gap-2 rounded-none bg-red-700 text-white hover:bg-red-800 focus-visible:ring-white/50 data-[state=open]:bg-red-800"
-        >
-          <Menu aria-hidden="true" />
-          Categorías
-          <ChevronDown
-            aria-hidden="true"
-            className={cn('size-4 transition-transform', open && 'rotate-180')}
-          />
-        </Button>
+        {triggerVariant === 'nav' ? (
+          <button
+            ref={triggerRef}
+            type="button"
+            aria-haspopup="true"
+            aria-expanded={open}
+            onMouseEnter={openMenu}
+            onMouseLeave={scheduleClose}
+            onFocus={openMenu}
+            className={cn(mainNavLinkClass(open), 'gap-1')}
+          >
+            Productos
+            <ChevronDown
+              aria-hidden="true"
+              className={cn('size-3 transition-transform', open && 'rotate-180')}
+            />
+          </button>
+        ) : (
+          <Button
+            ref={triggerRef}
+            aria-haspopup="true"
+            aria-expanded={open}
+            onMouseEnter={openMenu}
+            onMouseLeave={scheduleClose}
+            onFocus={openMenu}
+            className="h-full gap-2 rounded-none bg-red-700 text-white hover:bg-red-800 focus-visible:ring-white/50 data-[state=open]:bg-red-800"
+          >
+            <Menu aria-hidden="true" />
+            Categorías
+            <ChevronDown
+              aria-hidden="true"
+              className={cn('size-4 transition-transform', open && 'rotate-180')}
+            />
+          </Button>
+        )}
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
@@ -218,15 +248,15 @@ export function CategoriesMegaMenu() {
         onMouseLeave={scheduleClose}
         onCloseAutoFocus={(event) => event.preventDefault()}
         className={cn(
-          'z-50 max-w-none overflow-hidden rounded-none border border-border/60 p-0 shadow-xl',
+          'z-50 max-w-none overflow-x-hidden overflow-y-auto rounded-none border border-border/60 p-0 shadow-2xl',
           'data-[state=open]:animate-in data-[state=closed]:animate-out',
           'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
           'data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-100',
         )}
-        style={menuWidth ? { width: menuWidth } : undefined}
+        style={menuWidth ? { width: menuWidth, maxHeight: 'min(36rem, 78vh)' } : undefined}
       >
-        <div className="flex min-h-0 bg-muted/15">
-          <aside className="w-[10.5rem] shrink-0 border-r border-border/50 bg-background py-3 pl-2.5 pr-1.5 sm:w-[11.5rem]">
+        <div className="flex min-h-[22rem] bg-muted/15">
+          <aside className="w-[11rem] shrink-0 border-r border-border/50 bg-background py-3 pl-2.5 pr-1.5 sm:w-[12rem]">
             <p className="mb-2 px-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Explorar
             </p>
@@ -245,10 +275,10 @@ export function CategoriesMegaMenu() {
                       onFocus={() => setActiveSection(item.id)}
                       onClick={() => setActiveSection(item.id)}
                       className={cn(
-                        'flex w-full min-h-9 items-center gap-2 rounded-md px-2 py-1.5 text-left text-[0.8125rem] font-semibold transition-colors',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600',
+                        'flex w-full min-h-9 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-semibold transition-colors',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cc1427]',
                         isActive
-                          ? 'bg-red-600/10 text-red-700 shadow-sm'
+                          ? 'bg-[#cc1427] text-white shadow-sm'
                           : 'text-foreground hover:bg-muted/70',
                       )}
                     >
@@ -256,7 +286,7 @@ export function CategoriesMegaMenu() {
                         className={cn(
                           'flex size-7 shrink-0 items-center justify-center rounded-md transition-colors',
                           isActive
-                            ? 'bg-red-600 text-white'
+                            ? 'bg-white/20 text-white'
                             : 'bg-muted text-muted-foreground',
                         )}
                       >
@@ -275,11 +305,11 @@ export function CategoriesMegaMenu() {
             role="tabpanel"
             aria-label={activeMeta.label}
           >
-            <div className="flex flex-1 flex-col px-3 py-3 sm:px-4 lg:px-5">
-              <div className="mb-2.5 flex flex-wrap items-start justify-between gap-2 border-b border-border/50 pb-2.5">
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3 sm:px-4 lg:px-5">
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-2 border-b border-border/50 pb-3">
                 <div>
-                  <h3 className="text-base font-bold text-foreground">{activeMeta.label}</h3>
-                  <p className="mt-0.5 max-w-xl text-xs text-muted-foreground">{activeMeta.description}</p>
+                  <h3 className="text-lg font-bold text-foreground">{activeMeta.label}</h3>
+                  <p className="mt-0.5 max-w-2xl text-sm text-muted-foreground">{activeMeta.description}</p>
                 </div>
                 <Link
                   to={sectionViewAllHref}
@@ -292,18 +322,18 @@ export function CategoriesMegaMenu() {
               </div>
 
               {activeSection === 'destacados' ? (
-                <ul className="grid grid-cols-2 gap-1.5 lg:grid-cols-3 xl:grid-cols-4" role="list">
+                <ul className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4" role="list">
                   {megaMenuHighlightCategories.map((category) => (
                     <li key={category.slug}>
                       <Link
                         to={category.href}
                         onClick={closeMenu}
                         className={cn(
-                          'group flex min-h-[3.25rem] items-center gap-2 rounded-lg border border-border/60 bg-muted/10 p-2 transition-all',
+                          'group flex min-h-[3.75rem] items-center gap-2.5 rounded-lg border border-border/60 bg-muted/10 p-2.5 transition-all',
                           'hover:border-red-600/25 hover:bg-red-600/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600',
                         )}
                       >
-                        <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white p-1">
+                        <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white p-1">
                           <img
                             src={category.image}
                             alt=""
@@ -362,7 +392,7 @@ export function CategoriesMegaMenu() {
                   })}
                 </ul>
               ) : activeColumn ? (
-                <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-3" role="list">
+                <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" role="list">
                   {activeColumn.items.map((item) => {
                     const Icon = item.icon;
                     const image = megaMenuImageForSlug(item.slug);
@@ -373,12 +403,12 @@ export function CategoriesMegaMenu() {
                           to={item.href}
                           onClick={closeMenu}
                           className={cn(
-                            'group flex min-h-[2.75rem] items-center gap-2.5 rounded-lg border border-border/50 px-2 py-1.5 transition-all',
+                            'group flex min-h-[3.5rem] items-center gap-3 rounded-lg border border-border/50 px-2.5 py-2 transition-all',
                             'hover:border-red-600/25 hover:bg-red-600/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600',
                           )}
                         >
                           {image ? (
-                            <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white p-0.5">
+                            <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white p-0.5">
                               <img
                                 src={image}
                                 alt=""
@@ -392,17 +422,17 @@ export function CategoriesMegaMenu() {
                             </span>
                           )}
                           <span className="min-w-0 flex-1">
-                            <span className="block text-xs font-semibold leading-snug text-foreground group-hover:text-red-700">
+                            <span className="block text-sm font-semibold leading-snug text-foreground group-hover:text-red-700">
                               {item.name}
                             </span>
                             {item.productCount > 0 && (
-                              <span className="text-[0.65rem] text-muted-foreground">
+                              <span className="text-xs text-muted-foreground">
                                 {item.productCount} producto{item.productCount === 1 ? '' : 's'}
                               </span>
                             )}
                           </span>
                           <ChevronRight
-                            className="size-3 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-red-600"
+                            className="size-4 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-red-600"
                             aria-hidden="true"
                           />
                         </Link>
@@ -437,7 +467,7 @@ export function CategoriesMegaMenu() {
           </div>
 
           <aside
-            className="hidden w-[12.5rem] shrink-0 flex-col gap-2 border-l border-border/50 bg-muted/10 p-2.5 md:flex xl:w-[13.5rem]"
+            className="hidden w-[13.5rem] shrink-0 flex-col gap-2.5 overflow-y-auto border-l border-border/50 bg-muted/10 p-3 md:flex xl:w-[15rem]"
             aria-label="Plataformas Haitech"
           >
             <p className="px-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">

@@ -3,6 +3,7 @@ import XLSX from 'xlsx';
 import { normalizeAttributes } from './inventory-attributes.js';
 import { normalizeProductInput } from './inventory-store.js';
 import { formatRendLabel } from './repuestos-products-excel.js';
+import { moveParentheticalSuffixToEnd } from '../../shared/inventory-product-name.js';
 import {
   classifyTonerInventoryCategory,
   roundSalePriceToNinety,
@@ -80,7 +81,7 @@ export function buildRicohLpProductName({ titulo, yield: yieldValue, modelos }) 
   if (modelSuffix) {
     name = `${name} — ${modelSuffix}`;
   }
-  return name;
+  return moveParentheticalSuffixToEnd(name);
 }
 
 /**

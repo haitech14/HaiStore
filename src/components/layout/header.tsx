@@ -10,11 +10,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AccountDropdown } from '@/components/layout/account-dropdown';
 import { HeaderActionStrip } from '@/components/layout/header-action-strip';
-import { HeaderCategoryNav } from '@/components/layout/header-category-nav';
+import { HeaderCategoryNav, mainNavItems } from '@/components/layout/header-category-nav';
 import { HeaderCurrencyControl } from '@/components/layout/header-currency-control';
 import { SiteSearchForm } from '@/components/layout/site-search-form';
+import { categories } from '@/data/categories';
 import { useCart } from '@/context/cart-context';
 import { useDisplayCurrency } from '@/context/display-currency-context';
+import { categoryLandingPath } from '@/lib/category-path';
 import { cn, formatPenFromUsd } from '@/lib/utils';
 
 type MainNavItem = {
@@ -26,18 +28,30 @@ type MainNavItem = {
 
 const homeItem: MainNavItem = { to: '/', label: 'Inicio', end: true };
 
+const mobileNavItems: MainNavItem[] = mainNavItems
+  .filter((item): item is Extract<typeof item, { kind: 'link' }> => item.kind === 'link')
+  .map((item) => {
+    const mapped: MainNavItem = {
+      to: item.to,
+      label: item.label,
+    };
+    if (item.end !== undefined) mapped.end = item.end;
+    if (item.matchActive) mapped.matchActive = item.matchActive;
+    return mapped;
+  });
+
+const solutionMobileLinks = categories
+  .filter((category) => category.slug.startsWith('soluciones-'))
+  .map((category) => ({
+    to: categoryLandingPath(category.slug),
+    label: category.name,
+  }));
+
 const navItems: MainNavItem[] = [
-  { to: '/tienda', label: 'Tienda' },
-  {
-    to: '/servicios',
-    label: 'Alquiler',
-    matchActive: ({ pathname, search }) => {
-      if (pathname !== '/servicios') return false;
-      const seccion = new URLSearchParams(search).get('seccion');
-      return !seccion || seccion === 'alquiler';
-    },
-  },
-  { to: '/contacto', label: 'Contacto' },
+  { to: '/tienda', label: 'Productos' },
+  ...mobileNavItems.filter((item) => item.label !== 'Servicios' && item.label !== 'Contacto'),
+  ...solutionMobileLinks,
+  ...mobileNavItems.filter((item) => item.label === 'Servicios' || item.label === 'Contacto'),
 ];
 
 function mainNavLinkProps(item: MainNavItem) {
@@ -76,8 +90,9 @@ export function Header() {
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 w-full bg-background supports-[backdrop-filter]:bg-background/95 supports-[backdrop-filter]:backdrop-blur-sm',
-        scrolled && 'shadow-md ring-1 ring-border/50',
+        'sticky top-0 z-50 w-full bg-white supports-[backdrop-filter]:bg-white/95 supports-[backdrop-filter]:backdrop-blur-sm',
+        'shadow-[0_4px_14px_rgba(15,23,42,0.12)]',
+        scrolled && 'shadow-[0_6px_20px_rgba(15,23,42,0.16)]',
       )}
     >
       {/* Fila principal */}
@@ -111,7 +126,7 @@ export function Header() {
 
           {/* Buscador */}
           <div className="hidden flex-1 justify-center md:flex">
-            <SiteSearchForm className="max-w-xl" />
+            <SiteSearchForm className="max-w-xl" variant="segmented" />
           </div>
         </div>
 
@@ -152,7 +167,7 @@ export function Header() {
         <div className="border-t lg:hidden">
           <div className="container flex flex-col gap-4 py-4">
             <HeaderCurrencyControl className="w-full md:hidden" />
-            <SiteSearchForm onNavigate={() => setMobileOpen(false)} />
+            <SiteSearchForm variant="simple" onNavigate={() => setMobileOpen(false)} />
             <nav aria-label="Navegación móvil">
               <ul className="flex flex-col">
                 {[homeItem, ...navItems].map((item) => (

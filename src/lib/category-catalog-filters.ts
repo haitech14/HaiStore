@@ -204,13 +204,33 @@ export function shouldShowProductionFilters(slug: string | undefined): boolean {
 export function inferFormatoPapel(product: Product): 'A4' | 'A3' {
   const haystack = `${product.name} ${product.category ?? ''}`.toLowerCase();
   if (
-    /\b(pro\s+c9500|pro\s+c7500|im\s*9000|im\s*8000|im\s*c8000|pro\s+84)\b/.test(haystack) ||
+    /\b(pro\s+c9500|pro\s+c7500|pro\s+c5400|pro\s+c5410|im\s*9000|im\s*8000|im\s*c8000|im\s*c6010|im\s*c6510|im\s*c7510|mp\s*7503|pro\s+84)\b/.test(
+      haystack,
+    ) ||
     haystack.includes('planos') ||
     haystack.includes('formato ancho')
   ) {
     return 'A3';
   }
   return 'A4';
+}
+
+/** Formato papel: atributo almacenado o inferencia por modelo. */
+export function resolveFormatoPapel(product: Product): 'A4' | 'A3' {
+  const keys = productAttributeKeys(product);
+  if (keys.has(attributeKey(FORMATO_PAPEL_ATTR, 'A3'))) return 'A3';
+  if (keys.has(attributeKey(FORMATO_PAPEL_ATTR, 'A4'))) return 'A4';
+
+  const stored = (product.attributes ?? []).find((attr) =>
+    /formato\s*papel|tamaño|formato/i.test(attr.name.trim()),
+  );
+  if (stored?.value?.trim()) {
+    const value = stored.value.trim().toUpperCase();
+    if (value.includes('A3')) return 'A3';
+    if (value.includes('A4')) return 'A4';
+  }
+
+  return inferFormatoPapel(product);
 }
 
 export function inferProduccionTier(product: Product): (typeof PRODUCTION_FILTER_OPTIONS)[number]['value'] {
@@ -317,7 +337,7 @@ function splitProductsByPaperFormat(products: readonly Product[]): {
   const a3: Product[] = [];
 
   for (const product of products) {
-    if (inferFormatoPapel(product) === 'A3') {
+    if (resolveFormatoPapel(product) === 'A3') {
       a3.push(product);
     } else {
       a4.push(product);
@@ -337,7 +357,7 @@ export function buildCatalogFormatSections(
   return [
     {
       id: 'bn',
-      title: 'Format B/N',
+      title: 'B/N',
       subsections: [
         { id: 'bn-a4', title: 'Formato A4', products: bnByPaper.a4 },
         { id: 'bn-a3', title: 'Formato A3', products: bnByPaper.a3 },
@@ -415,7 +435,7 @@ export function resolveProductCatalogAttributeKeys(product: Product): Set<string
   if (!useSpecInference) return keys;
 
   if (![...keys].some((key) => key.startsWith(`${FORMATO_PAPEL_ATTR}::`))) {
-    keys.add(attributeKey(FORMATO_PAPEL_ATTR, inferFormatoPapel(product)));
+    keys.add(attributeKey(FORMATO_PAPEL_ATTR, resolveFormatoPapel(product)));
   }
 
   if (![...keys].some((key) => key.startsWith('Color::'))) {

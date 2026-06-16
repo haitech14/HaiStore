@@ -1,4 +1,5 @@
 import { isPrinterProduct, type ProductBadgeSource } from '@/lib/product-detail-badges';
+import { formatInventoryProductName } from '@/lib/inventory-product-name';
 
 /** Título en grilla de catálogo (5 columnas en desktop). */
 export const PRODUCT_CARD_TITLE_SIZE = 'text-[0.84rem] leading-[1.2] sm:text-[0.9rem]';
@@ -87,7 +88,7 @@ export function formatHighlightProductTitle(name: string): string {
 export function formatProductCardTitle(
   product: ProductBadgeSource & { name: string; category?: string | null },
 ): string {
-  const title = product.name.trim();
+  const title = formatInventoryProductName(product.name.trim());
   if (!isPrinterProduct(product) || isColorPrinter(product) || /\bB\/N\b/i.test(title)) {
     return title;
   }

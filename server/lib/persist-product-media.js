@@ -80,6 +80,7 @@ export async function persistProductMedia(product) {
         nextGallery.push(publicPath);
       } catch (error) {
         console.warn('[persist-media]', product.id, error?.message ?? error);
+        nextGallery.push(url);
       }
       continue;
     }

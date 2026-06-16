@@ -58,7 +58,7 @@ export const categoryHeroBySlug: Record<string, CategoryHeroContent> = {
   },
   'toner-suministros': {
     badge: 'Stock disponible',
-    title: 'Tóner y suministros',
+    title: 'Suministros',
     subtitle: 'Consumibles originales y compatibles para mantener tu flota operativa.',
     image: '/promotions/promo-hero-ofertas.png',
     imageAlt: 'Suministros de impresión',
