@@ -251,9 +251,9 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
                   >
                     <div className="px-3 py-3">
                       <div className="h-4 w-48 animate-pulse rounded bg-muted" />
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        {Array.from({ length: 2 }).map((_, index) => (
-                          <div key={index} className="h-28 animate-pulse rounded-lg bg-muted/50" />
+                      <div className="mt-3 grid grid-cols-3 gap-2">
+                        {Array.from({ length: 3 }).map((_, index) => (
+                          <div key={index} className="h-24 animate-pulse rounded-lg bg-muted/50" />
                         ))}
                       </div>
                     </div>
@@ -264,7 +264,7 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
                     mainProduct={product}
                     catalogProducts={catalogProducts}
                     title="Recomendado para este equipo"
-                    subtitle={`Consumibles compatibles con ${detail.shortTitle}`}
+                    subtitle={`Toner, accesorios y garantía para ${detail.shortTitle}`}
                     compact
                     embedded
                   />

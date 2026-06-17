@@ -29,29 +29,40 @@ function ComboCard({
   item,
   selected,
   onToggle,
+  compact = false,
 }: {
   item: ProductComboItem;
   selected: boolean;
   onToggle: (checked: boolean) => void;
+  compact?: boolean;
 }) {
   return (
     <article
       className={cn(
-        'relative flex h-full flex-col rounded-lg border bg-white p-2.5 transition-colors sm:p-3',
+        'relative flex h-full flex-col rounded-lg border bg-white transition-colors',
+        compact ? 'p-2' : 'p-2.5 sm:p-3',
         selected ? 'border-red-600/40 ring-1 ring-red-600/20' : 'border-border/60',
       )}
     >
-      <div className="absolute left-2 top-2 z-10 sm:left-2.5 sm:top-2.5">
+      <div className={cn('absolute left-1.5 top-1.5 z-10', !compact && 'sm:left-2.5 sm:top-2.5')}>
         <Checkbox
           id={`combo-${item.id}`}
           checked={selected}
           onCheckedChange={(checked) => onToggle(checked === true)}
-          className="size-4 border-border bg-white data-[state=checked]:border-red-600 data-[state=checked]:bg-red-600"
+          className={cn(
+            'border-border bg-white data-[state=checked]:border-red-600 data-[state=checked]:bg-red-600',
+            compact ? 'size-3' : 'size-4',
+          )}
           aria-label={`Incluir ${item.name}`}
         />
       </div>
 
-      <div className="flex aspect-[4/3] items-center justify-center rounded-md bg-muted/25 p-3 pt-5">
+      <div
+        className={cn(
+          'flex items-center justify-center rounded-md bg-muted/25',
+          compact ? 'aspect-[5/4] p-1.5 pt-4' : 'aspect-[4/3] p-3 pt-5',
+        )}
+      >
         <img
           src={item.image}
           alt=""
@@ -60,11 +71,16 @@ function ComboCard({
         />
       </div>
 
-      <p className="mt-2 line-clamp-2 text-[0.6875rem] font-semibold leading-snug text-[#0f1f3d] sm:text-xs">
+      <p
+        className={cn(
+          'mt-1.5 line-clamp-2 font-semibold leading-snug text-[#0f1f3d]',
+          compact ? 'text-[0.625rem]' : 'mt-2 text-[0.6875rem] sm:text-xs',
+        )}
+      >
         {item.name}
       </p>
 
-      <p className="mt-1.5 text-sm font-bold text-[#0f1f3d]">
+      <p className={cn('font-bold text-[#0f1f3d]', compact ? 'mt-1 text-[0.6875rem]' : 'mt-1.5 text-sm')}>
         {item.priceUsd != null ? (
           <DualPrice usd={item.priceUsd} />
         ) : (
@@ -81,10 +97,13 @@ function ComboCard({
       {item.productId ? (
         <Link
           to={productPath(item.productId)}
-          className="mt-auto inline-flex items-center gap-0.5 pt-2 text-[0.6875rem] font-bold text-red-600 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 sm:text-xs"
+          className={cn(
+            'mt-auto inline-flex items-center gap-0.5 font-bold text-red-600 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600',
+            compact ? 'pt-1 text-[0.625rem]' : 'pt-2 text-[0.6875rem] sm:text-xs',
+          )}
         >
           Ver producto
-          <ChevronRight className="size-3.5" aria-hidden="true" />
+          <ChevronRight className={cn(compact ? 'size-3' : 'size-3.5')} aria-hidden="true" />
         </Link>
       ) : null}
     </article>
@@ -164,7 +183,7 @@ export function ProductDetailCombo({
 
   const resolvedSubtitle =
     subtitle ?? `Toner y consumibles compatibles con tu ${mainProduct.brand ?? 'equipo'}`;
-  const useGrid = compact && items.length <= 2;
+  const useGrid = compact && items.length <= 3;
 
   return (
     <section
@@ -200,12 +219,18 @@ export function ProductDetailCombo({
 
       <div className={cn('relative bg-transparent', compact ? 'px-3 py-3 sm:px-3.5' : embedded ? '' : 'px-4 py-3.5 sm:px-5')}>
         {useGrid ? (
-          <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <ul
+            className={cn(
+              'grid grid-cols-1 gap-2',
+              items.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2',
+            )}
+          >
             {items.map((item) => (
               <li key={item.id}>
                 <ComboCard
                   item={item}
                   selected={selected[item.id]}
+                  compact={compact}
                   onToggle={(checked) =>
                     setSelected((prev) => ({ ...prev, [item.id]: checked }))
                   }
@@ -225,6 +250,7 @@ export function ProductDetailCombo({
                     <ComboCard
                       item={item}
                       selected={selected[item.id]}
+                      compact={compact}
                       onToggle={(checked) =>
                         setSelected((prev) => ({ ...prev, [item.id]: checked }))
                       }
