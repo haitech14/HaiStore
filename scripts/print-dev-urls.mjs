@@ -18,8 +18,13 @@ function listLanIps() {
 
 function getLocalTimeInfo(date = new Date()) {
   const formatter = new Intl.DateTimeFormat(locale, {
-    dateStyle: 'full',
-    timeStyle: 'medium',
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
     timeZoneName: 'short',
   });
   const timeZone = formatter.resolvedOptions().timeZone;
