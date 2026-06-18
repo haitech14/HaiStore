@@ -97,9 +97,27 @@ let bootstrapPromise = null;
 
 const SUPABASE_PRODUCTS_PAGE_SIZE = 1000;
 
+function isSupabaseProductsTableMissing(error) {
+  const message = String(error?.message ?? error ?? '');
+  return /Could not find the table ['"]?public\.products['"]?/i.test(message);
+}
+
+/** Solo reintenta sin sort_order cuando faltan columnas de orden (migración 005), no si falta la tabla. */
 function isSupabaseSchemaColumnError(error) {
   const message = String(error?.message ?? error ?? '');
-  return /column|schema cache|Could not find/i.test(message);
+  if (isSupabaseProductsTableMissing(error)) return false;
+  return /sort_order|created_at/i.test(message) && /column|schema cache/i.test(message);
+}
+
+function formatSupabaseCatalogError(error) {
+  if (isSupabaseProductsTableMissing(error)) {
+    return (
+      'Tabla products no encontrada en Supabase. Aplica supabase/migrations/002_products.sql ' +
+      'y 005_products_catalog_fields.sql, luego ejecuta npm run sync:supabase.'
+    );
+  }
+  const message = String(error?.message ?? error ?? 'Error de catálogo Supabase');
+  return message;
 }
 
 async function fetchProductPageFromSupabase(supabase, offset, { ordered }) {
@@ -132,7 +150,7 @@ async function fetchAllProductRowsFromSupabase(supabase) {
     }
 
     if (result.error) {
-      throw result.error;
+      throw new Error(formatSupabaseCatalogError(result.error));
     }
 
     const page = result.data ?? [];
@@ -194,7 +212,14 @@ async function listFromSupabase(role, adminView) {
   try {
     rows = await fetchAllProductRowsFromSupabase(supabase);
   } catch (error) {
-    console.error('[catalog] list Supabase:', error.message);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[catalog] list Supabase:', message);
+    if (/tabla products no encontrada/i.test(message)) {
+      throw error instanceof Error ? error : new Error(message);
+    }
+    if (isSupabaseProductsTableMissing(error)) {
+      throw new Error(formatSupabaseCatalogError(error));
+    }
     return null;
   }
 
@@ -382,9 +407,13 @@ export async function fetchInventoryProductsFromSupabase() {
     const rows = await fetchAllProductRowsFromSupabase(supabase);
     return rows.map((row) => rowToInventoryProduct(row));
   } catch (error) {
-    console.error('[catalog] fetch inventario Supabase:', error.message);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[catalog] fetch inventario Supabase:', message);
+    if (isSupabaseProductsTableMissing(error)) {
+      throw new Error(formatSupabaseCatalogError(error));
+    }
     if (shouldPreferSupabaseCatalog() && process.env.VERCEL) {
-      throw error;
+      throw error instanceof Error ? error : new Error(message);
     }
     return [];
   }

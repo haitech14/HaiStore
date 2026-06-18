@@ -51,13 +51,21 @@ app.get('/api/health', async (_req, res) => {
   if (isSupabaseAuthEnabled()) {
     try {
       const supabase = getSupabaseAdmin();
-      const { count, error } = await supabase
+      const { data: probeRow, error: probeError } = await supabase
         .from('products')
-        .select('id', { count: 'exact', head: true });
-      if (error) catalogError = error.message;
-      else catalogProducts = count ?? 0;
+        .select('id')
+        .limit(1);
+      if (probeError) {
+        catalogError = probeError.message;
+      } else {
+        const { count, error } = await supabase
+          .from('products')
+          .select('id', { count: 'exact', head: true });
+        if (error) catalogError = error.message;
+        else catalogProducts = count ?? (probeRow?.length ?? 0);
+      }
 
-      if (!error && catalogProducts === 0 && shouldPreferSupabaseCatalog()) {
+      if (!catalogError && catalogProducts === 0 && shouldPreferSupabaseCatalog()) {
         catalogHint =
           'Catálogo vacío en Supabase. Ejecuta npm run sync:supabase y verifica SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY en Vercel (mismo proyecto que haistore.vercel.app).';
       }
@@ -112,7 +120,11 @@ app.use((_req, res) => {
 });
 
 function resolveApiErrorStatus(message) {
-  if (/catálogo vacío|supabase no configurado|migraci[oó]n/i.test(message)) {
+  if (
+    /catálogo vacío|supabase no configurado|migraci[oó]n|tabla products no encontrada/i.test(
+      message,
+    )
+  ) {
     return 503;
   }
   return 500;
@@ -122,7 +134,7 @@ function resolveApiErrorBody(message, isProductRoute) {
   if (message.includes('JSON')) {
     return isProductRoute ? 'Datos del producto inválidos' : 'Datos de la solicitud inválidos';
   }
-  if (/catálogo vacío|supabase|migraci[oó]n/i.test(message)) {
+  if (/catálogo vacío|supabase|migraci[oó]n|tabla products no encontrada/i.test(message)) {
     return message;
   }
   return 'Error interno del servidor';
