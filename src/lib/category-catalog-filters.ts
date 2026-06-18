@@ -1,3 +1,4 @@
+import { CATALOG_FORMAT_BN_SUBSECTION_SPOTLIGHTS } from '@/data/catalog-format-spotlight';
 import type { Product } from '@/types/product';
 
 export const FORMATO_PAPEL_ATTR = 'Formato papel';
@@ -201,10 +202,20 @@ export function shouldShowProductionFilters(slug: string | undefined): boolean {
   return slug === 'multifuncionales' || slug === 'tienda';
 }
 
-export function inferFormatoPapel(product: Product): 'A4' | 'A3' {
-  const haystack = `${product.name} ${product.category ?? ''}`.toLowerCase();
+function productFormatoHaystack(product: Product): string {
+  return `${product.name} ${product.category ?? ''}`.toLowerCase();
+}
+
+/** Inferencia por modelo conocido; `null` si no hay regla explícita. */
+export function inferFormatoPapelFromModel(product: Product): 'A4' | 'A3' | null {
+  const haystack = productFormatoHaystack(product);
+
   if (
-    /\b(pro\s+c9500|pro\s+c7500|pro\s+c5400|pro\s+c5410|im\s*9000|im\s*8000|im\s*c8000|im\s*c6010|im\s*c6510|im\s*c7510|mp\s*7503|pro\s+84)\b/.test(
+    /\b(mp\s*305\s*\+|mp\s*3055|mp\s*3555|mp\s*5055|mp\s*6055|mp\s*7503)\b/.test(haystack) ||
+    /\b(im\s*460\s*f|im\s*2500|im\s*3000|im\s*4000|im\s*5000|im\s*6000|im\s*7000|im\s*8000|im\s*9000)\b/.test(
+      haystack,
+    ) ||
+    /\b(pro\s+c9500|pro\s+c7500|pro\s+c5400|pro\s+c5410|im\s*c8000|im\s*c6010|im\s*c6510|im\s*c7510|pro\s+84)\b/.test(
       haystack,
     ) ||
     haystack.includes('planos') ||
@@ -212,11 +223,26 @@ export function inferFormatoPapel(product: Product): 'A4' | 'A3' {
   ) {
     return 'A3';
   }
-  return 'A4';
+
+  if (
+    /\b(mp\s*4054|mp\s*4055|mp\s*401|mp\s*402|mp\s*501)\b/.test(haystack) ||
+    /\b(im\s*430\s*f|im\s*550\s*f|im\s*600\s*f|im\s*350\s*f|im\s*250\s*f)\b/.test(haystack)
+  ) {
+    return 'A4';
+  }
+
+  return null;
 }
 
-/** Formato papel: atributo almacenado o inferencia por modelo. */
+export function inferFormatoPapel(product: Product): 'A4' | 'A3' {
+  return inferFormatoPapelFromModel(product) ?? 'A4';
+}
+
+/** Formato papel: modelo conocido, atributo almacenado o inferencia por defecto. */
 export function resolveFormatoPapel(product: Product): 'A4' | 'A3' {
+  const fromModel = inferFormatoPapelFromModel(product);
+  if (fromModel) return fromModel;
+
   const keys = productAttributeKeys(product);
   if (keys.has(attributeKey(FORMATO_PAPEL_ATTR, 'A3'))) return 'A3';
   if (keys.has(attributeKey(FORMATO_PAPEL_ATTR, 'A4'))) return 'A4';
@@ -328,6 +354,42 @@ export interface CatalogFormatSectionGroup {
   subsections: CatalogFormatSubsection[];
 }
 
+function productMatchesModelPatterns(product: Product, patterns: readonly RegExp[]): boolean {
+  const haystack = `${product.name} ${product.code ?? ''} ${product.id}`;
+  return patterns.some((pattern) => pattern.test(haystack));
+}
+
+function prioritizeCatalogFormatSubsectionProducts(
+  subsectionId: string,
+  products: readonly Product[],
+): Product[] {
+  const spotlightPatterns =
+    CATALOG_FORMAT_BN_SUBSECTION_SPOTLIGHTS[
+      subsectionId as keyof typeof CATALOG_FORMAT_BN_SUBSECTION_SPOTLIGHTS
+    ];
+  if (!spotlightPatterns?.length || products.length <= 1) {
+    return [...products];
+  }
+
+  const usedIds = new Set<string>();
+  const prioritized: Product[] = [];
+
+  for (const pattern of spotlightPatterns) {
+    const match = products.find(
+      (product) => !usedIds.has(product.id) && productMatchesModelPatterns(product, [pattern]),
+    );
+    if (!match) continue;
+    usedIds.add(match.id);
+    prioritized.push(match);
+  }
+
+  for (const product of products) {
+    if (!usedIds.has(product.id)) prioritized.push(product);
+  }
+
+  return prioritized;
+}
+
 function splitProductsByPaperFormat(products: readonly Product[]): {
   a4: Product[];
   a3: Product[];
@@ -359,8 +421,16 @@ export function buildCatalogFormatSections(
       id: 'bn',
       title: 'B/N',
       subsections: [
-        { id: 'bn-a4', title: 'Formato A4', products: bnByPaper.a4 },
-        { id: 'bn-a3', title: 'Formato A3', products: bnByPaper.a3 },
+        {
+          id: 'bn-a4',
+          title: 'Formato A4',
+          products: prioritizeCatalogFormatSubsectionProducts('bn-a4', bnByPaper.a4),
+        },
+        {
+          id: 'bn-a3',
+          title: 'Formato A3',
+          products: prioritizeCatalogFormatSubsectionProducts('bn-a3', bnByPaper.a3),
+        },
       ],
     },
     {

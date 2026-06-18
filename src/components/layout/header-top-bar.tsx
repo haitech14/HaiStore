@@ -11,12 +11,12 @@ import { cn } from '@/lib/utils';
 const HEADER_TOP_BAR_ADDRESS = 'Lima: Av. Petit Thouars 1964 - Lince';
 
 const linkClass =
-  'inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-sm text-neutral-100 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900';
+  'inline-flex min-h-6 shrink-0 items-center gap-1 rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 
 export function HeaderTopBar() {
   return (
-    <div className="border-b border-white/10 bg-neutral-900 text-neutral-100">
-      <div className="container flex items-center justify-between gap-3 py-1.5 text-xs sm:gap-4 sm:py-2 sm:text-sm">
+    <div className="border-b border-border/40 bg-transparent text-muted-foreground">
+      <div className="container flex items-center justify-between gap-2 py-0.5 text-[10px] sm:gap-3">
         <a
           href={HAITECH_WHATSAPP_URL}
           target="_blank"
@@ -24,17 +24,17 @@ export function HeaderTopBar() {
           className={linkClass}
           aria-label={`Contactar por WhatsApp al ${HAITECH_WHATSAPP_DISPLAY}`}
         >
-          <Icon path={mdiWhatsapp} size={0.85} className="text-[#25D366]" aria-hidden="true" />
+          <Icon path={mdiWhatsapp} size={0.65} className="shrink-0" aria-hidden="true" />
           <span className="font-medium tabular-nums">915 149 290</span>
         </a>
 
         <p
           className={cn(
-            'flex min-w-0 items-center gap-1 text-neutral-300',
+            'flex min-w-0 items-center gap-1',
             'justify-end sm:justify-start',
           )}
         >
-          <MapPin className="size-3.5 shrink-0 text-neutral-400 sm:size-4" aria-hidden="true" />
+          <MapPin className="size-2.5 shrink-0" aria-hidden="true" />
           <span className="truncate sm:whitespace-nowrap">{HEADER_TOP_BAR_ADDRESS}</span>
         </p>
       </div>
