@@ -2,7 +2,6 @@ import 'dotenv/config';
 import fs from 'node:fs/promises';
 
 import {
-  appendHaitoneProductSuffix,
   CATEGORY_COMPATIBLE_TONER,
   isCompatibleTonerCategory,
 } from '../shared/compatible-toner.js';
@@ -58,7 +57,7 @@ async function main() {
   const warehouses = inventory.warehouses;
   let updated = 0;
   let mediaCleaned = 0;
-  let haitoneRenamed = 0;
+  let haiprintRenamed = 0;
 
   const rawById = new Map(rawProducts.map((product) => [product.id, product]));
 
@@ -67,7 +66,7 @@ async function main() {
     const migrated = migrateInventoryProduct(raw, warehouses);
 
     if (isCompatibleTonerCategory(raw.category) && migrated.name !== raw.name) {
-      haitoneRenamed += 1;
+      haiprintRenamed += 1;
       console.log(`• ${product.id}\n  ${raw.name}\n  → ${migrated.name}\n`);
     }
 
@@ -84,7 +83,7 @@ async function main() {
   });
 
   console.log(`\nProductos con cambios: ${updated}`);
-  console.log(`Tóner compatibles renombrados: ${haitoneRenamed}`);
+  console.log(`Tóner compatibles renombrados a HaiPrint: ${haiprintRenamed}`);
   console.log(`Medios placeholder eliminados: ${mediaCleaned}`);
 
   if (dryRun) {

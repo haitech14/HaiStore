@@ -14,6 +14,7 @@ import type { Product } from '@/types/product';
 interface CategoryCatalogFormatSectionsProps {
   sections: CatalogFormatSectionGroup[];
   gridColumns: CatalogGridColumns;
+  sidebarOpen?: boolean;
   renderProduct: (product: Product) => ReactNode;
   className?: string;
   categorySlug?: string;
@@ -22,6 +23,7 @@ interface CategoryCatalogFormatSectionsProps {
 export function CategoryCatalogFormatSections({
   sections,
   gridColumns,
+  sidebarOpen = false,
   renderProduct,
   className,
   categorySlug = 'multifuncionales',
@@ -64,7 +66,7 @@ export function CategoryCatalogFormatSections({
                 <span id={`catalog-format-${subsection.id}`} className="sr-only">
                   {subsection.title}
                 </span>
-                <div className={catalogGridClassName(gridColumns)}>
+                <div className={catalogGridClassName(gridColumns, sidebarOpen)}>
                   {subsection.products.map((product) => {
                     const delayMs = Math.min(revealIndex * 55, 440);
                     revealIndex += 1;

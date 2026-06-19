@@ -1,7 +1,7 @@
 import XLSX from 'xlsx';
 
 import {
-  appendHaitoneProductSuffix,
+  appendHaiPrintProductSuffix,
   CATEGORY_COMPATIBLE_TONER,
 } from '../../shared/compatible-toner.js';
 import { normalizeAttributes } from './inventory-attributes.js';
@@ -268,7 +268,7 @@ function buildProduct({ code, name, tipo, modelo, marca, tone, compra, tecnico, 
     suppliers.push({ name: SUPPLIER_MICAMERB, purchase_price_usd: compra });
   }
 
-  const displayName = appendHaitoneProductSuffix(name);
+  const displayName = appendHaiPrintProductSuffix(name);
 
   return normalizeProductInput({
     id: compatibleTonerProductIdFromCode(code),

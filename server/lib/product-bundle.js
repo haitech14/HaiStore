@@ -1,13 +1,24 @@
 import { ensureFullPrices } from './roles.js';
 import { getDefaultWarehouseId, normalizeProductStock, normalizeWarehouses } from './inventory-warehouses.js';
 
+import {
+  COMPATIBLE_TONER_BRAND_SUFFIX,
+  COMPATIBLE_TONER_BRAND_SUFFIX_LEGACY,
+} from '../../shared/compatible-toner.js';
+
 export const TONER_PACK_QUANTITY = 4;
 export const TONER_PACK_LABEL = 'Pack x04';
 export const TONER_PACK_TYPE_VALUE = 'Pack x04';
 
 const FOUR_COLOR_LABELS = ['Cyan', 'Magenta', 'Yellow', 'Negro'];
-const COLOR_SUFFIX_PATTERN =
-  /\s+(-\s+)?(Cyan|Magenta|Yellow|Negro|Amarillo)\s+Haitone$/i;
+const BRAND_SUFFIX_END_PATTERN = new RegExp(
+  `\\s+(?:${COMPATIBLE_TONER_BRAND_SUFFIX}|${COMPATIBLE_TONER_BRAND_SUFFIX_LEGACY})$`,
+  'i',
+);
+const COLOR_SUFFIX_PATTERN = new RegExp(
+  `\\s+(-\\s+)?(Cyan|Magenta|Yellow|Negro|Amarillo)\\s+(?:${COMPATIBLE_TONER_BRAND_SUFFIX}|${COMPATIBLE_TONER_BRAND_SUFFIX_LEGACY})$`,
+  'i',
+);
 
 /**
  * @param {unknown} value
@@ -41,8 +52,8 @@ export function stripTonerColorSuffix(name) {
 
 /** @param {unknown} baseName */
 export function buildTonerPackName(baseName) {
-  const base = stripTonerColorSuffix(baseName).replace(/\s+Haitone$/i, '').trim();
-  return `${base} ${TONER_PACK_LABEL} Haitone`.replace(/\s{2,}/g, ' ').trim();
+  const base = stripTonerColorSuffix(baseName).replace(BRAND_SUFFIX_END_PATTERN, '').trim();
+  return `${base} ${TONER_PACK_LABEL} ${COMPATIBLE_TONER_BRAND_SUFFIX}`.replace(/\s{2,}/g, ' ').trim();
 }
 
 /**
@@ -321,7 +332,7 @@ export function buildFourColorTonerPackProduct(input) {
   const name = buildTonerPackName(baseName);
   const modelLabel = stripTonerColorSuffix(baseName)
     .replace(/^Toner Cartucho Compatible RICOH\s+/i, '')
-    .replace(/\s+Haitone$/i, '')
+    .replace(BRAND_SUFFIX_END_PATTERN, '')
     .trim();
 
   return {

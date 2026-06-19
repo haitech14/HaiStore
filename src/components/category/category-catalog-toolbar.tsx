@@ -1,10 +1,17 @@
-import { ArrowUpDown, Check, Search, SlidersHorizontal } from 'lucide-react';
+import { ArrowUpDown, Check, Columns3, LayoutGrid, List, Search, SlidersHorizontal } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import {
+  CategoryActiveFilterChips,
+  type ActiveFilterChip,
+} from '@/components/category/category-active-filter-chips';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MIN_PRODUCT_SEARCH_LENGTH } from '@/lib/product-search';
-import type { CatalogGridColumns } from '@/lib/category-grid-layout';
+import {
+  CATALOG_SIDEBAR_GRID_COLUMNS,
+  type CatalogGridColumns,
+} from '@/lib/category-grid-layout';
 import type { QuickFilterChip } from '@/components/category/category-quick-filters';
 import { cn } from '@/lib/utils';
 
@@ -41,13 +48,14 @@ interface CategoryCatalogToolbarProps {
   onToggleAttribute: (key: string) => void;
   onToggleProduction: (key: string) => void;
   endAction?: ReactNode;
-  /** Pestañas de subcategoría integradas en la misma fila. */
   subcategoryTabs?: ReactNode;
-  /** Pestañas A4, A3, B/N y Color del catálogo por formato. */
   catalogSpecTabs?: CatalogColorFormatTab[];
   selectedCatalogSpecKeys?: string[];
   onToggleCatalogSpec?: (key: string) => void;
   filtersActive?: boolean;
+  /** Layout con sidebar fijo, chips activos y grilla de 5 columnas. */
+  catalogSidebarLayout?: boolean;
+  activeFilterChips?: ActiveFilterChip[];
 }
 
 const SORT_OPTIONS: { value: CategorySortValue; label: string }[] = [
@@ -65,6 +73,10 @@ export function CategoryCatalogToolbar({
   onSearchQueryChange,
   sortBy,
   onSortChange,
+  viewMode,
+  onViewModeChange,
+  gridColumns,
+  onGridColumnsChange,
   subcategoryTabs,
   catalogSpecTabs,
   selectedCatalogSpecKeys = [],
@@ -73,6 +85,9 @@ export function CategoryCatalogToolbar({
   filtersOpen,
   filtersSheetOpen,
   filtersActive = false,
+  catalogSidebarLayout = false,
+  activeFilterChips = [],
+  endAction,
 }: CategoryCatalogToolbarProps) {
   const searchHint =
     searchQuery.trim().length > 0 && searchQuery.trim().length < MIN_PRODUCT_SEARCH_LENGTH
@@ -80,10 +95,18 @@ export function CategoryCatalogToolbar({
       : null;
   const filtersPanelActive = filtersOpen || filtersSheetOpen || filtersActive;
 
+  const handleViewModeChange = (mode: CatalogViewMode) => {
+    onViewModeChange(mode);
+  };
+
   return (
     <div className="mb-4 space-y-3 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4">
+      {catalogSidebarLayout && activeFilterChips.length > 0 ? (
+        <CategoryActiveFilterChips chips={activeFilterChips} />
+      ) : null}
+
       <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-        {subcategoryTabs ? (
+        {!catalogSidebarLayout && subcategoryTabs ? (
           <div
             className="flex max-w-[46%] shrink-0 items-center overflow-x-auto border-r border-border/70 pr-1.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:max-w-none sm:pr-3 [&::-webkit-scrollbar]:hidden"
             role="presentation"
@@ -114,6 +137,90 @@ export function CategoryCatalogToolbar({
           ) : null}
         </div>
 
+        {catalogSidebarLayout ? (
+          <>
+            <div
+              className="inline-flex shrink-0 overflow-hidden rounded-md border border-border"
+              role="group"
+              aria-label="Vista del catálogo"
+            >
+              <button
+                type="button"
+                aria-label="Vista en grilla"
+                aria-pressed={viewMode === 'grid'}
+                onClick={() => handleViewModeChange('grid')}
+                className={cn(
+                  iconButtonClass,
+                  'rounded-none border-0',
+                  viewMode === 'grid' && 'bg-red-600 text-white hover:bg-red-500 hover:text-white',
+                )}
+              >
+                <LayoutGrid className="size-5" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                aria-label="Vista en lista"
+                aria-pressed={viewMode === 'list'}
+                onClick={() => handleViewModeChange('list')}
+                className={cn(
+                  iconButtonClass,
+                  'rounded-none border-0 border-l border-border',
+                  viewMode === 'list' && 'bg-red-600 text-white hover:bg-red-500 hover:text-white',
+                )}
+              >
+                <List className="size-5" aria-hidden="true" />
+              </button>
+            </div>
+
+            {viewMode === 'grid' ? (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`Columnas por fila: ${gridColumns}`}
+                    className={cn(iconButtonClass, 'gap-1 px-2 sm:min-w-11')}
+                  >
+                    <Columns3 className="size-5 shrink-0" aria-hidden="true" />
+                    <span className="text-xs font-bold tabular-nums">{gridColumns}</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" sideOffset={8} className="w-44 p-2">
+                  <p className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Columnas
+                  </p>
+                  <ul role="listbox" aria-label="Columnas por fila" className="space-y-0.5">
+                    {CATALOG_SIDEBAR_GRID_COLUMNS.map((columns) => {
+                      const isActive = gridColumns === columns;
+                      return (
+                        <li key={columns} role="presentation">
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={isActive}
+                            onClick={() => onGridColumnsChange(columns)}
+                            className={cn(
+                              'flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors',
+                              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-inset',
+                              isActive
+                                ? 'bg-red-50 font-medium text-red-700'
+                                : 'text-foreground hover:bg-muted',
+                            )}
+                          >
+                            <span>{columns} columnas</span>
+                            {isActive ? (
+                              <Check className="size-4 shrink-0 text-red-600" aria-hidden="true" />
+                            ) : null}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </PopoverContent>
+              </Popover>
+            ) : null}
+          </>
+        ) : null}
+
         <button
           type="button"
           aria-label="Filtros del catálogo"
@@ -121,6 +228,7 @@ export function CategoryCatalogToolbar({
           onClick={onToggleSidebarFilters}
           className={cn(
             iconButtonClass,
+            catalogSidebarLayout && 'lg:hidden',
             filtersPanelActive && 'border-red-600/30 bg-red-50 text-red-700',
           )}
         >
@@ -166,9 +274,14 @@ export function CategoryCatalogToolbar({
             </ul>
           </PopoverContent>
         </Popover>
+
+        {endAction}
       </div>
 
-      {catalogSpecTabs && catalogSpecTabs.length > 0 && onToggleCatalogSpec ? (
+      {!catalogSidebarLayout &&
+      catalogSpecTabs &&
+      catalogSpecTabs.length > 0 &&
+      onToggleCatalogSpec ? (
         <div
           className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border/60 pt-3 sm:gap-x-5"
           role="toolbar"

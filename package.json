@@ -28,6 +28,7 @@
     "merge:toner-originales": "node scripts/merge-toner-originales-into-toner.mjs",
     "patch:accesorios-images": "node scripts/patch-accesorios-images.mjs",
     "import:repuestos": "node scripts/import-repuestos-products.mjs",
+    "import:maxima-price-list": "node scripts/import-maxima-price-list.mjs",
     "auth:seed": "node scripts/seed-haitech-auth-users.mjs",
     "db:migrate:012": "node scripts/apply-supabase-migration.mjs supabase/migrations/012_haisales_mirror_tables.sql",
     "db:migrate:011": "node scripts/apply-supabase-migration.mjs supabase/migrations/011_imported_sale_documents.sql",

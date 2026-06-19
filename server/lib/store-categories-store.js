@@ -7,6 +7,7 @@ import { seedProducts } from './seed-products.js';
 
 import {
   CATEGORY_COMPATIBLE_TONER,
+  CATEGORY_COMPATIBLE_TONER_HAITONE_LEGACY,
   CATEGORY_COMPATIBLE_TONER_LEGACY,
   COMPATIBLE_TONER_SUBCATEGORY_ID,
   COMPATIBLE_TONER_SUBCATEGORY_SLUG,
@@ -213,12 +214,14 @@ function migrateCompatibleTonerSubcategory(categories) {
     const isCompatiblesNode =
       row.id === COMPATIBLE_TONER_SUBCATEGORY_ID ||
       row.slug === COMPATIBLE_TONER_SUBCATEGORY_SLUG ||
-      (row.inventoryLabels ?? []).includes(CATEGORY_COMPATIBLE_TONER_LEGACY);
+      (row.inventoryLabels ?? []).includes(CATEGORY_COMPATIBLE_TONER_LEGACY) ||
+      (row.inventoryLabels ?? []).includes(CATEGORY_COMPATIBLE_TONER_HAITONE_LEGACY);
 
     if (!isCompatiblesNode) return row;
 
     const labels = new Set(row.inventoryLabels ?? []);
     labels.delete(CATEGORY_COMPATIBLE_TONER_LEGACY);
+    labels.delete(CATEGORY_COMPATIBLE_TONER_HAITONE_LEGACY);
     labels.add(CATEGORY_COMPATIBLE_TONER);
 
     const next = {
@@ -243,6 +246,7 @@ function migrateCompatibleTonerSubcategory(categories) {
     const labels = new Set(parent.inventoryLabels ?? []);
     const beforeSize = labels.size;
     labels.delete(CATEGORY_COMPATIBLE_TONER_LEGACY);
+    labels.delete(CATEGORY_COMPATIBLE_TONER_HAITONE_LEGACY);
     labels.add(CATEGORY_COMPATIBLE_TONER);
     if (labels.size !== beforeSize || labels.has(CATEGORY_COMPATIBLE_TONER_LEGACY) === false) {
       changed = true;

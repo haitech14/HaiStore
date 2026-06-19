@@ -526,6 +526,15 @@ export function buildCatalogSpecFilterTabs(products: readonly Product[]) {
   }));
 }
 
+export function getSpecFilterDisplayLabel(key: string): string {
+  if (key === 'Color::B/N') return 'Blanco y Negro';
+  if (key === 'Color::Color') return 'Color';
+  if (key === `${FORMATO_PAPEL_ATTR}::A4`) return 'A4';
+  if (key === `${FORMATO_PAPEL_ATTR}::A3`) return 'A3';
+  const parts = key.split('::');
+  return parts[1] ?? key;
+}
+
 export function toggleCatalogSpecFilter(selectedKeys: readonly string[], key: string): string[] {
   if (selectedKeys.includes(key)) {
     return selectedKeys.filter((item) => item !== key);

@@ -1,8 +1,13 @@
-export const CATEGORY_COMPATIBLE_TONER = 'Toner Compatibles Haitone';
+export const COMPATIBLE_TONER_BRAND_SUFFIX = 'HaiPrint';
+export const COMPATIBLE_TONER_BRAND_SUFFIX_LEGACY = 'Haitone';
+
+export const CATEGORY_COMPATIBLE_TONER = 'Toner Compatibles HaiPrint';
+export const CATEGORY_COMPATIBLE_TONER_HAITONE_LEGACY = 'Toner Compatibles Haitone';
 export const CATEGORY_COMPATIBLE_TONER_LEGACY = 'Toner Compatibles';
 
 export const COMPATIBLE_TONER_INVENTORY_LABELS = [
   CATEGORY_COMPATIBLE_TONER,
+  CATEGORY_COMPATIBLE_TONER_HAITONE_LEGACY,
   CATEGORY_COMPATIBLE_TONER_LEGACY,
 ];
 
@@ -26,13 +31,25 @@ export function normalizeCompatibleTonerCategory(category) {
 }
 
 /**
+ * @param {unknown} text
+ */
+export function replaceLegacyCompatibleTonerBrand(text) {
+  return String(text ?? '').replace(/\bHaitone\b/gi, COMPATIBLE_TONER_BRAND_SUFFIX);
+}
+
+/**
  * @param {unknown} name
  */
-export function appendHaitoneProductSuffix(name) {
-  const trimmed = String(name ?? '').trim();
+export function appendHaiPrintProductSuffix(name) {
+  const trimmed = replaceLegacyCompatibleTonerBrand(String(name ?? '').trim());
   if (!trimmed) return trimmed;
-  if (/\bHaitone\b/i.test(trimmed)) return trimmed;
-  return `${trimmed} Haitone`;
+  if (/\bHaiPrint\b/i.test(trimmed)) return trimmed;
+  return `${trimmed} ${COMPATIBLE_TONER_BRAND_SUFFIX}`;
+}
+
+/** @deprecated Usar appendHaiPrintProductSuffix */
+export function appendHaitoneProductSuffix(name) {
+  return appendHaiPrintProductSuffix(name);
 }
 
 /**
@@ -43,12 +60,12 @@ export function normalizeCompatibleTonerProductFields(product) {
     return product;
   }
 
-  const name = appendHaitoneProductSuffix(product.name);
+  const name = appendHaiPrintProductSuffix(product.name);
   const rawDescription = product.description;
   const description =
     rawDescription == null || rawDescription === product.name
       ? name
-      : appendHaitoneProductSuffix(rawDescription);
+      : appendHaiPrintProductSuffix(rawDescription);
 
   return {
     ...product,

@@ -4,14 +4,12 @@ import { Plus } from 'lucide-react';
 
 import { CatalogFilterOption } from '@/components/catalog-filter-option';
 import { CatalogSidebarNav } from '@/components/catalog-sidebar-nav';
-import { CategoryCatalogFiltersRow } from '@/components/category/category-catalog-filters-row';
 import { CategoryCatalogFormatSections } from '@/components/category/category-catalog-format-sections';
 import {
   CategoryCatalogToolbar,
   type CatalogViewMode,
   type CategorySortValue,
 } from '@/components/category/category-catalog-toolbar';
-import { CategorySpecFilterTabs } from '@/components/category/category-spec-filter-tabs';
 import { CategoryQuickFilters } from '@/components/category/category-quick-filters';
 import { CatalogProductPagination } from '@/components/category/catalog-product-pagination';
 import { CategoryHeroBanner } from '@/components/category-hero-banner';
@@ -42,7 +40,12 @@ import {
   findStoreSubcategoryBySlug,
   resolveCategoryPageProductLabels,
 } from '@/lib/category-product-labels';
-import { findStoreCategoryBySlug, findDefaultNewSubcategorySlug, formatSubcategoryTabLabel } from '@/lib/store-category-display';
+import {
+  findStoreCategoryBySlug,
+  findDefaultNewSubcategorySlug,
+  formatSubcategoryTabLabel,
+} from '@/lib/store-category-display';
+import type { ActiveFilterChip } from '@/components/category/category-active-filter-chips';
 import { productMatchesCategoryFilter } from '@/lib/inventory-categories';
 import {
   filterProductsBySearch,
@@ -89,6 +92,7 @@ import {
   shouldShowCatalogSpecFilterTabs,
   shouldShowProductionFilters,
   getCatalogLayoutOrderedProducts,
+  getSpecFilterDisplayLabel,
   toggleCatalogSpecFilter,
 } from '@/lib/category-catalog-filters';
 import { useIsDesktopNav, useIsMobile } from '@/hooks/use-media-query';
@@ -125,6 +129,7 @@ export type CategoryPageProps = {
 export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
   const { slug: routeSlug } = useParams<{ slug: string }>();
   const slug = catalogSlug ?? routeSlug;
+  const catalogSidebarLayout = shouldShowCatalogSpecFilterTabs(slug);
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const subSlug = searchParams.get('sub');
@@ -144,8 +149,10 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
   const [priceMax, setPriceMax] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<CategorySortValue>('price-asc');
   const [viewMode, setViewMode] = useState<CatalogViewMode>('grid');
-  const [gridColumns, setGridColumns] = useState<CatalogGridColumns>(6);
-  const [filtersPanelOpen, setFiltersPanelOpen] = useState(false);
+  const [gridColumns, setGridColumns] = useState<CatalogGridColumns>(
+    catalogSidebarLayout ? 5 : 6,
+  );
+  const [filtersPanelOpen, setFiltersPanelOpen] = useState(catalogSidebarLayout);
   const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [inStockOnly, setInStockOnly] = useState(false);
@@ -516,7 +523,11 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     return buildCatalogSpecFilterTabs(baseProducts);
   }, [slug, baseProducts]);
 
-  const showFormatSections = shouldShowCatalogSpecFilterTabs(slug) && viewMode === 'grid';
+  const showFormatSections =
+    shouldShowCatalogSpecFilterTabs(slug) && viewMode === 'grid' && !catalogSidebarLayout;
+  const catalogSidebarOpen = catalogSidebarLayout
+    ? isDesktopNav
+    : filtersPanelOpen && isDesktopNav;
 
   const paginationProducts = useMemo(() => {
     if (!showFormatSections) return filteredProducts;
@@ -558,6 +569,8 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     priceMax,
     estadoFilter,
     gridColumns,
+    filtersPanelOpen,
+    catalogSidebarLayout,
     viewMode,
     isMobile,
   ]);
@@ -580,12 +593,17 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
   }, []);
 
   const toggleCategoryFilters = useCallback(() => {
+    if (catalogSidebarLayout && isDesktopNav) return;
     if (isDesktopNav) {
-      setFiltersPanelOpen((open) => !open);
+      setFiltersPanelOpen((open) => {
+        const next = !open;
+        setGridColumns(next ? 5 : 6);
+        return next;
+      });
       return;
     }
     setFiltersSheetOpen(true);
-  }, [isDesktopNav]);
+  }, [catalogSidebarLayout, isDesktopNav]);
 
   if (!slug || !category) {
     return <Navigate to="/" replace />;
@@ -619,11 +637,14 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     (priceMax != null && priceMax !== availablePriceRange.max);
   const hasSidebarFilters = subSlug != null || hasPriceFilter || inStockOnly;
 
+  const formatSpecFilterTabs = specFilterTabs.filter((tab) => tab.key.includes('Formato papel::'));
+  const colorSpecFilterTabs = specFilterTabs.filter((tab) => tab.key.startsWith('Color::'));
+
   const categoryFiltersContent = (
     <>
       <section aria-label="Catálogo por categoría">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Catálogo
+          {catalogSidebarLayout ? 'Categorías' : 'Catálogo'}
         </h3>
         <div className="mt-2 max-h-[min(22rem,50vh)] overflow-y-auto rounded-lg border border-border/70 bg-muted/15 p-1.5 pr-0.5">
           {categoryTree.length === 0 ? (
@@ -642,17 +663,19 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
       {showProductionFilters ? (
         <section aria-label="Producción mensual">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Producción
+            {catalogSidebarLayout ? 'Producción (Páginas/Mes)' : 'Producción'}
           </h3>
           <div className="mt-2 space-y-1">
-            <CatalogFilterOption
-              id="filter-produccion-all"
-              label="Todas"
-              count={baseProducts.length}
-              active={selectedProduction === null}
-              mode="radio"
-              onToggle={() => setSelectedProduction(null)}
-            />
+            {!catalogSidebarLayout ? (
+              <CatalogFilterOption
+                id="filter-produccion-all"
+                label="Todas"
+                count={baseProducts.length}
+                active={selectedProduction === null}
+                mode="radio"
+                onToggle={() => setSelectedProduction(null)}
+              />
+            ) : null}
             {productionFiltersWithCounts.map((option) => (
               <CatalogFilterOption
                 key={option.key}
@@ -669,93 +692,141 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
         </section>
       ) : null}
 
-      <section aria-label="Disponibilidad">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Disponibilidad
-        </h3>
-        <div className="mt-2 space-y-1">
-          <CatalogFilterOption
-            id="filter-in-stock-only"
-            label="Solo en stock"
-            count={inStockProductCount}
-            active={inStockOnly}
-            disabled={inStockProductCount === 0}
-            onToggle={() => setInStockOnly((prev) => !prev)}
-          />
-        </div>
-      </section>
-
-      <section aria-label="Atributos del producto">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Atributos
-        </h3>
-        <div className="mt-2 max-h-56 space-y-1 overflow-y-auto pr-0.5">
-          {sidebarAttributeOptions.length === 0 ? (
-            <p className="rounded-md border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
-              Sin atributos en esta categoría.
-            </p>
-          ) : (
-            sidebarAttributeOptions.map((attr) => (
+      {catalogSidebarLayout && formatSpecFilterTabs.length > 0 ? (
+        <section aria-label="Formato de papel">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Formato de Papel
+          </h3>
+          <div className="mt-2 space-y-1">
+            {formatSpecFilterTabs.map((tab) => (
               <CatalogFilterOption
-                key={attr.key}
-                id={`filter-attr-${attr.key}`}
-                label={attr.displayLabel}
-                count={attr.count}
-                active={selectedAttributes.includes(attr.key)}
-                disabled={attr.count === 0}
-                onToggle={() => toggleAttribute(attr.key)}
+                key={tab.key}
+                id={`filter-formato-${tab.key}`}
+                label={getSpecFilterDisplayLabel(tab.key)}
+                count={tab.count}
+                active={selectedSpecFilters.includes(tab.key)}
+                disabled={tab.count === 0}
+                onToggle={() => toggleSpecFilter(tab.key)}
               />
-            ))
-          )}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
-      <section aria-label="Precio">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Precio (USD)
-        </h3>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <label className="space-y-1 text-xs text-muted-foreground">
-            <span>Mínimo</span>
-            <input
-              type="number"
-              min={availablePriceRange.min}
-              max={availablePriceRange.max}
-              value={priceMin ?? availablePriceRange.min}
-              onChange={(event) => {
-                const next = Number(event.target.value);
-                setPriceMin(
-                  Number.isFinite(next)
-                    ? Math.max(availablePriceRange.min, next)
-                    : availablePriceRange.min,
-                );
-              }}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+      {catalogSidebarLayout && colorSpecFilterTabs.length > 0 ? (
+        <section aria-label="Color de impresión">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Color
+          </h3>
+          <div className="mt-2 space-y-1">
+            {colorSpecFilterTabs.map((tab) => (
+              <CatalogFilterOption
+                key={tab.key}
+                id={`filter-color-${tab.key}`}
+                label={getSpecFilterDisplayLabel(tab.key)}
+                count={tab.count}
+                active={selectedSpecFilters.includes(tab.key)}
+                disabled={tab.count === 0}
+                onToggle={() => toggleSpecFilter(tab.key)}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {!catalogSidebarLayout ? (
+        <section aria-label="Disponibilidad">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Disponibilidad
+          </h3>
+          <div className="mt-2 space-y-1">
+            <CatalogFilterOption
+              id="filter-in-stock-only"
+              label="Solo en stock"
+              count={inStockProductCount}
+              active={inStockOnly}
+              disabled={inStockProductCount === 0}
+              onToggle={() => setInStockOnly((prev) => !prev)}
             />
-          </label>
-          <label className="space-y-1 text-xs text-muted-foreground">
-            <span>Máximo</span>
-            <input
-              type="number"
-              min={availablePriceRange.min}
-              max={availablePriceRange.max}
-              value={priceMax ?? availablePriceRange.max}
-              onChange={(event) => {
-                const next = Number(event.target.value);
-                setPriceMax(
-                  Number.isFinite(next)
-                    ? Math.min(availablePriceRange.max, next)
-                    : availablePriceRange.max,
-                );
-              }}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
-            />
-          </label>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Rango disponible: {availablePriceRange.min} - {availablePriceRange.max} USD
-        </p>
-      </section>
+          </div>
+        </section>
+      ) : null}
+
+      {!catalogSidebarLayout ? (
+        <section aria-label="Atributos del producto">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Atributos
+          </h3>
+          <div className="mt-2 max-h-56 space-y-1 overflow-y-auto pr-0.5">
+            {sidebarAttributeOptions.length === 0 ? (
+              <p className="rounded-md border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
+                Sin atributos en esta categoría.
+              </p>
+            ) : (
+              sidebarAttributeOptions.map((attr) => (
+                <CatalogFilterOption
+                  key={attr.key}
+                  id={`filter-attr-${attr.key}`}
+                  label={attr.displayLabel}
+                  count={attr.count}
+                  active={selectedAttributes.includes(attr.key)}
+                  disabled={attr.count === 0}
+                  onToggle={() => toggleAttribute(attr.key)}
+                />
+              ))
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {!catalogSidebarLayout ? (
+        <section aria-label="Precio">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Precio (USD)
+          </h3>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <label className="space-y-1 text-xs text-muted-foreground">
+              <span>Mínimo</span>
+              <input
+                type="number"
+                min={availablePriceRange.min}
+                max={availablePriceRange.max}
+                value={priceMin ?? availablePriceRange.min}
+                onChange={(event) => {
+                  const next = Number(event.target.value);
+                  setPriceMin(
+                    Number.isFinite(next)
+                      ? Math.max(availablePriceRange.min, next)
+                      : availablePriceRange.min,
+                  );
+                }}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+              />
+            </label>
+            <label className="space-y-1 text-xs text-muted-foreground">
+              <span>Máximo</span>
+              <input
+                type="number"
+                min={availablePriceRange.min}
+                max={availablePriceRange.max}
+                value={priceMax ?? availablePriceRange.max}
+                onChange={(event) => {
+                  const next = Number(event.target.value);
+                  setPriceMax(
+                    Number.isFinite(next)
+                      ? Math.min(availablePriceRange.max, next)
+                      : availablePriceRange.max,
+                  );
+                }}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+              />
+            </label>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Rango disponible: {availablePriceRange.min} - {availablePriceRange.max} USD
+          </p>
+        </section>
+      ) : null}
 
       {hasSidebarFilters || hasAttributeFilters ? (
         <Button
@@ -769,6 +840,34 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
       ) : null}
     </>
   );
+
+  const activeFilterChips: ActiveFilterChip[] = [];
+  if (catalogSidebarLayout && activeSubcategory && storeCategory) {
+    activeFilterChips.push({
+      key: `sub:${activeSubcategory.slug}`,
+      label: formatSubcategoryTabLabel(activeSubcategory.name, storeCategory.name),
+      onRemove: () => selectSubcategory(null),
+    });
+  }
+  if (catalogSidebarLayout) {
+    for (const key of selectedSpecFilters) {
+      activeFilterChips.push({
+        key,
+        label: getSpecFilterDisplayLabel(key),
+        onRemove: () => toggleSpecFilter(key),
+      });
+    }
+    if (selectedProduction) {
+      const productionOption = productionFiltersWithCounts.find(
+        (option) => option.key === selectedProduction,
+      );
+      activeFilterChips.push({
+        key: selectedProduction,
+        label: productionOption?.sidebarLabel ?? 'Producción',
+        onRemove: () => setSelectedProduction(null),
+      });
+    }
+  }
 
   const heroSubcategoriesTabs =
     storeCategory && storeCategory.children.length > 0 && activeSubcategory ? (
@@ -819,7 +918,8 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
         <div
           className={cn(
             'grid gap-5 lg:gap-6',
-            showProductCatalog && filtersPanelOpen
+            showProductCatalog &&
+              (catalogSidebarLayout ? isDesktopNav : filtersPanelOpen)
               ? 'lg:grid-cols-[minmax(17rem,20rem)_minmax(0,1fr)]'
               : 'lg:grid-cols-1',
           )}
@@ -829,7 +929,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
             ref={filtersAsideRef}
             className={cn(
               'hidden h-fit rounded-xl border bg-card p-4 shadow-sm lg:sticky lg:top-24 lg:block',
-              !filtersPanelOpen && 'lg:hidden',
+              !catalogSidebarLayout && !filtersPanelOpen && 'lg:hidden',
             )}
           >
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -875,26 +975,8 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
 
             {showProductCatalog ? (
             <>
-            {filtersPanelOpen && specFilterTabs.length > 0 ? (
-              <CategoryCatalogFiltersRow
-                className="mb-4"
-                subcategories={null}
-                filters={
-                  <CategorySpecFilterTabs
-                    heading="Filtros"
-                    align="end"
-                    tabs={specFilterTabs}
-                    selectedKeys={selectedSpecFilters}
-                    onToggle={toggleSpecFilter}
-                    ariaLabel="Filtros de formato y color"
-                    groupLabel="Formato y color"
-                  />
-                }
-              />
-            ) : null}
-
             <CategoryCatalogToolbar
-              subcategoryTabs={heroSubcategoriesTabs}
+              subcategoryTabs={catalogSidebarLayout ? undefined : heroSubcategoriesTabs}
               productCount={filteredProducts.length}
               pageTitle={pageTitle}
               searchQuery={catalogSearch}
@@ -920,13 +1002,8 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
               }}
               onToggleAttribute={toggleAttribute}
               onToggleProduction={toggleProduction}
-              {...(showFormatSections
-                ? {
-                    catalogSpecTabs: specFilterTabs,
-                    selectedCatalogSpecKeys: selectedSpecFilters,
-                    onToggleCatalogSpec: toggleSpecFilter,
-                  }
-                : {})}
+              catalogSidebarLayout={catalogSidebarLayout}
+              activeFilterChips={activeFilterChips}
               filtersActive={hasAttributeFilters || hasPriceFilter || inStockOnly}
               endAction={
                 isAdmin && viewMode === 'table' ? (
@@ -943,11 +1020,13 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
               }
             />
 
-            <CategoryQuickFilters
-              modelFilters={modelFilterChips}
-              selectedAttributes={selectedAttributes}
-              onToggleAttribute={toggleAttribute}
-            />
+            {!catalogSidebarLayout ? (
+              <CategoryQuickFilters
+                modelFilters={modelFilterChips}
+                selectedAttributes={selectedAttributes}
+                onToggleAttribute={toggleAttribute}
+              />
+            ) : null}
             </>
             ) : null}
 
@@ -965,7 +1044,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
                   className={cn(
                     'grid gap-4',
                     viewMode === 'grid'
-                      ? catalogGridClassName(gridColumns)
+                      ? catalogGridClassName(gridColumns, catalogSidebarOpen)
                       : 'grid-cols-1',
                   )}
                 >
@@ -1002,12 +1081,13 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
                     sections={catalogFormatSections}
                     categorySlug={slug}
                     gridColumns={gridColumns}
+                    sidebarOpen={catalogSidebarOpen}
                     renderProduct={(product) => (
                       <ProductHighlightCard product={product} layout="card" />
                     )}
                   />
                 ) : (
-                  <div className={catalogGridClassName(gridColumns)}>
+                  <div className={catalogGridClassName(gridColumns, catalogSidebarOpen)}>
                     {pagedCatalogProducts.map((product) => (
                       <ProductHighlightCard key={product.id} product={product} layout="card" />
                     ))}
