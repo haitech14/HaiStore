@@ -52,6 +52,20 @@ async function generateVariants(inputPath, variants) {
 async function optimizeHero() {
   console.log('\n— Hero banner —');
   const hero = path.join(PUBLIC, 'categories', 'banner2.png');
+  if (!fs.existsSync(hero)) {
+    console.warn('  ⚠ No encontrado: banner2.png');
+    return;
+  }
+
+  const optimizedPng = `${hero}.optimized.tmp`;
+  await sharp(hero)
+    .rotate()
+    .png({ compressionLevel: 9, adaptiveFiltering: true })
+    .toFile(optimizedPng);
+  const before = kb(hero);
+  fs.renameSync(optimizedPng, hero);
+  console.log(`  ✓ banner2.png optimizado (${before} KB → ${kb(hero)} KB)`);
+
   await generateVariants(hero, [
     { suffix: '-768', width: 768 },
     { suffix: '-1280', width: 1280 },
@@ -64,7 +78,9 @@ async function optimizeCategories() {
   const dir = path.join(PUBLIC, 'categories');
   if (!fs.existsSync(dir)) return;
 
-  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.png') && !f.includes('banner'));
+  const files = fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith('.png') && !f.includes('banner') && f !== 'DiadelPadre.png');
   for (const file of files) {
     console.log(`  ${file}`);
     await generateVariants(path.join(dir, file), [

@@ -5,6 +5,12 @@ import { randomUUID } from 'crypto';
 import { readInventory } from './inventory-store.js';
 import { seedProducts } from './seed-products.js';
 
+import {
+  CATEGORY_COMPATIBLE_TONER,
+  CATEGORY_COMPATIBLE_TONER_LEGACY,
+  COMPATIBLE_TONER_SUBCATEGORY_ID,
+  COMPATIBLE_TONER_SUBCATEGORY_SLUG,
+} from '../../shared/compatible-toner.js';
 import { getStoreCategoriesPath } from './server-paths.js';
 
 function categoriesPath() {
@@ -200,16 +206,79 @@ function mergeMissingRentalCategories(categories) {
   return changed ? [...byId.values()] : categories;
 }
 
+function migrateCompatibleTonerSubcategory(categories) {
+  let changed = false;
+
+  const updated = categories.map((row) => {
+    const isCompatiblesNode =
+      row.id === COMPATIBLE_TONER_SUBCATEGORY_ID ||
+      row.slug === COMPATIBLE_TONER_SUBCATEGORY_SLUG ||
+      (row.inventoryLabels ?? []).includes(CATEGORY_COMPATIBLE_TONER_LEGACY);
+
+    if (!isCompatiblesNode) return row;
+
+    const labels = new Set(row.inventoryLabels ?? []);
+    labels.delete(CATEGORY_COMPATIBLE_TONER_LEGACY);
+    labels.add(CATEGORY_COMPATIBLE_TONER);
+
+    const next = {
+      ...row,
+      name: CATEGORY_COMPATIBLE_TONER,
+      inventoryLabels: [...labels],
+    };
+
+    if (
+      row.name !== next.name ||
+      JSON.stringify(row.inventoryLabels ?? []) !== JSON.stringify(next.inventoryLabels)
+    ) {
+      changed = true;
+    }
+
+    return next;
+  });
+
+  const parentIndex = updated.findIndex((row) => row.id === 'cat-toner');
+  if (parentIndex >= 0) {
+    const parent = updated[parentIndex];
+    const labels = new Set(parent.inventoryLabels ?? []);
+    const beforeSize = labels.size;
+    labels.delete(CATEGORY_COMPATIBLE_TONER_LEGACY);
+    labels.add(CATEGORY_COMPATIBLE_TONER);
+    if (labels.size !== beforeSize || labels.has(CATEGORY_COMPATIBLE_TONER_LEGACY) === false) {
+      changed = true;
+    }
+    updated[parentIndex] = {
+      ...parent,
+      inventoryLabels: [...labels],
+    };
+  }
+
+  return changed ? updated : categories;
+}
+
 export async function readStoreCategories() {
   await ensureCategoriesFile();
   const raw = await fs.readFile(categoriesPath(), 'utf-8');
   const data = JSON.parse(raw);
   let categories = (data.categories ?? []).map((row) => normalizeCategory(row));
+  let needsWrite = false;
+
   const merged = mergeMissingRentalCategories(categories);
   if (merged !== categories) {
     categories = merged;
+    needsWrite = true;
+  }
+
+  const migrated = migrateCompatibleTonerSubcategory(categories);
+  if (migrated !== categories) {
+    categories = migrated;
+    needsWrite = true;
+  }
+
+  if (needsWrite) {
     await writeStoreCategories(categories);
   }
+
   return categories;
 }
 

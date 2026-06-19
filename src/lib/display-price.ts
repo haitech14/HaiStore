@@ -1,11 +1,31 @@
 import type { DisplayCurrency } from '@/types/display-currency';
-import { formatUsd, usdToPen } from '@/lib/utils';
+import { formatPenFromUsdPrecise, formatUsd, penToUsd, usdToPen } from '@/lib/utils';
 
 export function getDisplayPriceVisibility(displayCurrency: DisplayCurrency) {
   return {
     showUsd: displayCurrency !== 'PEN',
     showPen: displayCurrency !== 'USD',
   };
+}
+
+/** Precio formateado según moneda activa ($, S/ o ambos). */
+export function formatDisplayPriceFromUsd(
+  usd: number,
+  displayCurrency: DisplayCurrency,
+): string {
+  const { showUsd, showPen } = getDisplayPriceVisibility(displayCurrency);
+  const parts: string[] = [];
+  if (showUsd) parts.push(formatUsd(usd));
+  if (showPen) parts.push(formatPenFromUsdPrecise(usd));
+  return parts.join(' · ');
+}
+
+/** Monto en soles convertido y formateado según moneda activa. */
+export function formatDisplayPriceFromPen(
+  pen: number,
+  displayCurrency: DisplayCurrency,
+): string {
+  return formatDisplayPriceFromUsd(penToUsd(pen), displayCurrency);
 }
 
 export function formatPenInteger(pen: number): string {

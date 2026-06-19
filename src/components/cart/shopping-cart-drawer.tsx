@@ -180,13 +180,13 @@ export function ShoppingCartDrawer() {
               </div>
               <div className="flex flex-col gap-2">
                 <Button asChild className="min-h-11 w-full bg-red-600 hover:bg-red-500">
-                  <Link to="/tienda" onClick={() => setCartOpen(false)}>
-                    Ver carrito y seguir comprando
+                  <Link to="/checkout" onClick={() => setCartOpen(false)}>
+                    Ir al checkout
                   </Link>
                 </Button>
                 <Button asChild variant="outline" className="min-h-11 w-full">
-                  <Link to="/contacto" onClick={() => setCartOpen(false)}>
-                    Solicitar cotización
+                  <Link to="/tienda" onClick={() => setCartOpen(false)}>
+                    Seguir comprando
                   </Link>
                 </Button>
                 <Button

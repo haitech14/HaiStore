@@ -215,9 +215,6 @@ export function mergeRicohLpEntriesToProduct(group) {
   const compraPrice = parseNumber(priceSource.compra);
   const suppliers = buildRicohLpSuppliers(compraPrice);
 
-  const defaultImage =
-    category === CATEGORY_ACCESORIOS ? ACCESORIOS_DEFAULT_IMAGE : TONER_DEFAULT_IMAGE;
-
   return normalizeProductInput({
     id: ricohLpProductIdFromCode(tituloSource.code),
     code: tituloSource.code,
@@ -227,8 +224,8 @@ export function mergeRicohLpEntriesToProduct(group) {
     category,
     currency: 'USD',
     stock: 0,
-    image_url: defaultImage,
-    gallery: [defaultImage],
+    image_url: null,
+    gallery: [],
     prices: {
       public: publicPrice,
       tecnico: 0,

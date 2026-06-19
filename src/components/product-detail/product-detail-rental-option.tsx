@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, Droplet, Headphones, Wrench, type LucideIcon } from 'lucide-react';
 
+import { DualPrice } from '@/components/product/product-dual-price';
 import { Label } from '@/components/ui/label';
-import { cn, formatUsd, penToUsd } from '@/lib/utils';
+import { cn, penToUsd } from '@/lib/utils';
 import type { RentalPlanOption } from '@/types/product-detail';
 
 interface ProductDetailRentalOptionProps {
@@ -43,11 +44,8 @@ export function ProductDetailRentalOption({ plans, className }: ProductDetailRen
         <div className="min-w-0 space-y-1">
           <p className="text-sm text-neutral-700">Alquila desde</p>
           <p className="text-2xl font-bold leading-none text-neutral-900">
-            S/ {selectedPlan.monthlyPricePen.toLocaleString('es-PE')}
+            <DualPrice usd={penToUsd(selectedPlan.monthlyPricePen)} className="inline font-bold" />
             <span className="text-sm font-normal text-neutral-500"> / mes</span>
-          </p>
-          <p className="text-xs text-neutral-500">
-            {formatUsd(penToUsd(selectedPlan.monthlyPricePen))} / mes
           </p>
         </div>
 

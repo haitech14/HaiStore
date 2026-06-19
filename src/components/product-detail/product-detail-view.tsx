@@ -8,16 +8,18 @@ import {
   ProductQuotePdfViewer,
   type QuotePdfPreview,
 } from '@/components/product-detail/product-quote-pdf-viewer';
+import { ProductDetailAdvisorBanner } from '@/components/product-detail/product-detail-advisor-banner';
 import { ProductDetailCombo } from '@/components/product-detail/product-detail-combo';
 import { ProductDetailComparison } from '@/components/product-detail/product-detail-comparison';
 import { ProductDetailConsumables } from '@/components/product-detail/product-detail-consumables';
+import { ProductDetailConsumablesStrip } from '@/components/product-detail/product-detail-consumables-strip';
 import { ProductDetailDescription } from '@/components/product-detail/product-detail-description';
+import { ProductDetailDescriptionPanel } from '@/components/product-detail/product-detail-description-panel';
 import { ProductDetailDescriptionVisual } from '@/components/product-detail/product-detail-description-visual';
 import { ProductDetailEquipmentConfig } from '@/components/product-detail/product-detail-equipment-config';
 import { ProductDetailGallery } from '@/components/product-detail/product-detail-gallery';
 import { ProductDetailHeroInfo } from '@/components/product-detail/product-detail-hero-info';
 import { ProductDetailMobilePurchaseBar } from '@/components/product-detail/product-detail-mobile-purchase-bar';
-import { ProductDetailOverview } from '@/components/product-detail/product-detail-overview';
 import { ProductDetailRentalBanner } from '@/components/product-detail/product-detail-rental-banner';
 import { ProductDetailRelated } from '@/components/product-detail/product-detail-related';
 import { ProductDetailResources } from '@/components/product-detail/product-detail-resources';
@@ -50,7 +52,6 @@ import type { Product } from '@/types/product';
 
 type DetailTab =
   | 'description'
-  | 'features'
   | 'specs'
   | 'configuration'
   | 'consumables'
@@ -174,14 +175,12 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
 
   const tabs = useMemo(() => {
     if (useRicohTabs) {
-      const items: { id: DetailTab; label: string }[] = [
-        { id: 'description', label: 'Descripción general' },
-        { id: 'features', label: 'Características' },
-        { id: 'specs', label: 'Especificaciones' },
-        { id: 'options', label: 'Opciones y consumibles' },
-        { id: 'resources', label: 'Recursos' },
+      return [
+        { id: 'description' as const, label: 'Descripción' },
+        { id: 'specs' as const, label: 'Especificaciones técnicas' },
+        { id: 'consumables' as const, label: 'Consumibles / Relacionados' },
+        { id: 'resources' as const, label: 'Documentación' },
       ];
-      return items;
     }
 
     const items: { id: DetailTab; label: string }[] = [
@@ -290,7 +289,13 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
             />
 
             {detail.isPrinterEquipment && detail.rentalPlans.length > 0 ? (
-              <ProductDetailRentalBanner product={product} plans={detail.rentalPlans} />
+              <ProductDetailRentalBanner
+                product={product}
+                plans={detail.rentalPlans}
+                displayTitle={detail.displayTitle}
+                sku={detail.sku}
+                brandLabel={detail.brandLabel}
+              />
             ) : null}
           </div>
 
@@ -347,7 +352,88 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
           >
             {activeTab === 'description' ? (
               useRicohTabs && detail.descriptionContent ? (
-                <ProductDetailOverview content={detail.descriptionContent} />
+                <div className="space-y-8">
+                  <ProductDetailDescriptionPanel
+                    content={detail.descriptionContent}
+                    specs={detail.specs}
+                    sku={detail.sku}
+                    onViewAllSpecs={() => setActiveTab('specs')}
+                  />
+
+                  <ProductDetailDescription
+                    content={detail.descriptionContent}
+                    omitPanelSummary
+                  />
+
+                  {detail.descriptionVisual ? (
+                    <ProductDetailDescriptionVisual
+                      visual={detail.descriptionVisual}
+                      variant="bar"
+                    />
+                  ) : null}
+
+                  {equipmentSteps.length > 0 ? (
+                    <div>
+                      <h3 className="mb-4 text-base font-bold text-[#0f1f3d]">
+                        Configuración del equipo
+                      </h3>
+                      {catalogLoading ? (
+                        <div
+                          className="space-y-2"
+                          role="status"
+                          aria-live="polite"
+                          aria-label="Cargando configuración"
+                        >
+                          <div className="h-6 w-52 animate-pulse rounded bg-muted" />
+                          {Array.from({ length: 5 }).map((_, index) => (
+                            <div
+                              key={index}
+                              className="h-11 animate-pulse rounded-md bg-[#0f1f3d]/80"
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <ProductDetailEquipmentConfig
+                          hideTitle
+                          steps={equipmentSteps}
+                          selection={equipmentSelection}
+                          onSelectionChange={setEquipmentSelection}
+                        />
+                      )}
+                    </div>
+                  ) : null}
+
+                  {!catalogLoading &&
+                  consumableGroups.some(
+                    (group) => group.items.length > 0 || group.subgroups.length > 0,
+                  ) ? (
+                    <ProductDetailConsumablesStrip
+                      groups={consumableGroups}
+                      className="mt-2"
+                      onViewAll={() => setActiveTab('consumables')}
+                    />
+                  ) : null}
+                  <ProductDetailAdvisorBanner />
+                </div>
+              ) : useRicohTabs ? (
+                <div className="space-y-0">
+                  <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+                    <div className="space-y-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+                      <p className={cn(!descriptionExpanded && 'line-clamp-6')}>{descriptionText}</p>
+                      {descriptionText.length > 280 ? (
+                        <button
+                          type="button"
+                          onClick={() => setDescriptionExpanded((value) => !value)}
+                          className="text-sm font-bold text-red-600 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+                        >
+                          {descriptionExpanded ? 'Ver menos' : 'Ver más'}
+                        </button>
+                      ) : null}
+                    </div>
+                    <ProductDetailSpecsTable specs={detail.specs} />
+                  </div>
+                  <ProductDetailAdvisorBanner />
+                </div>
               ) : (
                 <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
                   <div className="space-y-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
@@ -367,70 +453,16 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
               )
             ) : null}
 
-            {activeTab === 'features' && detail.descriptionContent ? (
-              <div className="space-y-8">
-                <ProductDetailDescription content={detail.descriptionContent} />
-                {detail.descriptionVisual ? (
-                  <ProductDetailDescriptionVisual visual={detail.descriptionVisual} />
-                ) : null}
-              </div>
-            ) : null}
-
             {activeTab === 'specs' ? (
-              <div className="max-w-3xl">
+              <div className="max-w-3xl space-y-4">
+                <h3 className="text-lg font-bold text-[#0f1f3d]">Especificaciones técnicas</h3>
                 <ProductDetailSpecsTable specs={detail.specs} />
-              </div>
-            ) : null}
-
-            {activeTab === 'options' ? (
-              <div className="max-w-5xl space-y-8">
-                {equipmentSteps.length > 0 ? (
-                  <div>
-                    <h3 className="mb-4 text-base font-bold text-[#0f1f3d]">Configuración del equipo</h3>
-                    {catalogLoading ? (
-                      <div className="space-y-2" role="status" aria-live="polite" aria-label="Cargando configuración">
-                        <div className="h-6 w-52 animate-pulse rounded bg-muted" />
-                        {Array.from({ length: 5 }).map((_, index) => (
-                          <div key={index} className="h-11 animate-pulse rounded-md bg-[#0f1f3d]/80" />
-                        ))}
-                      </div>
-                    ) : (
-                      <ProductDetailEquipmentConfig
-                        hideTitle
-                        steps={equipmentSteps}
-                        selection={equipmentSelection}
-                        onSelectionChange={setEquipmentSelection}
-                      />
-                    )}
-                  </div>
-                ) : null}
-
-                {showConsumablesTab ? (
-                  <div>
-                    <h3 className="mb-4 text-base font-bold text-[#0f1f3d]">Consumibles compatibles</h3>
-                    {catalogLoading ? (
-                      <div className="space-y-6" role="status" aria-live="polite" aria-label="Cargando consumibles">
-                        {Array.from({ length: 3 }).map((_, index) => (
-                          <div key={index} className="space-y-3">
-                            <div className="h-6 w-40 animate-pulse rounded bg-muted" />
-                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                              {Array.from({ length: 3 }).map((__, cardIndex) => (
-                                <div key={cardIndex} className="h-28 animate-pulse rounded-lg bg-muted/50" />
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <ProductDetailConsumables groups={consumableGroups} />
-                    )}
-                  </div>
-                ) : null}
+                <ProductDetailAdvisorBanner />
               </div>
             ) : null}
 
             {activeTab === 'resources' ? (
-              <div className="max-w-3xl">
+              <div className="max-w-3xl space-y-6">
                 <ProductDetailResources
                   links={detail.resourceLinks}
                   product={product}
@@ -440,6 +472,7 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
                   categoryLabel={detail.categoryLabel}
                   heroSpecBullets={detail.heroSpecBullets}
                 />
+                <ProductDetailAdvisorBanner />
               </div>
             ) : null}
 
@@ -464,7 +497,7 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
             ) : null}
 
             {activeTab === 'consumables' ? (
-              <div className="max-w-5xl">
+              <div className="max-w-5xl space-y-6">
                 {catalogLoading ? (
                   <div className="space-y-6" role="status" aria-live="polite" aria-label="Cargando consumibles">
                     {Array.from({ length: 3 }).map((_, index) => (
@@ -481,6 +514,7 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
                 ) : (
                   <ProductDetailConsumables groups={consumableGroups} />
                 )}
+                <ProductDetailAdvisorBanner />
               </div>
             ) : null}
 

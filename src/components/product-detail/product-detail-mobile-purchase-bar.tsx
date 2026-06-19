@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { ShoppingCart } from 'lucide-react';
 
 import { AddToCartButton } from '@/components/cart/add-to-cart-button';
+import { DualPrice } from '@/components/product/product-dual-price';
 import { useDisplayCurrency } from '@/context/display-currency-context';
 import {
   resolveBulkDiscountSavingsHint,
   type BulkDiscountPricing,
 } from '@/lib/bulk-discount-tiers';
-import { cn, formatPenFromUsdPrecise, formatUsd } from '@/lib/utils';
+import { formatDisplayPriceFromUsd } from '@/lib/display-price';
+import { cn } from '@/lib/utils';
 import type { BulkDiscountTier } from '@/types/product-detail';
 import type { Product } from '@/types/product';
 
@@ -65,24 +67,14 @@ export function ProductDetailMobilePurchaseBar({
       floorPriceUsd,
     });
     if (!hint) return quantity > 1 ? `Total ${quantity} ud.` : null;
-    const amount = formatPenFromUsdPrecise(hint.savingsUsd);
+    const amount = formatDisplayPriceFromUsd(hint.savingsUsd, displayCurrency);
     return hint.isActive
       ? `Ahorro: ahorras ${amount} con ${hint.targetQuantity} ud.`
       : `Ahorro: si llevas ${hint.targetQuantity} ud. puedes ahorrar ${amount}`;
-  }, [bulkDiscountTiers, quantity, basePriceUsd, floorPriceUsd]);
+  }, [bulkDiscountTiers, quantity, basePriceUsd, floorPriceUsd, displayCurrency]);
 
-  const priceLabel =
-    displayCurrency === 'USD'
-      ? quantity > 1 || hasVolumeDiscount
-        ? formatUsd(volumePricing.totalUsd)
-        : formatUsd(volumePricing.unitUsd)
-      : displayCurrency === 'PEN'
-        ? quantity > 1 || hasVolumeDiscount
-          ? formatPenFromUsdPrecise(volumePricing.totalUsd)
-          : formatPenFromUsdPrecise(volumePricing.unitUsd)
-        : quantity > 1 || hasVolumeDiscount
-          ? `${formatUsd(volumePricing.totalUsd)} · ${formatPenFromUsdPrecise(volumePricing.totalUsd)}`
-          : `${formatUsd(volumePricing.unitUsd)} · ${formatPenFromUsdPrecise(volumePricing.unitUsd)}`;
+  const totalUsd =
+    quantity > 1 || hasVolumeDiscount ? volumePricing.totalUsd : volumePricing.unitUsd;
 
   return (
     <div
@@ -95,7 +87,9 @@ export function ProductDetailMobilePurchaseBar({
     >
       <div className="container flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-bold leading-tight text-red-600">{priceLabel}</p>
+          <p className="truncate text-lg font-bold leading-tight text-red-600">
+            <DualPrice usd={totalUsd} />
+          </p>
           {savingsMessage ? (
             <p className="truncate text-xs text-muted-foreground">{savingsMessage}</p>
           ) : null}

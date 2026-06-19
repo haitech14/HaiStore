@@ -15,6 +15,8 @@ import { seedProducts } from './seed-products.js';
 import { ensureProductSortOrders, sortProductsByOrder } from './inventory-product-order.js';
 import { resolveProductGallery, resolveProductImageUrl } from './product-image-url.js';
 import { sanitizeStoredProductMedia } from '../../shared/product-media-sanitize.js';
+import { normalizeCompatibleTonerProductFields } from '../../shared/compatible-toner.js';
+import { isBundleProduct, normalizeBundleComponents, syncInventoryBundleProducts } from './product-bundle.js';
 import { ensureFullPrices, resolvePriceRole } from './roles.js';
 import { shouldPreferSupabaseCatalog } from './catalog-source.js';
 import { getInventoryPath } from './server-paths.js';
@@ -128,35 +130,39 @@ function resolvePurchasePriceUsd(suppliers, fallbackUsd = 0) {
 }
 
 export function migrateInventoryProduct(product, warehouses = normalizeWarehouses()) {
-  const prices = ensureFullPrices(product.prices ?? { public: product.price ?? 0 });
+  const normalizedToner = normalizeCompatibleTonerProductFields(product) ?? product;
+  const prices = ensureFullPrices(normalizedToner.prices ?? { public: normalizedToner.price ?? 0 });
   const publicPrice = prices.public ?? 0;
-  const gallery = Array.isArray(product.gallery)
-    ? product.gallery.filter((url) => typeof url === 'string' && url.length > 0)
-    : product.image_url
-      ? [product.image_url]
+  const gallery = Array.isArray(normalizedToner.gallery)
+    ? normalizedToner.gallery.filter((url) => typeof url === 'string' && url.length > 0)
+    : normalizedToner.image_url
+      ? [normalizedToner.image_url]
       : [];
-  const image_url = product.image_url ?? gallery[0] ?? null;
+  const image_url = normalizedToner.image_url ?? gallery[0] ?? null;
   const fallbackPurchase = Number(
-    product.purchase_price_usd ?? Math.round(publicPrice * 0.72 * 100) / 100,
+    normalizedToner.purchase_price_usd ?? Math.round(publicPrice * 0.72 * 100) / 100,
   );
-  const suppliers = normalizeSuppliers(product.suppliers, fallbackPurchase);
-  const attachments = normalizeAttachments(product.attachments);
-  const attributes = normalizeAttributes(product.attributes);
+  const suppliers = normalizeSuppliers(normalizedToner.suppliers, fallbackPurchase);
+  const attachments = normalizeAttachments(normalizedToner.attachments);
+  const attributes = normalizeAttributes(normalizedToner.attributes);
   const { stock_by_warehouse, stock } = normalizeProductStock(
-    product.stock_by_warehouse,
-    product.stock,
+    normalizedToner.stock_by_warehouse,
+    normalizedToner.stock,
     warehouses,
   );
 
-  const sort_order = Number.isFinite(Number(product.sort_order))
-    ? Math.max(0, Math.floor(Number(product.sort_order)))
+  const sort_order = Number.isFinite(Number(normalizedToner.sort_order))
+    ? Math.max(0, Math.floor(Number(normalizedToner.sort_order)))
     : undefined;
 
   const merged = {
-    ...product,
+    ...normalizedToner,
     ...(sort_order !== undefined ? { sort_order } : {}),
+    bundle_components: normalizeBundleComponents(
+      normalizedToner.bundle_components ?? product.bundle_components,
+    ),
     prices,
-    code: product.code?.trim() || String(product.id ?? '').toUpperCase().replace(/-/g, ''),
+    code: normalizedToner.code?.trim() || String(normalizedToner.id ?? '').toUpperCase().replace(/-/g, ''),
     suppliers,
     attachments,
     attributes,
@@ -328,12 +334,13 @@ async function readInventoryFromSupabase() {
   );
 
   const { products, changed: sortChanged } = ensureProductSortOrders(merged);
+  const bundleSync = syncInventoryBundleProducts(products, warehouses);
 
   return {
-    products,
+    products: bundleSync.products,
     deletedProductIds,
     warehouses,
-    ...(sortChanged ? { _sortChanged: true } : {}),
+    ...(sortChanged || bundleSync.changed ? { _needsPersist: true } : {}),
   };
 }
 
@@ -346,8 +353,16 @@ export async function readInventory() {
   let result;
   if (shouldPreferSupabaseCatalog()) {
     const loaded = await readInventoryFromSupabase();
+    let products = loaded.products;
+    if (loaded._needsPersist) {
+      await writeInventory({
+        products,
+        deletedProductIds: loaded.deletedProductIds,
+        warehouses: loaded.warehouses,
+      });
+    }
     result = {
-      products: loaded.products,
+      products,
       deletedProductIds: loaded.deletedProductIds,
       warehouses: loaded.warehouses,
     };
@@ -364,13 +379,18 @@ export async function readInventory() {
       .map((product) => migrateInventoryProduct(product, warehouses));
 
     const { products, changed: sortChanged } = ensureProductSortOrders(migrated);
+    const bundleSync = syncInventoryBundleProducts(products, warehouses);
     const hadStaleDeleted = (data.products ?? []).some((product) => deleted.has(product.id));
 
-    if (hadStaleDeleted || sortChanged) {
-      await writeInventory({ products, deletedProductIds, warehouses });
+    if (hadStaleDeleted || sortChanged || bundleSync.changed) {
+      await writeInventory({
+        products: bundleSync.products,
+        deletedProductIds,
+        warehouses,
+      });
     }
 
-    result = { products, deletedProductIds, warehouses };
+    result = { products: bundleSync.products, deletedProductIds, warehouses };
   }
 
   const preferSupabase = shouldPreferSupabaseCatalog();
@@ -416,7 +436,10 @@ export async function writeInventory(data, options = {}) {
   const migrated = (data.products ?? []).map((product) =>
     migrateInventoryProduct(product, warehouses),
   );
-  const withPublicMedia = await Promise.all(migrated.map((product) => persistProductMedia(product)));
+  const bundleSync = syncInventoryBundleProducts(migrated, warehouses);
+  const withPublicMedia = await Promise.all(
+    bundleSync.products.map((product) => persistProductMedia(product)),
+  );
   const products = await Promise.all(withPublicMedia.map((product) => optimizeProductMedia(product)));
   const normalized = {
     products,
@@ -536,6 +559,7 @@ export function normalizeProductInput(body, existing, warehouses) {
       suppliers: body.suppliers ?? existing?.suppliers,
       attachments: body.attachments ?? existing?.attachments,
       attributes: body.attributes ?? existing?.attributes,
+      bundle_components: body.bundle_components ?? existing?.bundle_components,
       created_at: existing?.created_at ?? new Date().toISOString(),
       sort_order:
         body.sort_order !== undefined && body.sort_order !== null

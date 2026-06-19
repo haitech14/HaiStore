@@ -1,11 +1,8 @@
 import XLSX from 'xlsx';
 
 import { normalizeAttributes } from './inventory-attributes.js';
-import {
-  CATEGORY_COMPATIBLE_TONER,
-  compatibleTonerProductIdFromCode,
-  parsePriceCell,
-} from './compatible-toner-excel.js';
+import { appendHaitoneProductSuffix, CATEGORY_COMPATIBLE_TONER } from '../../shared/compatible-toner.js';
+import { compatibleTonerProductIdFromCode, parsePriceCell } from './compatible-toner-excel.js';
 import { normalizeProductInput } from './inventory-store.js';
 import { ensureFullPrices } from './roles.js';
 
@@ -407,17 +404,19 @@ export function buildProcessedPriceListProduct(row, rates) {
     attributes.push({ name: 'Color', value: colorLabel });
   }
 
+  const displayName = appendHaitoneProductSuffix(name);
+
   return normalizeProductInput({
     id: compatibleTonerProductIdFromCode(code),
     code,
-    name,
-    description: name,
+    name: displayName,
+    description: displayName,
     brand: null,
     category: CATEGORY_COMPATIBLE_TONER,
     currency: 'USD',
     stock: 0,
-    image_url: '/categories/toner-suministros.png',
-    gallery: ['/categories/toner-suministros.png'],
+    image_url: null,
+    gallery: [],
     prices,
     purchase_price_usd: purchaseUsd,
     attributes: normalizeAttributes(attributes),

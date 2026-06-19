@@ -90,6 +90,11 @@ export interface ProductAttribute {
   value: string;
 }
 
+export interface ProductBundleComponent {
+  product_id: string;
+  quantity: number;
+}
+
 export interface InventoryProduct extends Omit<Product, 'price' | 'price_role' | 'sort_order'> {
   /** Orden de visualización en tienda y admin (0 = primero). */
   sort_order: number;
@@ -107,6 +112,8 @@ export interface InventoryProduct extends Omit<Product, 'price' | 'price_role' |
   attachments?: ProductAttachment[];
   /** Especificaciones (color, velocidad, formato, etc.). */
   attributes?: ProductAttribute[];
+  /** Pack compuesto: stock y precios se derivan de los componentes al vender. */
+  bundle_components?: ProductBundleComponent[];
   /** URLs de galería (la principal suele coincidir con image_url). */
   gallery: string[];
   prices: ProductRolePrices;

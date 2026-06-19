@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { formatInventoryProductName } from '@/lib/inventory-product-name';
+import { isBundleProduct, TONER_PACK_LABEL } from '@/lib/product-bundle';
 import { formatProductDisplayCode } from '@/lib/product-display-code';
 
 import { InventoryInlinePriceEdit } from '@/components/admin/inventory/inventory-inline-price-edit';
@@ -284,6 +285,9 @@ export function InventoryRowCells({
   }
 
   if (columnId === 'product') {
+    const bundleProduct = isBundleProduct(product);
+    const displayCode =
+      formatProductDisplayCode(product.code, { brand: product.brand }) ?? product.code?.trim();
     return (
       <InventoryInlineField
         fieldId={fieldKey('name')}
@@ -292,9 +296,19 @@ export function InventoryRowCells({
         onClose={close}
         display={
           <div>
-            <p className="line-clamp-2 font-semibold leading-snug">
-              {formatInventoryProductName(product.name)}
-            </p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <p className="line-clamp-2 font-semibold leading-snug">
+                {formatInventoryProductName(product.name)}
+              </p>
+              {bundleProduct ? (
+                <Badge variant="secondary" className="shrink-0 text-[0.65rem]">
+                  {TONER_PACK_LABEL}
+                </Badge>
+              ) : null}
+            </div>
+            {displayCode ? (
+              <p className="mt-0.5 font-mono text-[0.65rem] text-muted-foreground">{displayCode}</p>
+            ) : null}
             {product.brand ? (
               <p className="text-xs text-muted-foreground">{product.brand}</p>
             ) : null}
@@ -415,6 +429,14 @@ export function InventoryRowCells({
   }
 
   if (columnId === 'stock') {
+    if (isBundleProduct(product)) {
+      return (
+        <div className="flex justify-center" title="Stock derivado de los 4 tóner del pack">
+          <InventoryStockBadge product={product} warehouses={warehouses} />
+        </div>
+      );
+    }
+
     return (
       <InventoryInlineField
         fieldId={fieldKey('stock')}
@@ -472,6 +494,20 @@ export function InventoryRowCells({
     const roleSuffix = columnId.slice('price_'.length);
     if (!isPriceRole(roleSuffix)) return null;
     const role = roleSuffix as PriceRole;
+    const bundleProduct = isBundleProduct(product);
+    if (bundleProduct) {
+      return (
+        <div className="flex justify-end" title="Precio sumado de los 4 tóner del pack">
+          <InventorySalePrice
+            saleUsd={product.prices[role]}
+            purchaseUsd={product.purchase_price_usd}
+            priceRole={role}
+            embedded
+          />
+        </div>
+      );
+    }
+
     return (
       <InventoryInlineField
         fieldId={fieldKey(columnId)}

@@ -1,10 +1,14 @@
 import XLSX from 'xlsx';
 
+import {
+  appendHaitoneProductSuffix,
+  CATEGORY_COMPATIBLE_TONER,
+} from '../../shared/compatible-toner.js';
 import { normalizeAttributes } from './inventory-attributes.js';
 import { normalizeProductInput } from './inventory-store.js';
 import { roundSalePriceToNinety } from './toner-products-excel.js';
 
-export const CATEGORY_COMPATIBLE_TONER = 'Toner Compatibles';
+export { CATEGORY_COMPATIBLE_TONER } from '../../shared/compatible-toner.js';
 export const SUPPLIER_MICAMERB = 'MICAMERB';
 
 const CARTUCHO_PREFIX = 'Toner Cartucho Compatible RICOH';
@@ -264,17 +268,19 @@ function buildProduct({ code, name, tipo, modelo, marca, tone, compra, tecnico, 
     suppliers.push({ name: SUPPLIER_MICAMERB, purchase_price_usd: compra });
   }
 
+  const displayName = appendHaitoneProductSuffix(name);
+
   return normalizeProductInput({
     id: compatibleTonerProductIdFromCode(code),
     code,
-    name,
-    description: name,
+    name: displayName,
+    description: displayName,
     brand: null,
     category: CATEGORY_COMPATIBLE_TONER,
     currency: 'USD',
     stock: 0,
-    image_url: '/categories/toner-suministros.png',
-    gallery: ['/categories/toner-suministros.png'],
+    image_url: null,
+    gallery: [],
     prices: {
       public: publicPrice,
       tecnico: tecnicoPrice > 0 ? tecnicoPrice : publicPrice,

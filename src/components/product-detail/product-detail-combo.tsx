@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useCart } from '@/context/cart-context';
 import { productPath } from '@/lib/product-path';
-import { cn } from '@/lib/utils';
+import { cn, penToUsd } from '@/lib/utils';
 import type { ProductComboItem } from '@/types/product-detail';
 import type { Product } from '@/types/product';
 
@@ -135,6 +135,10 @@ function ComboCard({
   );
 }
 
+function comboItemUsd(item: ProductComboItem): number {
+  return item.priceUsd ?? penToUsd(item.pricePen);
+}
+
 function ComplementSelectableCard({
   item,
   selected,
@@ -145,8 +149,7 @@ function ComplementSelectableCard({
   onToggle: (checked: boolean) => void;
 }) {
   const inputId = `complement-${item.id}`;
-  const priceLabel =
-    item.priceUsd != null ? null : `S/ ${item.pricePen.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const unitUsd = comboItemUsd(item);
 
   return (
     <label
@@ -179,8 +182,8 @@ function ComplementSelectableCard({
         {item.name}
       </p>
 
-      <p className="mt-1 truncate text-[0.6875rem] font-bold tabular-nums text-red-600 sm:text-xs" title={priceLabel ?? undefined}>
-        {item.priceUsd != null ? <DualPrice usd={item.priceUsd} className="text-[0.6875rem] font-bold sm:text-xs" /> : priceLabel}
+      <p className="mt-1 truncate text-[0.6875rem] font-bold tabular-nums text-red-600 sm:text-xs">
+        <DualPrice usd={unitUsd} className="text-[0.6875rem] font-bold sm:text-xs" />
       </p>
     </label>
   );
@@ -220,11 +223,11 @@ export function ProductDetailCombo({
 
   const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
 
-  const { selectedCount, totalPen } = useMemo(() => {
+  const { selectedCount, totalUsd } = useMemo(() => {
     const picked = items.filter((item) => selected[item.id]);
     return {
       selectedCount: picked.length,
-      totalPen: picked.reduce((acc, item) => acc + item.pricePen, 0),
+      totalUsd: picked.reduce((acc, item) => acc + comboItemUsd(item), 0),
     };
   }, [items, selected]);
 
@@ -308,7 +311,7 @@ export function ProductDetailCombo({
                 <span>
                   +{' '}
                   <span className="font-semibold text-[#0f1f3d]">
-                    S/ {totalPen.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <DualPrice usd={totalUsd} className="inline font-semibold text-[#0f1f3d]" />
                   </span>
                 </span>
               </>
@@ -471,7 +474,7 @@ export function ProductDetailCombo({
               <span className="block sm:inline">
                 +{' '}
                 <span className="font-semibold text-[#0f1f3d]">
-                  S/ {totalPen.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <DualPrice usd={totalUsd} className="inline font-semibold text-[#0f1f3d]" />
                 </span>
               </span>
             </>

@@ -83,18 +83,26 @@ function HeroSlideContent({ slide, index }: { slide: HomeHeroSlide; index: numbe
     const href = slide.linkHref ?? '/tienda';
     const isExternal = href.startsWith('http');
     const isPriority = index === 0;
-    const showCtaOverlay = slide.compact === true;
+    const showCtaOverlay = slide.compact === true && slide.ctaOverlay === true;
 
     const imageNode = slide.singleAsset ? (
       slide.compact ? (
         (() => {
+          const verticalCrop = slide.heroVerticalCrop ?? CATEGORY_STRIP_HERO_VERTICAL_CROP;
+          const objectFit = slide.objectFit ?? 'cover';
+          const heightClass = slide.compactMaxHeightClass ?? '';
+          const fixedRowHeight = /\bh-\[/.test(heightClass);
           const { webpSrcSet, fallbackSrc, sizes } = heroSingleAssetSources(slide.backgroundImage);
           return (
             <div
-              className="relative w-full overflow-hidden"
-              style={{
-                aspectRatio: `${imageWidth} / ${Math.round(displayHeight * CATEGORY_STRIP_HERO_VERTICAL_CROP)}`,
-              }}
+              className={cn('relative w-full overflow-hidden bg-white', heightClass)}
+              style={
+                fixedRowHeight
+                  ? undefined
+                  : {
+                      aspectRatio: `${imageWidth} / ${Math.round(displayHeight * verticalCrop)}`,
+                    }
+              }
             >
               <picture className="absolute inset-0 block size-full">
                 <source type="image/webp" srcSet={webpSrcSet} sizes={sizes} />
@@ -107,7 +115,12 @@ function HeroSlideContent({ slide, index }: { slide: HomeHeroSlide; index: numbe
                   fetchPriority={isPriority ? 'high' : 'low'}
                   loading={isPriority ? 'eager' : 'lazy'}
                   sizes={sizes}
-                  className="size-full object-cover object-center"
+                  className={cn(
+                    'size-full',
+                    objectFit === 'contain'
+                      ? 'object-contain object-center'
+                      : 'object-cover object-center',
+                  )}
                 />
               </picture>
             </div>

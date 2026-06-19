@@ -7,6 +7,7 @@ import {
   normalizeYoutubeMediaUrl,
 } from '@/lib/product-media';
 import { normalizeAttachments } from '@/lib/inventory-attachments';
+import { normalizeBundleComponents } from '@/lib/product-bundle';
 import { normalizeSuppliers, resolvePurchasePriceUsd } from '@/lib/inventory-suppliers';
 import { applyStockFields, DEFAULT_WAREHOUSES } from '@/lib/inventory-stock';
 import { ensureFullPrices } from '@/lib/roles';
@@ -129,6 +130,7 @@ export function normalizeInventoryProduct(
       suppliers,
       attachments: normalizeAttachments(raw.attachments),
       attributes: normalizeAttributes(raw.attributes),
+      bundle_components: normalizeBundleComponents(raw.bundle_components),
       purchase_price_usd: resolvePurchasePriceUsd(suppliers, fallbackPurchase),
       created_at: raw.created_at ?? new Date().toISOString(),
       sort_order: Number.isFinite(Number(raw.sort_order)) ? Number(raw.sort_order) : 0,

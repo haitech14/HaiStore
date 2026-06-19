@@ -59,6 +59,7 @@ export const categories: Category[] = [
       'Tóner y Suministros',
       'Toner Original',
       'Toner',
+      'Toner Compatibles Haitone',
       'Toner Compatibles',
     ],
   },

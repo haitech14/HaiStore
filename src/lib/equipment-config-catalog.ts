@@ -89,7 +89,7 @@ const OPTION_CATALOG_HINTS: Record<string, OptionCatalogHint> = {
   },
   'toner-extra': {
     keywords: ['toner', 'tóner', 'cartucho', 'negro'],
-    categories: ['Suministros', 'Toner', 'Tóner', 'Toner Compatibles', 'Toner Original'],
+    categories: ['Suministros', 'Toner', 'Tóner', 'Toner Compatibles Haitone', 'Toner Compatibles', 'Toner Original'],
     fallbackImage: '/categories/toner-suministros.png',
   },
   'kit-mantenimiento': {

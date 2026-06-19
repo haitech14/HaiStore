@@ -153,6 +153,14 @@ export function TpvPanel() {
         setError('Agregue al menos un producto al carrito.');
         return;
       }
+      const stockIssue = cart.find((line) => {
+        const product = products.find((entry) => entry.id === line.productId);
+        return product && line.quantity > product.stock;
+      });
+      if (stockIssue) {
+        setError(`Stock insuficiente para «${stockIssue.name}».`);
+        return;
+      }
       const validation = validateCustomer(type, customer);
       if (validation) {
         setError(validation);

@@ -3,16 +3,35 @@ import { cn } from '@/lib/utils';
 
 interface ProductDetailDescriptionProps {
   content: ProductDescriptionContent;
+  /** Evita repetir el resumen ya mostrado en ProductDetailDescriptionPanel. */
+  omitPanelSummary?: boolean;
 }
 
-export function ProductDetailDescription({ content }: ProductDetailDescriptionProps) {
-  const primaryHighlights = content.highlights.slice(0, 3);
-  const secondaryHighlights = content.highlights.slice(3);
+export function ProductDetailDescription({
+  content,
+  omitPanelSummary = false,
+}: ProductDetailDescriptionProps) {
+  const overviewParagraphs =
+    content.overviewParagraphs && content.overviewParagraphs.length > 0
+      ? content.overviewParagraphs
+      : content.paragraphs.slice(0, 2);
+  const paragraphs = omitPanelSummary
+    ? content.paragraphs.filter((paragraph) => !overviewParagraphs.includes(paragraph))
+    : content.paragraphs;
+  const highlights = omitPanelSummary ? content.highlights.slice(4) : content.highlights;
+  const primaryHighlights = highlights.slice(0, 3);
+  const secondaryHighlights = highlights.slice(3);
+  const hasYoutube = Boolean(content.youtubeVideoId);
+  const hasBody = paragraphs.length > 0 || hasYoutube || highlights.length > 0;
+
+  if (!hasBody) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">
       <div className="space-y-4 text-sm leading-relaxed text-neutral-600 sm:text-[0.9375rem]">
-        {content.paragraphs.map((paragraph) => (
+        {paragraphs.map((paragraph) => (
           <p key={paragraph}>{paragraph}</p>
         ))}
       </div>
@@ -38,7 +57,7 @@ export function ProductDetailDescription({ content }: ProductDetailDescriptionPr
         </div>
       )}
 
-      {content.highlights.length > 0 && (
+      {highlights.length > 0 && (
         <div className="space-y-3">
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {primaryHighlights.map((highlight) => {

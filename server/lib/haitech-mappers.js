@@ -88,9 +88,7 @@ export function haitechClientToStoreCustomerRow(client, existingId) {
     source:
       client.source === 'haisupport'
         ? 'haisupport'
-        : client.source === 'haisales'
-          ? 'haisales'
-          : 'haistore',
+        : 'haistore',
     haisupport_client_id: client.haisupportClientId ?? null,
     persona_data:
       client.persona_data && typeof client.persona_data === 'object'

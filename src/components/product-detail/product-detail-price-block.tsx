@@ -1,6 +1,7 @@
 import { AdminRolePricesTooltip } from '@/components/admin/admin-role-prices-tooltip';
+import { DualPrice } from '@/components/product/product-dual-price';
 import { ensureFullPrices } from '@/lib/roles';
-import { cn, formatPenFromUsdPrecise, formatUsd } from '@/lib/utils';
+import { cn, penToUsd } from '@/lib/utils';
 import type { ProductDetailViewModel } from '@/types/product-detail';
 import type { Product } from '@/types/product';
 
@@ -9,15 +10,6 @@ interface ProductDetailPriceBlockProps {
   detail: ProductDetailViewModel;
   className?: string;
   showStock?: boolean;
-}
-
-function formatPenStrike(pen: number): string {
-  return new Intl.NumberFormat('es-PE', {
-    style: 'currency',
-    currency: 'PEN',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(pen);
 }
 
 export function ProductDetailPriceBlock({
@@ -37,14 +29,14 @@ export function ProductDetailPriceBlock({
       {detail.oldPricePen != null ? (
         <p className="text-xs text-muted-foreground sm:text-sm">
           Antes:{' '}
-          <span className="line-through decoration-muted-foreground">{formatPenStrike(detail.oldPricePen)}</span>
+          <DualPrice usd={penToUsd(detail.oldPricePen)} strikethrough className="inline" />
         </p>
       ) : null}
 
       <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
         <AdminRolePricesTooltip productId={product.id} displayUsd={displayUsd}>
           <span className="text-[1.625rem] font-bold leading-none text-red-600 sm:text-[1.75rem]">
-            {formatPenFromUsdPrecise(displayUsd)}
+            <DualPrice usd={displayUsd} />
           </span>
         </AdminRolePricesTooltip>
         {detail.discountPercent != null ? (
@@ -53,10 +45,6 @@ export function ProductDetailPriceBlock({
           </span>
         ) : null}
       </div>
-
-      <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-        Equivalente aprox. {formatUsd(displayUsd)}
-      </p>
 
       {showStock ? (
         <p

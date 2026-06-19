@@ -400,6 +400,34 @@ ordersRouter.patch('/admin/:id', requireAdmin, async (req, res, next) => {
   }
 });
 
+ordersRouter.post('/checkout', async (req, res, next) => {
+  try {
+    const order = await createStoreOrderFromBody({
+      ...(req.body ?? {}),
+      status: 'pending_payment',
+      paymentStatus: 'pending',
+    });
+    res.status(201).json({ order });
+  } catch (error) {
+    if (error instanceof Error) {
+      const message = error.message;
+      if (message.includes('Supabase no configurado')) {
+        return res.status(503).json({ error: message });
+      }
+      if (
+        message.includes('requiere') ||
+        message.includes('obligator') ||
+        message.includes('No se pudo') ||
+        message.includes('ítems') ||
+        message.includes('producto')
+      ) {
+        return res.status(400).json({ error: message });
+      }
+    }
+    next(error);
+  }
+});
+
 ordersRouter.post('/admin', requireAdmin, async (req, res, next) => {
   try {
     const order = await createStoreOrderFromBody(req.body ?? {});

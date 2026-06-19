@@ -1,4 +1,5 @@
 import { useMemo, type ReactNode, type RefObject } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ClipboardList,
   Clock,
@@ -13,16 +14,19 @@ import {
 import { toast } from 'sonner';
 
 import { AddToCartButton, isProductOutOfStock } from '@/components/cart/add-to-cart-button';
+import { DualPrice } from '@/components/product/product-dual-price';
 import { ProductBulkDiscountTable } from '@/components/product-detail/product-bulk-discount-table';
 import { TechnicalSheetDownloadLink } from '@/components/product-detail/technical-sheet-download-link';
 import { ProductWhatsAppButton } from '@/components/product-whatsapp-button';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/cart-context';
+import { useDisplayCurrency } from '@/context/display-currency-context';
 import { useWishlist } from '@/context/wishlist-context';
+import { formatDisplayPriceFromUsd } from '@/lib/display-price';
 import { ensureFullPrices } from '@/lib/roles';
 import { resolveProductCardPricing } from '@/lib/product-card-pricing';
 import { resolveBulkDiscountPricing, resolveBulkDiscountSavingsHint } from '@/lib/bulk-discount-tiers';
-import { cn, formatPenFromUsdPrecise, formatUsd, penToUsd, usdToPen } from '@/lib/utils';
+import { cn, penToUsd, usdToPen } from '@/lib/utils';
 import { productToWishlistItem } from '@/lib/wishlist-product';
 import type { ProductDetailViewModel } from '@/types/product-detail';
 import type { Product } from '@/types/product';
@@ -50,6 +54,8 @@ export function ProductDetailHeroInfo({
   purchaseActionsRef,
 }: ProductDetailHeroInfoProps) {
   const { addItem } = useCart();
+  const navigate = useNavigate();
+  const { displayCurrency } = useDisplayCurrency();
   const { isSelected: isWishlistSelected, toggle: toggleWishlist } = useWishlist();
 
   const fullPrices = useMemo(
@@ -92,32 +98,26 @@ export function ProductDetailHeroInfo({
   );
   const savingsMessage = useMemo(() => {
     if (volumeSavingsHint) {
-      const amount = formatPenFromUsdPrecise(volumeSavingsHint.savingsUsd);
+      const amount = formatDisplayPriceFromUsd(volumeSavingsHint.savingsUsd, displayCurrency);
       return volumeSavingsHint.isActive
         ? `Ahorras ${amount} con ${volumeSavingsHint.targetQuantity} ud.`
         : `Si llevas ${volumeSavingsHint.targetQuantity} ud. puedes ahorrar ${amount}`;
     }
     if (hasSavings) {
-      return `Ahorras S/ ${savingsPen.toLocaleString('es-PE', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })} por unidad`;
+      return `Ahorras ${formatDisplayPriceFromUsd(penToUsd(savingsPen), displayCurrency)} por unidad`;
     }
     return null;
-  }, [volumeSavingsHint, hasSavings, savingsPen]);
+  }, [volumeSavingsHint, hasSavings, savingsPen, displayCurrency]);
   const showStruckNormalPrice =
     hasVolumeDiscount ||
     hasSavings ||
     detail.bulkDiscountTiers.length > 0 ||
     volumePricing.unitUsd < displayUsd - 0.001;
-  const normalPriceLabel = useMemo(() => {
+  const struckNormalPriceUsd = useMemo(() => {
     if (hasSavings && !hasVolumeDiscount && previousPen != null) {
-      return `S/ ${previousPen.toLocaleString('es-PE', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })} / ud.`;
+      return penToUsd(previousPen);
     }
-    return `${formatPenFromUsdPrecise(displayUsd)} / ud.`;
+    return displayUsd;
   }, [hasSavings, hasVolumeDiscount, previousPen, displayUsd]);
   const cartAddOptions = useMemo(
     () => ({
@@ -136,7 +136,8 @@ export function ProductDetailHeroInfo({
 
   const handleBuyNow = () => {
     if (outOfStock) return;
-    addItem(product, { ...cartAddOptions, openDrawer: true });
+    addItem(product, { ...cartAddOptions, openDrawer: false });
+    navigate('/checkout');
   };
 
   const wishlistSelected = isWishlistSelected(product.id);
@@ -276,8 +277,10 @@ export function ProductDetailHeroInfo({
             <div className="mt-2 grid grid-cols-2 items-end gap-3 sm:gap-4">
               <div className="min-w-0">
                 {showStruckNormalPrice ? (
-                  <p className="text-[0.65rem] font-medium text-muted-foreground line-through decoration-muted-foreground/80 sm:text-xs">
-                    Precio Normal — {normalPriceLabel}
+                  <p className="text-[0.65rem] font-medium text-muted-foreground sm:text-xs">
+                    Precio Normal —{' '}
+                    <DualPrice usd={struckNormalPriceUsd} strikethrough className="inline" />
+                    <span className="text-muted-foreground"> / ud.</span>
                   </p>
                 ) : (
                   <p className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
@@ -285,13 +288,10 @@ export function ProductDetailHeroInfo({
                   </p>
                 )}
                 <p className="text-lg font-bold leading-tight text-red-600 sm:text-xl lg:text-[1.65rem]">
-                  {formatPenFromUsdPrecise(volumePricing.unitUsd)}
+                  <DualPrice usd={volumePricing.unitUsd} />
                   <span className="ml-1 text-[0.65rem] font-semibold text-muted-foreground sm:text-xs">
                     / ud.
                   </span>
-                </p>
-                <p className="text-[0.65rem] text-muted-foreground sm:text-xs">
-                  USD {formatUsd(volumePricing.unitUsd)}
                 </p>
               </div>
 
@@ -301,7 +301,7 @@ export function ProductDetailHeroInfo({
                 </p>
                 <p className="text-sm font-bold text-[#0f1f3d] sm:text-base">
                   <span className="text-red-600">
-                    {formatPenFromUsdPrecise(volumePricing.totalUsd)}
+                    <DualPrice usd={volumePricing.totalUsd} />
                   </span>
                   <span className="ml-1 text-[0.65rem] font-medium text-muted-foreground sm:text-xs">
                     ({quantity} ud.)

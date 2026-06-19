@@ -182,8 +182,8 @@ export function mergeRepuestoEntriesToProduct(entries) {
     category: REPUESTOS_CATEGORY,
     currency: 'USD',
     stock: 0,
-    image_url: '/categories/repuestos.png',
-    gallery: ['/categories/repuestos.png'],
+    image_url: null,
+    gallery: [],
     prices: {
       public: first.publico,
       tecnico: first.dist,

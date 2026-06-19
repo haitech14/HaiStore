@@ -43,22 +43,19 @@ export function ProductCardTitle({
       ? cn(PRODUCT_CARD_TITLE_FEATURED_CLASS, PRODUCT_CARD_TITLE_CLAMP_CLASS)
       : cn(PRODUCT_CARD_TITLE_MAIN_CLASS, PRODUCT_CARD_TITLE_CLAMP_CLASS);
 
-  const showBrandLine = Boolean(brand || code);
+  const showBrandLine = Boolean(brand);
 
   return (
     <div className={cn(isTable ? 'space-y-0' : 'space-y-0.5 sm:space-y-1', className)}>
       {showBrandLine ? (
-        <p className="flex min-w-0 items-baseline gap-1.5">
-          {brand ? <span className={cn(brandClass, 'min-w-0')}>{brand}</span> : null}
-          {brand && code ? (
-            <span className="shrink-0 text-muted-foreground/50" aria-hidden="true">
-              ·
-            </span>
-          ) : null}
-          {code ? <span className={PRODUCT_CARD_CODE_CLASS}>{code}</span> : null}
+        <p className="flex min-w-0 items-baseline">
+          <span className={cn(brandClass, 'min-w-0')}>{brand}</span>
         </p>
       ) : null}
       <h3 className={titleClass}>{title}</h3>
+      {code ? (
+        <p className={cn(PRODUCT_CARD_CODE_CLASS, isTable ? 'mt-0.5' : 'mt-0.5')}>{code}</p>
+      ) : null}
     </div>
   );
 }

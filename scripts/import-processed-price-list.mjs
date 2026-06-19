@@ -6,6 +6,11 @@ import { fileURLToPath } from 'node:url';
 import { readCompanySettings } from '../server/lib/company-settings-store.js';
 import { parseProcessedPriceListWorkbook } from '../server/lib/processed-price-list-excel.js';
 import {
+  CATEGORY_COMPATIBLE_TONER,
+  COMPATIBLE_TONER_SUBCATEGORY_ID,
+  COMPATIBLE_TONER_SUBCATEGORY_SLUG,
+} from '../shared/compatible-toner.js';
+import {
   ensureProductSortOrders,
   normalizeProductInput,
   readInventory,
@@ -24,10 +29,10 @@ const filePath = process.argv[2] ?? defaultPath;
 const PARENT_CATEGORY_ID = 'cat-toner';
 
 const SUBCATEGORY = {
-  id: 'cat-toner-compatibles',
-  name: 'Toner Compatibles',
-  slug: 'toner-compatibles',
-  inventoryLabels: ['Toner Compatibles'],
+  id: COMPATIBLE_TONER_SUBCATEGORY_ID,
+  name: CATEGORY_COMPATIBLE_TONER,
+  slug: COMPATIBLE_TONER_SUBCATEGORY_SLUG,
+  inventoryLabels: [CATEGORY_COMPATIBLE_TONER],
 };
 
 async function ensureTonerCompatiblesSubcategory() {
@@ -41,7 +46,7 @@ async function ensureTonerCompatiblesSubcategory() {
   parentLabels.add('Suministros');
   parentLabels.add('Toner y suministros');
   parentLabels.add('Tóner y Suministros');
-  parentLabels.add('Toner Compatibles');
+  parentLabels.add(CATEGORY_COMPATIBLE_TONER);
 
   const parentIndex = categories.findIndex((row) => row.id === PARENT_CATEGORY_ID);
   categories[parentIndex] = {
@@ -186,7 +191,7 @@ async function main() {
   }
 
   await ensureTonerCompatiblesSubcategory();
-  console.log('Subcategoría «Toner Compatibles» lista bajo Suministros.');
+  console.log(`Subcategoría «${CATEGORY_COMPATIBLE_TONER}» lista bajo Suministros.`);
 
   const inventory = await readInventory();
   const codesBefore = new Set(

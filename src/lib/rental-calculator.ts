@@ -1,7 +1,27 @@
 import type { RentalPlanOption } from '@/types/product-detail';
 
-/** Costo por copia negro (PEN). */
-export const RENTAL_BLACK_COPY_COST_PEN = 0.09;
+/** Costo por copia negro sobre la cuota base del plan (PEN). */
+export const RENTAL_EXCESS_COPY_COST_PEN = 0.09;
+
+/** @deprecated Usar RENTAL_EXCESS_COPY_COST_PEN */
+export const RENTAL_BLACK_COPY_COST_PEN = RENTAL_EXCESS_COPY_COST_PEN;
+
+/** Recargo por página cuando se incluye papel (PEN). */
+export const RENTAL_PAPER_SURCHARGE_PEN = 0.02;
+
+/** Cuota fija mensual por operador (PEN). */
+export const RENTAL_OPERATOR_MONTHLY_PEN = 1500;
+
+/** Plazo fijo de contrato de alquiler (meses). */
+export const RENTAL_TERM_MONTHS = 36;
+
+/** Beneficio incluido en el plazo de 36 meses. */
+export const RENTAL_TERM_RENEWAL_NOTE =
+  'Incluye renovación automática del equipo nuevo al finalizar el plazo.';
+
+export const RENTAL_TERM_OPTIONS = [RENTAL_TERM_MONTHS] as const;
+
+export type RentalTermMonths = (typeof RENTAL_TERM_OPTIONS)[number];
 
 /** Instalación y transporte (único) si el plazo es menor a 6 meses. */
 export const RENTAL_SETUP_FEE_PEN = 250;
@@ -10,12 +30,8 @@ export const RENTAL_MIN_TERM_FOR_FREE_SETUP = 6;
 
 export const RENTAL_DEFAULT_MONTHLY_PAGES = 5000;
 
-export const RENTAL_TERM_OPTIONS = [3, 6, 12] as const;
-
-export type RentalTermMonths = (typeof RENTAL_TERM_OPTIONS)[number];
-
 export interface RentalCalculatorInput {
-  termMonths: number;
+  termMonths?: number;
   monthlyPages: number;
   includesPaper: boolean;
   includesOperator: boolean;
@@ -28,7 +44,9 @@ export interface RentalCalculatorBreakdown {
   includedPages: number;
   monthlyPages: number;
   extraPages: number;
-  copyChargesPen: number;
+  excessChargesPen: number;
+  paperChargesPen: number;
+  operatorChargesPen: number;
   monthlySubtotalPen: number;
   setupFeePen: number;
   contractTotalPen: number;
@@ -50,13 +68,21 @@ export function resolveRentalPlanForPages(
 
 export function calculateRentalQuote(input: RentalCalculatorInput): RentalCalculatorBreakdown {
   const monthlyPages = Math.max(1, Math.floor(input.monthlyPages));
-  const termMonths = Math.max(1, Math.floor(input.termMonths));
+  const termMonths = Math.max(1, Math.floor(input.termMonths ?? RENTAL_TERM_MONTHS));
   const plan = resolveRentalPlanForPages(monthlyPages, input.plans);
   const baseMonthlyPen = plan.monthlyPricePen;
   const includedPages = plan.pagesPerMonth;
   const extraPages = Math.max(0, monthlyPages - includedPages);
-  const copyChargesPen = Math.round(monthlyPages * RENTAL_BLACK_COPY_COST_PEN * 100) / 100;
-  const monthlySubtotalPen = Math.round((baseMonthlyPen + copyChargesPen) * 100) / 100;
+  const excessChargesPen =
+    Math.round(extraPages * RENTAL_EXCESS_COPY_COST_PEN * 100) / 100;
+  const paperChargesPen = input.includesPaper
+    ? Math.round(monthlyPages * RENTAL_PAPER_SURCHARGE_PEN * 100) / 100
+    : 0;
+  const operatorChargesPen = input.includesOperator ? RENTAL_OPERATOR_MONTHLY_PEN : 0;
+  const monthlySubtotalPen =
+    Math.round(
+      (baseMonthlyPen + excessChargesPen + paperChargesPen + operatorChargesPen) * 100,
+    ) / 100;
   const setupFeePen = termMonths < RENTAL_MIN_TERM_FOR_FREE_SETUP ? RENTAL_SETUP_FEE_PEN : 0;
   const contractTotalPen =
     Math.round((monthlySubtotalPen * termMonths + setupFeePen) * 100) / 100;
@@ -67,7 +93,9 @@ export function calculateRentalQuote(input: RentalCalculatorInput): RentalCalcul
     includedPages,
     monthlyPages,
     extraPages,
-    copyChargesPen,
+    excessChargesPen,
+    paperChargesPen,
+    operatorChargesPen,
     monthlySubtotalPen,
     setupFeePen,
     contractTotalPen,

@@ -19,6 +19,10 @@ const ContactPage = lazyWithRetry(
   () => import('@/pages/contact').then((m) => ({ default: m.ContactPage })),
   'contacto',
 );
+const CheckoutPage = lazyWithRetry(
+  () => import('@/pages/checkout').then((m) => ({ default: m.CheckoutPage })),
+  'checkout',
+);
 const AccountPage = lazyWithRetry(
   () => import('@/pages/account').then((m) => ({ default: m.AccountPage })),
   'mi cuenta',
@@ -352,6 +356,7 @@ export const router = createBrowserRouter([
       },
       { path: 'categoria/:slug', element: withSuspense(<CategoryPage />) },
       { path: 'tienda/producto/:id', element: withSuspense(<ProductDetailPage />) },
+      { path: 'checkout', element: withSuspense(<CheckoutPage />) },
       { path: 'contacto', element: withSuspense(<ContactPage />) },
       { path: 'mi-cuenta', element: withSuspense(<AccountPage />) },
       { path: 'favoritos', element: withSuspense(<FavoritesPage />) },

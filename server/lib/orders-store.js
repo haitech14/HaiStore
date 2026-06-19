@@ -16,6 +16,24 @@ const VALID_ORDER_STATUS = new Set([
 
 const VALID_PAYMENT_STATUS = new Set(['pending', 'paid', 'failed', 'refunded']);
 
+async function resolveKnownProductIds(supabase, lineItems) {
+  const ids = [
+    ...new Set(
+      lineItems
+        .map((line) => (typeof line.productId === 'string' ? line.productId.trim() : ''))
+        .filter(Boolean),
+    ),
+  ];
+  if (ids.length === 0) return new Set();
+
+  const { data, error } = await supabase.from('products').select('id').in('id', ids);
+  if (error) {
+    console.warn('[orders-store] product lookup:', error.message);
+    return new Set();
+  }
+  return new Set((data ?? []).map((row) => row.id));
+}
+
 export async function createStoreOrderFromBody(body) {
   const supabase = getSupabaseAdmin();
   if (!supabase) throw new Error('Supabase no configurado');
@@ -26,6 +44,8 @@ export async function createStoreOrderFromBody(body) {
   const lineItems = Array.isArray(body.lineItems) ? body.lineItems : [];
   if (lineItems.length === 0) throw new Error('Se requiere al menos un producto');
 
+  const knownProductIds = await resolveKnownProductIds(supabase, lineItems);
+
   const exchangeRate = Number(body.exchangeRate) || 3.75;
   const currency = body.currency === 'PEN' ? 'PEN' : 'USD';
 
@@ -35,13 +55,17 @@ export async function createStoreOrderFromBody(body) {
     const unitUsd = Math.max(0, Number(line.unitPriceUsd) || 0);
     const lineTotal = unitUsd * qty;
     subtotalUsd += lineTotal;
+    const productId =
+      typeof line.productId === 'string' && knownProductIds.has(line.productId.trim())
+        ? line.productId.trim()
+        : null;
     return {
-      product_id: line.productId ?? null,
+      product_id: productId,
       quantity: qty,
       unit_price_usd: unitUsd,
       line_total_usd: lineTotal,
       product_snapshot: {
-        id: line.productId,
+        id: line.productId ?? null,
         name: line.name,
         image_url: line.imageUrl ?? null,
       },
@@ -82,7 +106,7 @@ export async function createStoreOrderFromBody(body) {
 
   if (orderError) {
     console.error('[orders-store] create:', orderError.message);
-    throw new Error('No se pudo crear la venta');
+    throw new Error(`No se pudo crear el pedido: ${orderError.message}`);
   }
 
   const orderItems = items.map((item) => ({
@@ -94,7 +118,8 @@ export async function createStoreOrderFromBody(body) {
   const { error: itemsError } = await supabase.from('store_order_items').insert(orderItems);
   if (itemsError) {
     await supabase.from('store_orders').delete().eq('id', order.id);
-    throw new Error('No se pudieron guardar los ítems de la venta');
+    console.error('[orders-store] items:', itemsError.message);
+    throw new Error(`No se pudieron guardar los ítems del pedido: ${itemsError.message}`);
   }
 
   const payload = {
@@ -104,6 +129,19 @@ export async function createStoreOrderFromBody(body) {
   };
 
   notifyHaiSupportChange('orders', 'create', payload);
+
+  try {
+    const { applySaleStockDeduction } = await import('./inventory-stock-sale.js');
+    await applySaleStockDeduction(
+      lineItems.map((line) => ({
+        productId: line.productId,
+        quantity: line.quantity,
+      })),
+    );
+  } catch (error) {
+    console.error('[orders-store] stock deduction:', error);
+  }
+
   return payload;
 }
 
