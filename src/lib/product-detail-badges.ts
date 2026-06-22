@@ -63,6 +63,12 @@ function isIm430f(product: ProductBadgeSource): boolean {
   return product.id === 'ricoh-im-430f' || product.name.toLowerCase().includes('im 430');
 }
 
+function isImBnA4Sibling(product: ProductBadgeSource): boolean {
+  if (product.id === '328f41ef-d935-4807-85d0-e1db5bdf73fb') return true;
+  if (product.id === 'b32a43a1-09e4-49f6-8950-3639c9534700') return true;
+  return /\bim\s*550\s*f\b/i.test(product.name) || /\bim\s*600\s*f\b/i.test(product.name);
+}
+
 /** Texto visible en tarjetas (sin prefijo «Condición:», etc.). */
 export function formatBadgeDisplayValue(
   badge: ProductDetailBadge,
@@ -109,6 +115,15 @@ function defaultBadges(product: ProductBadgeSource): ProductDetailBadge[] {
       { id: 'velocidad', label: 'Velocidad', value: '45 ppm' },
       { id: 'formato', label: 'Formato', value: 'A4' },
       { id: 'adf', label: 'ADF', value: 'Doble Scan' },
+    ];
+  }
+
+  if (isImBnA4Sibling(product)) {
+    return [
+      { id: 'condicion', label: 'Condición', value: 'Nuevo' },
+      { id: 'velocidad', label: 'Velocidad', value: '30 ppm' },
+      { id: 'formato', label: 'Formato', value: 'A4' },
+      { id: 'adf', label: 'ADF', value: 'SPDF Doble Scan' },
     ];
   }
 

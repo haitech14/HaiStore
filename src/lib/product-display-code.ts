@@ -1,32 +1,29 @@
-const DISPLAY_CODE_PREFIX_PATTERNS = [/^REPUESTO/i, /^RICOH/i] as const;
+import { stripProductCodePrefix } from '../../shared/product-code-prefix.js';
+import {
+  normalizeProductCodeSuffix,
+  type ProductCodeSuffixContext,
+} from '../../shared/product-code-suffix.js';
 
-/** Quita prefijos de marca/tipo del código solo para mostrar (no altera el valor guardado). */
+/** Quita prefijos REPUESTO/RICOHLP/LP del código para mostrar en UI. */
 export function stripProductCodeDisplayPrefix(code: string): string {
-  let result = code.trim();
-  if (!result) return result;
-
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const pattern of DISPLAY_CODE_PREFIX_PATTERNS) {
-      const next = result.replace(pattern, '').trim();
-      if (next !== result) {
-        result = next;
-        changed = true;
-      }
-    }
-  }
-
+  const result = stripProductCodePrefix(code);
   return result || code.trim();
 }
 
+export type { ProductCodeSuffixContext };
+
+export interface FormatProductDisplayCodeOptions extends ProductCodeSuffixContext {
+  brand?: string | null | undefined;
+}
+
 /**
- * Código listo para UI: sin prefijos REPUESTO/RICOH ni marca duplicada al inicio.
+ * Código listo para UI: sin prefijos REPUESTO/RICOHLP/LP ni marca duplicada al inicio.
+ * Sufijos Ricoh tipo CP908Y → «-CP» (tóner) o «-SN» (repuestos similares).
  * La búsqueda sigue usando el código crudo del inventario.
  */
 export function formatProductDisplayCode(
   code: string | null | undefined,
-  options: { brand?: string | null | undefined } = {},
+  options: FormatProductDisplayCodeOptions = {},
 ): string | null {
   const raw = code?.trim();
   if (!raw) return null;
@@ -40,6 +37,8 @@ export function formatProductDisplayCode(
       cleaned = cleaned.slice(brand.length).trim();
     }
   }
+
+  cleaned = normalizeProductCodeSuffix(cleaned, options);
 
   return cleaned || raw;
 }

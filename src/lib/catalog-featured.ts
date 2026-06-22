@@ -1,6 +1,7 @@
 import catalogData from '@/data/inventory-catalog.json';
 import { productCategoryTags } from '@/lib/inventory-categories';
 import { normalizeInventoryProduct } from '@/lib/inventory-product';
+import { resolveProductImageUrl } from '@/lib/product-image-url';
 import type { FeaturedProduct } from '@/data/featured-products';
 import type { InventoryProduct } from '@/types/product';
 
@@ -81,7 +82,7 @@ export function catalogRowToFeatured(
     isNew: meta?.isNew ?? row.is_new ?? false,
     rating: meta?.rating ?? 5,
     reviews: meta?.reviews ?? stableReviewCount(product.id),
-    image: product.image_url ?? '',
+    image: resolveProductImageUrl(product),
   };
 
   if (product.attributes?.length) {

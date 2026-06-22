@@ -1,9 +1,19 @@
 import { ensureFullPrices } from '@/lib/roles';
 import { resolveProductImageUrl } from '@/lib/product-image-url';
+import { formatProductDisplayCode } from '@/lib/product-display-code';
 import { normalizeSearchText } from '@/lib/product-search';
 import { usdToPen } from '@/lib/utils';
 import type { EquipmentConfigOption, EquipmentConfigStep } from '@/types/product-detail';
 import type { Product } from '@/types/product';
+
+/** Tóner original IM 430F en inventario (código 419078). */
+export const IM430F_ORIGINAL_TONER_PRODUCT_ID = 'toner-419078';
+
+/** Tóner original IM 550F / IM 600F en inventario (código 418480). */
+export const IM550F_ORIGINAL_TONER_PRODUCT_ID = 'toner-418480';
+
+/** Tóner compatible IM 550 en inventario. */
+export const IM550F_COMPATIBLE_TONER_PRODUCT_ID = 'toner-compat-tc-im-550-intercopy';
 
 interface OptionCatalogHint {
   keywords: string[];
@@ -82,6 +92,47 @@ const OPTION_CATALOG_HINTS: Record<string, OptionCatalogHint> = {
     categories: ['Accesorios', 'Repuestos'],
     fallbackImage: '/categories/repuestos.png',
   },
+  'toner-inicio': {
+    keywords: ['toner', 'tóner', 'inicio', 'starter', '8000'],
+    categories: [
+      'Toner, Suministros',
+      'Suministros',
+      'Toner',
+      'Tóner',
+      'Toner Original',
+    ],
+    fallbackImage: '/categories/toner-suministros.png',
+  },
+  'toner-compatible': {
+    keywords: ['toner', 'tóner', 'compatible', 'cartucho', 'im 550', 'im550'],
+    categories: [
+      'Toner Compatible',
+      'Toner Compatibles',
+      'Toner, Toner Compatible',
+      'Toner y Suministros, Toner Compatible',
+    ],
+    fallbackImage: '/categories/toner-suministros.png',
+  },
+  'casetera-pb-1160': {
+    keywords: ['418475', 'pb 1160', 'pb1160', 'casetera', 'bandeja'],
+    categories: ['Accesorios', 'Repuestos'],
+    fallbackImage: '/categories/accesorios-impresoras.png',
+  },
+  'tall-cabinet-u': {
+    keywords: ['tall cabinet', 'cabinet type u', 'pedestal', 'cabinet'],
+    categories: ['Accesorios', 'Repuestos'],
+    fallbackImage: '/categories/accesorios-impresoras.png',
+  },
+  'ocr-m13': {
+    keywords: ['ocr', 'm13', 'pdf', 'reconocimiento'],
+    categories: ['Accesorios', 'Repuestos', 'Suministros'],
+    fallbackImage: '/categories/soluciones-negocio.png',
+  },
+  'estabilizador-2000w': {
+    keywords: ['estabilizador', '2000', 'solido', 'sólido', 'watts'],
+    categories: ['Accesorios', 'Repuestos', 'Suministros'],
+    fallbackImage: '/categories/accesorios-impresoras.png',
+  },
   'starter-kit': {
     keywords: ['kit', 'inicio', 'starter', 'toner'],
     categories: ['Suministros', 'Toner', 'Tóner'],
@@ -92,8 +143,10 @@ const OPTION_CATALOG_HINTS: Record<string, OptionCatalogHint> = {
     categories: [
       'Toner, Suministros',
       'Suministros',
+      'Toner y Suministros',
       'Toner',
       'Tóner',
+      'Toner y Suministros, Toner Compatible',
       'Toner, Toner Compatible',
       'Toner Compatible',
       'Toner, Toner Compatibles',
@@ -114,10 +167,27 @@ const OPTION_CATALOG_HINTS: Record<string, OptionCatalogHint> = {
     ],
     fallbackImage: '/categories/repuestos.png',
   },
-  'waste-bottle': {
-    keywords: ['residual', 'waste', 'botella', 'toner'],
-    categories: ['Suministros', 'Repuestos', 'Toner'],
-    fallbackImage: '/categories/toner-suministros.png',
+  'garantia-base': {
+    keywords: ['garantia', 'garantía', 'cobertura'],
+    fallbackImage: '/products/combo-garantia-extendida.webp',
+  },
+  'garantia-2y': {
+    keywords: ['garantia', 'extendida', '2 años'],
+    fallbackImage: '/products/combo-garantia-extendida.webp',
+  },
+  'garantia-3y': {
+    keywords: ['garantia', 'extendida', '3 años'],
+    fallbackImage: '/products/combo-garantia-extendida.webp',
+  },
+  'toner-ricoh-im-430f': {
+    keywords: ['toner', 'im 430', '419078'],
+    categories: ['Toner', 'Tóner', 'Toner Original'],
+    fallbackImage: '/products/toner-419078.webp',
+  },
+  'toner-ricoh-im-550f': {
+    keywords: ['toner', 'im 550', 'im 600', '418480', 'original'],
+    categories: ['Toner', 'Tóner', 'Toner Original'],
+    fallbackImage: '/products/toner-418480.webp',
   },
 };
 
@@ -202,36 +272,165 @@ function findCatalogProduct(
   return bestScore >= 10 ? best : null;
 }
 
+function extractEquipmentSearchKeys(mainProduct: Product): string[] {
+  const keys = new Set<string>();
+  const name = mainProduct.name ?? '';
+
+  const regexes = [
+    /\bIM\s*C?\s*\d{3,4}[A-Z]?\b/gi,
+    /\bMP\s*C?\s*\d{3,4}[A-Z]?\b/gi,
+    /\b[A-Z]{1,5}\s*-?\s*\d{3,4}[A-Z]{0,4}\b/g,
+  ];
+
+  for (const pattern of regexes) {
+    for (const match of name.matchAll(pattern)) {
+      const raw = match[0].trim();
+      keys.add(normalizeSearchText(raw));
+      keys.add(raw.replace(/\s+/g, '').toLowerCase());
+    }
+  }
+
+  return [...keys].filter((key) => key.replace(/\s+/g, '').length >= 3);
+}
+
+function isConsumableCatalogProduct(product: Product): boolean {
+  const text = haystack(product);
+  if (text.includes('impresora') || text.includes('multifuncional')) return false;
+  return (
+    text.includes('toner') ||
+    text.includes('cartucho') ||
+    text.includes('suministro') ||
+    text.includes('tambor') ||
+    text.includes('unidad de imagen') ||
+    text.includes('repuesto')
+  );
+}
+
+function consumableMatchesEquipment(consumable: Product, keys: string[]): boolean {
+  const text = haystack(consumable);
+  const compact = text.replace(/\s+/g, '');
+  return keys.some((key) => {
+    const compactKey = key.replace(/\s+/g, '');
+    if (compactKey.length < 3) return false;
+    return text.includes(key) || compact.includes(compactKey);
+  });
+}
+
+function findTonerForEquipment(catalog: Product[], mainProduct: Product): Product | null {
+  const keys = extractEquipmentSearchKeys(mainProduct);
+  if (keys.length === 0) return null;
+
+  const matched = catalog
+    .filter((product) => product.id !== mainProduct.id)
+    .filter(isConsumableCatalogProduct)
+    .filter((product) => consumableMatchesEquipment(product, keys));
+
+  return matched[0] ?? null;
+}
+
+function applyOptionImageFallback(
+  option: EquipmentConfigOption,
+  hint?: OptionCatalogHint,
+): EquipmentConfigOption {
+  if (option.image || !hint?.fallbackImage) return option;
+  return { ...option, image: hint.fallbackImage };
+}
+
+function resolveCatalogImage(product: Product): string | undefined {
+  const url = resolveProductImageUrl(product);
+  return url ?? undefined;
+}
+
+function mergeOptionFromCatalog(
+  option: EquipmentConfigOption,
+  match: Product,
+  { preferOptionName = false }: { preferOptionName?: boolean } = {},
+): EquipmentConfigOption {
+  const priceUsd = ensureFullPrices(match.prices ?? { public: match.price }).public;
+  const image = resolveCatalogImage(match);
+  const catalogDescription = match.description?.trim();
+  const mergedDescription = option.description?.trim() || catalogDescription;
+  const resolvedPriceUsd =
+    !option.included && option.priceUsd != null && option.priceUsd > 0
+      ? option.priceUsd
+      : priceUsd;
+  const resolvedPricePen = option.included
+    ? 0
+    : option.pricePen > 0
+      ? option.pricePen
+      : usdToPen(resolvedPriceUsd);
+
+  return {
+    ...option,
+    productId: match.id,
+    sku:
+      formatProductDisplayCode(match.code ?? match.id, {
+        brand: match.brand,
+        category: match.category,
+        name: match.name,
+      }) ??
+      match.code ??
+      match.id,
+    name: preferOptionName && option.name.trim() ? option.name : match.name,
+    ...(image ? { image } : {}),
+    ...(option.included ? {} : { priceUsd: resolvedPriceUsd }),
+    pricePen: resolvedPricePen,
+    ...(mergedDescription ? { description: mergedDescription } : {}),
+  };
+}
+
 function enrichOption(
   option: EquipmentConfigOption,
   catalog: Product[],
   mainProduct: Product,
 ): EquipmentConfigOption {
   const hint = OPTION_CATALOG_HINTS[option.id];
-  const fallbackImage = hint?.fallbackImage ?? '/categories/repuestos.png';
-  const match = hint ? findCatalogProduct(catalog, hint, mainProduct) : null;
+  let enriched = option;
 
-  if (!match) {
-    return {
-      ...option,
-      image: option.image ?? fallbackImage,
-    };
+  if (option.productId) {
+    const linked = catalog.find(
+      (product) => product.id === option.productId && product.id !== mainProduct.id,
+    );
+    if (linked) {
+      enriched = mergeOptionFromCatalog(option, linked, { preferOptionName: true });
+    }
+  } else if (option.sku) {
+    const skuMatch = catalog.find(
+      (product) =>
+        product.id !== mainProduct.id &&
+        normalizeSearchText(product.code ?? '') === normalizeSearchText(option.sku ?? ''),
+    );
+    if (skuMatch) {
+      enriched = mergeOptionFromCatalog(option, skuMatch, {
+        preferOptionName: Boolean(option.name.trim()),
+      });
+    }
+  } else if (hint) {
+    const match = findCatalogProduct(catalog, hint, mainProduct);
+    if (match) {
+      enriched = mergeOptionFromCatalog(option, match, { preferOptionName: true });
+    }
   }
 
-  const priceUsd = ensureFullPrices(match.prices ?? { public: match.price }).public;
-  const image = resolveProductImageUrl(match) ?? fallbackImage;
-  const description = option.description ?? match.description;
+  if (
+    !enriched.image &&
+    !enriched.productId &&
+    (option.id === 'toner-compatible' || option.id === 'toner-inicio' || option.id.startsWith('toner-'))
+  ) {
+    const toner = findTonerForEquipment(catalog, mainProduct);
+    const tonerImage = toner ? resolveCatalogImage(toner) : undefined;
+    if (tonerImage) {
+      enriched = {
+        ...enriched,
+        image: tonerImage,
+        ...(option.id === 'toner-compatible' && !enriched.productId && toner
+          ? { productId: toner.id }
+          : {}),
+      };
+    }
+  }
 
-  return {
-    ...option,
-    productId: match.id,
-    sku: match.code ?? match.id,
-    name: match.name,
-    image,
-    priceUsd,
-    pricePen: option.included ? 0 : usdToPen(priceUsd),
-    ...(description ? { description } : {}),
-  };
+  return applyOptionImageFallback(enriched, hint);
 }
 
 export function resolveEquipmentConfigSteps(

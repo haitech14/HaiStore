@@ -21,7 +21,7 @@ export function productToFeatured(product: Product): FeaturedProduct {
     brand: product.brand ?? null,
     ...(product.attributes?.length ? { attributes: product.attributes } : {}),
     price: product.price,
-    image: resolveProductImageUrl(product) ?? '/promo-cards/b2b-printer.png',
+    image: resolveProductImageUrl(product),
     rating: 5,
     reviews: 0,
   };

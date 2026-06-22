@@ -169,9 +169,9 @@ export function ProductQuoteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-md overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Descargar cotización</DialogTitle>
+          <DialogTitle>Cotizar</DialogTitle>
           <DialogDescription>
-            Complete los datos del cliente (mismo formulario que HaiSupport) para generar el PDF.
+            Complete los datos del cliente para generar la cotización en PDF.
             {paidOptionsCount > 0
               ? ` Incluye ${paidOptionsCount} accesorio${paidOptionsCount === 1 ? '' : 's'} de configuración.`
               : null}

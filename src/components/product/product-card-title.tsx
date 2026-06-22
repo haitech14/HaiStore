@@ -54,7 +54,9 @@ export function ProductCardTitle({
       ) : null}
       <h3 className={titleClass}>{title}</h3>
       {code ? (
-        <p className={cn(PRODUCT_CARD_CODE_CLASS, isTable ? 'mt-0.5' : 'mt-0.5')}>{code}</p>
+        <p className={cn(PRODUCT_CARD_CODE_CLASS, isTable ? 'mt-0.5' : 'mt-0.5')}>
+          {isFeatured ? `Código: ${code}` : code}
+        </p>
       ) : null}
     </div>
   );

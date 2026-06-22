@@ -12,11 +12,15 @@ import {
   clientRecommendations,
   type ClientRecommendation,
 } from '@/data/client-recommendations';
+import { emblaShouldWatchDrag } from '@/lib/embla-interaction';
 import { recommendationImageSources } from '@/lib/responsive-image';
 import { cn } from '@/lib/utils';
 
 const SLIDE_CLASS =
-  'min-w-0 flex-[0_0_88%] sm:flex-[0_0_48%] md:flex-[0_0_32%] lg:flex-[0_0_24%] xl:flex-[0_0_16.666%]';
+  'min-w-0 flex-[0_0_88%] sm:flex-[0_0_48%] md:flex-[0_0_32%]';
+
+const carouselArrowClass =
+  'absolute top-[32%] z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/80 bg-white text-foreground shadow-md transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-35 sm:size-10';
 
 function StarRating() {
   return (
@@ -42,68 +46,106 @@ function RecommendationCard({
   className?: string;
 }) {
   return (
-    <li className={cn(SLIDE_CLASS, 'pl-3 first:pl-0 sm:pl-4', className)}>
-      <button
-        type="button"
-        onClick={() => onOpen(item)}
-        className={cn(
-          'group flex h-full w-full flex-col overflow-hidden rounded-xl border border-border/60 bg-white text-left shadow-[0_2px_16px_rgba(15,31,61,0.08)]',
-          'transition-shadow hover:shadow-[0_4px_24px_rgba(15,31,61,0.12)]',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
-        )}
-      >
-        <div className="relative aspect-[4/5] overflow-hidden bg-muted">
-          {(() => {
-            const { webpSrc, fallbackSrc } = recommendationImageSources(item.image);
-            return (
-              <picture className="block size-full">
-                <source type="image/webp" srcSet={webpSrc} />
-                <img
-                  src={fallbackSrc}
-                  alt=""
-                  width={320}
-                  height={400}
-                  className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                  loading="lazy"
-                />
-              </picture>
-            );
-          })()}
-          <span
-            className="absolute bottom-3 left-3 flex size-8 items-center justify-center rounded-full bg-red-600 text-lg font-bold leading-none text-white shadow-md"
-            aria-hidden="true"
-          >
-            &ldquo;
+    <button
+      type="button"
+      onClick={() => onOpen(item)}
+      className={cn(
+        'group flex h-full w-full flex-col overflow-hidden rounded-xl border border-border/60 bg-white text-left shadow-[0_2px_16px_rgba(15,31,61,0.08)]',
+        'transition-shadow hover:shadow-[0_4px_24px_rgba(15,31,61,0.12)]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
+        className,
+      )}
+    >
+      <div className="relative aspect-[4/5] overflow-hidden bg-muted">
+        {(() => {
+          const { webpSrc, fallbackSrc } = recommendationImageSources(item.image);
+          return (
+            <picture className="block size-full">
+              <source type="image/webp" srcSet={webpSrc} />
+              <img
+                src={fallbackSrc}
+                alt=""
+                width={320}
+                height={400}
+                className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                loading="lazy"
+              />
+            </picture>
+          );
+        })()}
+        <span
+          className="absolute left-3 top-3 flex size-8 items-center justify-center rounded-full bg-red-600 text-lg font-bold leading-none text-white shadow-md"
+          aria-hidden="true"
+        >
+          &ldquo;
+        </span>
+        <span
+          className={cn(
+            'absolute inset-0 flex items-center justify-center bg-black/0 transition-colors',
+            'group-hover:bg-black/20 group-focus-visible:bg-black/20',
+          )}
+          aria-hidden="true"
+        >
+          <span className="flex size-10 items-center justify-center rounded-full bg-white/90 text-red-600 opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            <ZoomIn className="size-5" strokeWidth={2} />
           </span>
-          <span
-            className={cn(
-              'absolute inset-0 flex items-center justify-center bg-black/0 transition-colors',
-              'group-hover:bg-black/20 group-focus-visible:bg-black/20',
-            )}
-            aria-hidden="true"
-          >
-            <span className="flex size-10 items-center justify-center rounded-full bg-white/90 text-red-600 opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-              <ZoomIn className="size-5" strokeWidth={2} />
-            </span>
-          </span>
-        </div>
+        </span>
+      </div>
 
-        <div className="flex flex-1 flex-col gap-2 px-3 pb-4 pt-3 sm:px-4 sm:pb-5 sm:pt-3.5">
-          <StarRating />
-          <h3 className="text-balance text-center text-xs font-bold leading-snug text-[#0f1f3d] sm:text-sm">
-            {item.title}
-          </h3>
-          <p className="line-clamp-4 flex-1 text-pretty text-center text-[0.6875rem] italic leading-relaxed text-muted-foreground sm:text-xs">
-            &ldquo;{item.quote}&rdquo;
-          </p>
-          <p className="text-center text-[0.6875rem] sm:text-xs">
-            <span className="font-bold text-[#0f1f3d]">{item.customerName}</span>
-            <span className="text-muted-foreground"> · {item.customerCity}</span>
-          </p>
-        </div>
-        <span className="sr-only">Ver imagen ampliada: {item.imageAlt}</span>
-      </button>
-    </li>
+      <div className="flex flex-1 flex-col gap-2 px-3 pb-4 pt-3 sm:px-4 sm:pb-5 sm:pt-3.5">
+        <StarRating />
+        <h3 className="text-balance text-center text-xs font-bold leading-snug text-[#0f1f3d] sm:text-sm">
+          {item.title}
+        </h3>
+        <p className="line-clamp-4 flex-1 text-pretty text-center text-[0.6875rem] italic leading-relaxed text-muted-foreground sm:text-xs">
+          &ldquo;{item.quote}&rdquo;
+        </p>
+        <p className="text-center text-[0.6875rem] sm:text-xs">
+          <span className="font-bold text-[#0f1f3d]">{item.customerName}</span>
+          <span className="text-muted-foreground"> · {item.customerCity}</span>
+        </p>
+      </div>
+      <span className="sr-only">Ver imagen ampliada: {item.imageAlt}</span>
+    </button>
+  );
+}
+
+function RecommendationLightbox({
+  item,
+  onClose,
+}: {
+  item: ClientRecommendation | null;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog open={item != null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        className="max-w-[min(56rem,calc(100vw-2rem))] gap-3 border-none bg-neutral-950/95 p-3 sm:p-4"
+        overlayClassName="bg-black/80"
+      >
+        {item ? (
+          <>
+            <DialogTitle className="text-center text-sm font-bold text-white sm:text-base">
+              {item.title}
+            </DialogTitle>
+            <DialogDescription className="sr-only">{item.imageAlt}</DialogDescription>
+            <div className="flex max-h-[min(85dvh,52rem)] items-center justify-center overflow-hidden rounded-lg bg-black/40">
+              <img
+                src={item.image}
+                alt={item.imageAlt}
+                className="max-h-[min(85dvh,52rem)] w-full object-contain"
+              />
+            </div>
+            <p className="text-center text-xs italic text-neutral-300 sm:text-sm">
+              &ldquo;{item.quote}&rdquo; —{' '}
+              <span className="font-semibold text-white">{item.customerName}</span>
+              {', '}
+              {item.customerCity}
+            </p>
+          </>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -112,6 +154,7 @@ export function ClientRecommendationsSection() {
     align: 'start',
     containScroll: 'trimSnaps',
     slidesToScroll: 1,
+    watchDrag: emblaShouldWatchDrag,
   });
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
@@ -149,7 +192,7 @@ export function ClientRecommendationsSection() {
   return (
     <section
       aria-labelledby="clientes-recomiendan-titulo"
-      className="relative overflow-hidden border-t border-border/60 bg-white py-8 sm:py-10"
+      className="relative overflow-hidden py-8 sm:py-10"
     >
       <div className="container relative">
         <header className="mx-auto mb-6 max-w-3xl text-center sm:mb-8">
@@ -174,93 +217,70 @@ export function ClientRecommendationsSection() {
           </p>
         </header>
 
-        <div className="relative">
-          {canScrollPrev ? (
-            <button
-              type="button"
-              onClick={scrollPrev}
-              className="absolute -left-1 top-[32%] z-10 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white shadow-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 sm:flex lg:-left-3"
-              aria-label="Testimonio anterior"
-            >
-              <ChevronLeft className="size-5" aria-hidden="true" />
-            </button>
-          ) : null}
-          {canScrollNext ? (
-            <button
-              type="button"
-              onClick={scrollNext}
-              className="absolute -right-1 top-[32%] z-10 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white shadow-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 sm:flex lg:-right-3"
-              aria-label="Testimonio siguiente"
-            >
-              <ChevronRight className="size-5" aria-hidden="true" />
-            </button>
-          ) : null}
+        <ul className="hidden gap-4 lg:grid lg:grid-cols-4">
+          {clientRecommendations.map((item) => (
+            <li key={item.id}>
+              <RecommendationCard item={item} onOpen={setLightboxItem} />
+            </li>
+          ))}
+        </ul>
 
-          <div className="-mx-3 overflow-hidden px-3 sm:-mx-4 sm:px-4" ref={emblaRef}>
+        <div className="relative lg:hidden">
+          <button
+            type="button"
+            onClick={scrollPrev}
+            disabled={!canScrollPrev}
+            className={cn(carouselArrowClass, '-left-1 sm:left-0')}
+            aria-label="Testimonio anterior"
+          >
+            <ChevronLeft className="size-5" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={scrollNext}
+            disabled={!canScrollNext}
+            className={cn(carouselArrowClass, '-right-1 sm:right-0')}
+            aria-label="Testimonio siguiente"
+          >
+            <ChevronRight className="size-5" aria-hidden="true" />
+          </button>
+
+          <div className="overflow-hidden px-10 sm:px-12" ref={emblaRef}>
             <ul className="flex touch-pan-y">
               {clientRecommendations.map((item) => (
-                <RecommendationCard
-                  key={item.id}
-                  item={item}
-                  onOpen={setLightboxItem}
-                />
+                <li key={item.id} className={cn(SLIDE_CLASS, 'pl-3 first:pl-0 sm:pl-4')}>
+                  <RecommendationCard item={item} onOpen={setLightboxItem} />
+                </li>
               ))}
             </ul>
           </div>
-        </div>
 
-        {scrollSnaps.length > 1 ? (
-          <div
-            className="mt-4 flex items-center justify-center gap-1.5 sm:mt-5"
-            role="tablist"
-            aria-label="Paginación de testimonios"
-          >
-            {scrollSnaps.map((_, index) => (
-              <button
-                key={index}
-                type="button"
-                role="tab"
-                aria-selected={index === selectedIndex}
-                aria-label={`Ir al grupo ${index + 1} de testimonios`}
-                onClick={() => scrollTo(index)}
-                className={cn(
-                  'size-2.5 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
-                  index === selectedIndex ? 'bg-red-600' : 'bg-neutral-300 hover:bg-neutral-400',
-                )}
-              />
-            ))}
-          </div>
-        ) : null}
+          {scrollSnaps.length > 1 ? (
+            <div
+              className="mt-4 flex items-center justify-center gap-1.5 sm:mt-5"
+              role="tablist"
+              aria-label="Paginación de testimonios"
+            >
+              {scrollSnaps.map((_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  role="tab"
+                  aria-selected={index === selectedIndex}
+                  aria-label={`Ir al grupo ${index + 1} de testimonios`}
+                  onClick={() => scrollTo(index)}
+                  className={cn(
+                    'size-2.5 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
+                    index === selectedIndex ? 'bg-red-600' : 'bg-neutral-300 hover:bg-neutral-400',
+                  )}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      <Dialog open={lightboxItem != null} onOpenChange={(open) => !open && setLightboxItem(null)}>
-        <DialogContent
-          className="max-w-[min(56rem,calc(100vw-2rem))] gap-3 border-none bg-neutral-950/95 p-3 sm:p-4"
-          overlayClassName="bg-black/80"
-        >
-          {lightboxItem ? (
-            <>
-              <DialogTitle className="text-center text-sm font-bold text-white sm:text-base">
-                {lightboxItem.title}
-              </DialogTitle>
-              <DialogDescription className="sr-only">{lightboxItem.imageAlt}</DialogDescription>
-              <div className="flex max-h-[min(85dvh,52rem)] items-center justify-center overflow-hidden rounded-lg bg-black/40">
-                <img
-                  src={lightboxItem.image}
-                  alt={lightboxItem.imageAlt}
-                  className="max-h-[min(85dvh,52rem)] w-full object-contain"
-                />
-              </div>
-              <p className="text-center text-xs italic text-neutral-300 sm:text-sm">
-                &ldquo;{lightboxItem.quote}&rdquo; —{' '}
-                <span className="font-semibold text-white">{lightboxItem.customerName}</span>
-                {', '}
-                {lightboxItem.customerCity}
-              </p>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+      <RecommendationLightbox item={lightboxItem} onClose={() => setLightboxItem(null)} />
     </section>
   );
 }

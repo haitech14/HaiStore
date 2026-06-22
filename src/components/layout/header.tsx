@@ -11,7 +11,9 @@ import { Button } from '@/components/ui/button';
 import { AccountDropdown } from '@/components/layout/account-dropdown';
 import { CatalogMobileAccordion } from '@/components/layout/catalog-mobile-accordion';
 import { HeaderActionStrip } from '@/components/layout/header-action-strip';
-import { HeaderCategoryNav, mainNavItems } from '@/components/layout/header-category-nav';
+import { HeaderCategoryNav, headerMainNavLinks } from '@/components/layout/header-category-nav';
+import { HeaderQuoteWhatsAppButton } from '@/components/layout/header-quote-whatsapp-button';
+import { HeaderUtilityBar } from '@/components/layout/header-utility-bar';
 import {
   HeaderCurrencyControl,
   HeaderCurrencySymbolToggle,
@@ -32,23 +34,19 @@ type MainNavItem = {
 
 const homeItem: MainNavItem = { to: '/', label: 'Inicio', end: true };
 
-const mobileNavItems: MainNavItem[] = mainNavItems
-  .filter((item): item is Extract<typeof item, { kind: 'link' }> => item.kind === 'link')
-  .map((item) => {
-    const mapped: MainNavItem = {
-      to: item.to,
-      label: item.label,
-    };
-    if (item.end !== undefined) mapped.end = item.end;
-    if (item.matchActive) mapped.matchActive = item.matchActive;
-    return mapped;
-  });
-
+const mobileNavItems: MainNavItem[] = headerMainNavLinks.map((item) => {
+  const mapped: MainNavItem = {
+    to: item.to,
+    label: item.label,
+  };
+  if (item.end !== undefined) mapped.end = item.end;
+  if (item.matchActive) mapped.matchActive = item.matchActive;
+  return mapped;
+});
 
 const navItems: MainNavItem[] = [
-  { to: '/tienda', label: 'Productos' },
-  ...mobileNavItems.filter((item) => item.label !== 'Servicios' && item.label !== 'Contacto'),
-  ...mobileNavItems.filter((item) => item.label === 'Servicios' || item.label === 'Contacto'),
+  { to: '/servicios', label: 'Servicios' },
+  ...mobileNavItems,
 ];
 
 function mainNavLinkProps(item: MainNavItem) {
@@ -106,8 +104,10 @@ export function Header() {
         scrolled && 'shadow-[0_6px_20px_rgba(15,23,42,0.16)]',
       )}
     >
+      <HeaderUtilityBar />
+
       {/* Fila principal */}
-      <div className="container flex items-center gap-3 py-2 sm:gap-4">
+      <div className="container flex items-center gap-3 py-2.5 sm:gap-4 sm:py-3">
         <div className="flex min-h-12 flex-1 items-center gap-3 sm:gap-4">
           {/* Botón menú móvil */}
           <Button
@@ -126,18 +126,19 @@ export function Header() {
             className="flex shrink-0 items-center gap-2 sm:gap-2.5"
             aria-label="Haitech, inicio"
           >
-            <HeaderLogoImage heightClass="h-8 sm:h-9" width={197} height={53} />
+            <HeaderLogoImage heightClass="h-8 sm:h-9 md:h-10" width={197} height={53} />
+            <span className="hidden h-9 w-px shrink-0 bg-border/70 sm:block md:h-10" aria-hidden="true" />
             <img
               src="/ricohpartner.png"
               alt="Ricoh Alliance Partner"
-              className="h-10 w-auto rounded-sm sm:h-14 md:h-16"
+              className="h-9 w-auto rounded-sm sm:h-10 md:h-12"
               loading="lazy"
             />
           </Link>
 
           {/* Buscador */}
-          <div className="hidden flex-1 justify-center md:flex">
-            <SiteSearchForm className="max-w-lg" variant="segmented" />
+          <div className="hidden flex-1 justify-center px-2 md:flex lg:px-4">
+            <SiteSearchForm className="max-w-2xl lg:max-w-3xl" variant="segmented" />
           </div>
         </div>
 
@@ -206,6 +207,7 @@ export function Header() {
                 ))}
               </ul>
             </nav>
+            <HeaderQuoteWhatsAppButton className="min-h-11 w-full justify-center" />
           </div>
         </div>
       )}

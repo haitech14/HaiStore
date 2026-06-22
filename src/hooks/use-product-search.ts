@@ -41,11 +41,15 @@ export function useProductSearch(
     enabled,
     staleTime: 30_000,
     gcTime: 1000 * 60 * 5,
-    select: (result) => ({
-      products: viewAsRole
-        ? applyViewAsPriceToProducts(result.products, effectiveRole)
-        : result.products,
-      total: result.total,
-    }),
+    placeholderData: (previous) => previous,
+    select: (result) => {
+      const products = Array.isArray(result?.products) ? result.products : [];
+      return {
+        products: viewAsRole
+          ? applyViewAsPriceToProducts(products, effectiveRole)
+          : products,
+        total: typeof result?.total === 'number' ? result.total : products.length,
+      };
+    },
   });
 }

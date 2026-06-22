@@ -51,9 +51,9 @@ async function generateVariants(inputPath, variants) {
 
 async function optimizeHero() {
   console.log('\n— Hero banner —');
-  const hero = path.join(PUBLIC, 'categories', 'banner2.png');
+  const hero = path.join(PUBLIC, 'categories', 'fiestaspatriasbanner.png');
   if (!fs.existsSync(hero)) {
-    console.warn('  ⚠ No encontrado: banner2.png');
+    console.warn('  ⚠ No encontrado: fiestaspatriasbanner.png');
     return;
   }
 
@@ -64,7 +64,7 @@ async function optimizeHero() {
     .toFile(optimizedPng);
   const before = kb(hero);
   fs.renameSync(optimizedPng, hero);
-  console.log(`  ✓ banner2.png optimizado (${before} KB → ${kb(hero)} KB)`);
+  console.log(`  ✓ fiestaspatriasbanner.png optimizado (${before} KB → ${kb(hero)} KB)`);
 
   await generateVariants(hero, [
     { suffix: '-768', width: 768 },

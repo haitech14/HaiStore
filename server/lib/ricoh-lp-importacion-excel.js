@@ -1,5 +1,6 @@
 import XLSX from 'xlsx';
 
+import { normalizeProductCode } from '../../shared/product-code-prefix.js';
 import { normalizeAttributes } from './inventory-attributes.js';
 import { normalizeProductInput } from './inventory-store.js';
 import { concatenateModelos, formatRendLabel } from './repuestos-products-excel.js';
@@ -50,7 +51,7 @@ export function parseNumber(value) {
  * @param {unknown} code
  */
 export function normalizeImportCode(code) {
-  const value = String(code ?? '').trim();
+  const value = normalizeProductCode(code);
   if (!value || value === '0') return '';
   return value;
 }

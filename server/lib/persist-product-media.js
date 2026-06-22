@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 
 import sharp from 'sharp';
 
+import { applyHaitechWatermark } from './image-watermark.js';
 import {
   isVideoMediaUrl,
   isYoutubeMediaUrl,
@@ -66,9 +67,16 @@ async function exportDataUrlToFile(dataUrl, filePath) {
   const input = Buffer.from(base64, 'base64');
   await fs.mkdir(path.dirname(filePath), { recursive: true });
 
-  const output = await sharp(input)
+  const resized = await sharp(input)
     .rotate()
     .resize(MAX_EDGE, MAX_EDGE, { fit: 'inside', withoutEnlargement: true })
+    .toBuffer();
+
+  const watermarked = await applyHaitechWatermark(resized, {
+    sourceUrl: '/products/upload',
+  });
+
+  const output = await sharp(watermarked)
     .webp({ quality: WEBP_QUALITY })
     .toBuffer();
 
@@ -98,18 +106,27 @@ function resolvePersistedUrl(url) {
  * Convierte data: URLs del producto en archivos estáticos en public/products
  * y sustituye las referencias por rutas públicas servibles en Vercel.
  */
+function dedupeUrls(urls) {
+  const seen = new Set();
+  const result = [];
+  for (const url of urls) {
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    result.push(url);
+  }
+  return result;
+}
+
 export async function persistProductMedia(product) {
   if (!product?.id) return product;
 
   const gallery = Array.isArray(product.gallery)
     ? product.gallery.filter((url) => typeof url === 'string' && url.length > 0)
     : [];
-  const sourceUrls =
-    gallery.length > 0
-      ? gallery
-      : typeof product.image_url === 'string' && product.image_url.length > 0
-        ? [product.image_url]
-        : [];
+  const sourceUrls = dedupeUrls([
+    typeof product.image_url === 'string' ? product.image_url : null,
+    ...gallery,
+  ]).filter(Boolean);
 
   if (sourceUrls.length === 0) return product;
 
@@ -156,10 +173,12 @@ export async function persistProductMedia(product) {
       (entry) => !isYoutubeMediaUrl(entry) && !isVideoMediaUrl(entry),
     ) ?? null;
 
+  const additionalGallery = nextGallery.filter((entry) => entry !== image_url);
+
   return {
     ...product,
     image_url,
-    gallery: nextGallery.length > 0 ? nextGallery : image_url ? [image_url] : [],
+    gallery: additionalGallery.length > 0 ? additionalGallery : [],
   };
 }
 

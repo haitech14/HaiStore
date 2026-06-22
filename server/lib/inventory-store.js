@@ -15,7 +15,14 @@ import { seedProducts } from './seed-products.js';
 import { ensureProductSortOrders, sortProductsByOrder } from './inventory-product-order.js';
 import { resolveProductGallery, resolveProductImageUrl } from './product-image-url.js';
 import { sanitizeStoredProductMedia } from '../../shared/product-media-sanitize.js';
+import { normalizeProductGalleryFields } from '../../shared/product-gallery.js';
+import {
+  normalizeStorefrontFeatureBar,
+  normalizeStorefrontHeroBullets,
+} from '../../shared/product-storefront-detail.js';
+import { normalizeVolumeRolePrices } from '../../shared/product-volume-role-prices.js';
 import { normalizeCompatibleTonerProductFields } from '../../shared/compatible-toner.js';
+import { normalizeProductCode } from '../../shared/product-code-prefix.js';
 import { isBundleProduct, normalizeBundleComponents, syncInventoryBundleProducts } from './product-bundle.js';
 import { ensureFullPrices, resolvePriceRole } from './roles.js';
 import { shouldPreferSupabaseCatalog } from './catalog-source.js';
@@ -23,13 +30,21 @@ import { getInventoryPath } from './server-paths.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const INVENTORY_CACHE_TTL_MS = 45_000;
+const INVENTORY_CACHE_TTL_MS = 5 * 60 * 1000;
 let inventoryReadCache = null;
 let inventoryReadCacheAt = 0;
+/** @type {Promise<{ products: unknown[]; deletedProductIds: string[]; warehouses: unknown }> | null} */
+let inventoryReadInFlight = null;
 
 function invalidateInventoryReadCache() {
   inventoryReadCache = null;
   inventoryReadCacheAt = 0;
+}
+
+async function writeJsonFileAtomic(filePath, data) {
+  const tmpPath = `${filePath}.tmp`;
+  await fs.writeFile(tmpPath, JSON.stringify(data, null, 2), 'utf8');
+  await fs.rename(tmpPath, filePath);
 }
 
 function inventoryPath() {
@@ -81,10 +96,19 @@ function normalizeSuppliers(value, legacyPurchaseUsd) {
   return [];
 }
 
-const PRODUCT_ATTACHMENT_KINDS = ['technical_sheet', 'manual', 'brochure', 'other'];
+const PRODUCT_ATTACHMENT_KINDS = [
+  'technical_sheet',
+  'manual',
+  'printer_driver',
+  'firmware',
+  'brochure',
+  'other',
+];
 const PRODUCT_ATTACHMENT_LABELS = {
   technical_sheet: 'Ficha técnica',
-  manual: 'Manual',
+  manual: 'Manual de usuario',
+  printer_driver: 'Driver impresora',
+  firmware: 'Firmware',
   brochure: 'Brochure',
   other: 'Otro',
 };
@@ -133,12 +157,9 @@ export function migrateInventoryProduct(product, warehouses = normalizeWarehouse
   const normalizedToner = normalizeCompatibleTonerProductFields(product) ?? product;
   const prices = ensureFullPrices(normalizedToner.prices ?? { public: normalizedToner.price ?? 0 });
   const publicPrice = prices.public ?? 0;
-  const gallery = Array.isArray(normalizedToner.gallery)
-    ? normalizedToner.gallery.filter((url) => typeof url === 'string' && url.length > 0)
-    : normalizedToner.image_url
-      ? [normalizedToner.image_url]
-      : [];
-  const image_url = normalizedToner.image_url ?? gallery[0] ?? null;
+  const galleryFields = normalizeProductGalleryFields(normalizedToner.image_url, normalizedToner.gallery);
+  const image_url = galleryFields.image_url;
+  const gallery = galleryFields.gallery;
   const fallbackPurchase = Number(
     normalizedToner.purchase_price_usd ?? Math.round(publicPrice * 0.72 * 100) / 100,
   );
@@ -162,13 +183,18 @@ export function migrateInventoryProduct(product, warehouses = normalizeWarehouse
       normalizedToner.bundle_components ?? product.bundle_components,
     ),
     prices,
-    code: normalizedToner.code?.trim() || String(normalizedToner.id ?? '').toUpperCase().replace(/-/g, ''),
+    volume_role_prices: normalizeVolumeRolePrices(
+      normalizedToner.volume_role_prices ?? product.volume_role_prices,
+    ),
+    code:
+      normalizeProductCode(normalizedToner.code) ||
+      String(normalizedToner.id ?? '').toUpperCase().replace(/-/g, ''),
     suppliers,
     attachments,
     attributes,
     purchase_price_usd: resolvePurchasePriceUsd(suppliers, fallbackPurchase),
     image_url,
-    gallery: gallery.length > 0 ? gallery : image_url ? [image_url] : [],
+    gallery,
     stock_by_warehouse,
     stock,
   };
@@ -344,21 +370,19 @@ async function readInventoryFromSupabase() {
   };
 }
 
-export async function readInventory() {
-  const now = Date.now();
-  if (inventoryReadCache && now - inventoryReadCacheAt < INVENTORY_CACHE_TTL_MS) {
-    return inventoryReadCache;
-  }
-
+async function loadInventoryUncached() {
   let result;
   if (shouldPreferSupabaseCatalog()) {
     const loaded = await readInventoryFromSupabase();
     let products = loaded.products;
     if (loaded._needsPersist) {
-      await writeInventory({
+      void writeInventory({
         products,
         deletedProductIds: loaded.deletedProductIds,
         warehouses: loaded.warehouses,
+      }).catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn('[inventory] supabase persist on read deferred failed:', message);
       });
     }
     result = {
@@ -383,10 +407,13 @@ export async function readInventory() {
     const hadStaleDeleted = (data.products ?? []).some((product) => deleted.has(product.id));
 
     if (hadStaleDeleted || sortChanged || bundleSync.changed) {
-      await writeInventory({
+      void writeInventory({
         products: bundleSync.products,
         deletedProductIds,
         warehouses,
+      }).catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn('[inventory] persist on read deferred failed:', message);
       });
     }
 
@@ -403,11 +430,30 @@ export async function readInventory() {
     );
   }
 
-  if (shouldCacheResult) {
-    inventoryReadCache = result;
-    inventoryReadCacheAt = now;
+  return { result, shouldCacheResult };
+}
+
+export async function readInventory() {
+  const now = Date.now();
+  if (inventoryReadCache && now - inventoryReadCacheAt < INVENTORY_CACHE_TTL_MS) {
+    return inventoryReadCache;
   }
-  return result;
+
+  if (!inventoryReadInFlight) {
+    inventoryReadInFlight = loadInventoryUncached()
+      .then(({ result, shouldCacheResult }) => {
+        if (shouldCacheResult) {
+          inventoryReadCache = result;
+          inventoryReadCacheAt = Date.now();
+        }
+        return result;
+      })
+      .finally(() => {
+        inventoryReadInFlight = null;
+      });
+  }
+
+  return inventoryReadInFlight;
 }
 
 /**
@@ -416,6 +462,9 @@ export async function readInventory() {
  */
 export async function writeInventory(data, options = {}) {
   invalidateInventoryReadCache();
+  void import('./product-catalog.js')
+    .then(({ invalidatePublicCatalogCache }) => invalidatePublicCatalogCache())
+    .catch(() => {});
   const preferSupabase = shouldPreferSupabaseCatalog();
   const syncProductIds = Array.isArray(options.syncProductIds)
     ? [...new Set(options.syncProductIds.filter((id) => typeof id === 'string' && id.length > 0))]
@@ -458,13 +507,13 @@ export async function writeInventory(data, options = {}) {
     }
     if (!process.env.VERCEL) {
       await fs.mkdir(path.dirname(inventoryPath()), { recursive: true });
-      await fs.writeFile(inventoryPath(), JSON.stringify(normalized, null, 2));
+      await writeJsonFileAtomic(inventoryPath(), normalized);
     }
     return normalized;
   }
 
   await fs.mkdir(path.dirname(inventoryPath()), { recursive: true });
-  await fs.writeFile(inventoryPath(), JSON.stringify(normalized, null, 2));
+  await writeJsonFileAtomic(inventoryPath(), normalized);
   return normalized;
 }
 
@@ -503,8 +552,12 @@ export function toPublicProduct(product, role) {
       ? Math.max(0, Math.floor(Number(product.view_count)))
       : 0,
     attributes: product.attributes ?? [],
+    storefront_feature_bar: normalizeStorefrontFeatureBar(product.storefront_feature_bar),
+    storefront_hero_bullets: normalizeStorefrontHeroBullets(product.storefront_hero_bullets),
     attachments: normalizeAttachments(product.attachments).filter((attachment) =>
-      ['technical_sheet', 'manual', 'brochure'].includes(attachment.kind),
+      ['technical_sheet', 'manual', 'printer_driver', 'firmware', 'brochure'].includes(
+        attachment.kind,
+      ),
     ),
   };
 }
@@ -599,7 +652,16 @@ export function normalizeProductInput(body, existing, warehouses) {
       suppliers: body.suppliers ?? existing?.suppliers,
       attachments: body.attachments ?? existing?.attachments,
       attributes: body.attributes ?? existing?.attributes,
+      storefront_feature_bar:
+        body.storefront_feature_bar !== undefined
+          ? normalizeStorefrontFeatureBar(body.storefront_feature_bar)
+          : existing?.storefront_feature_bar,
+      storefront_hero_bullets:
+        body.storefront_hero_bullets !== undefined
+          ? normalizeStorefrontHeroBullets(body.storefront_hero_bullets)
+          : existing?.storefront_hero_bullets,
       bundle_components: body.bundle_components ?? existing?.bundle_components,
+      volume_role_prices: body.volume_role_prices ?? existing?.volume_role_prices,
       created_at: existing?.created_at ?? new Date().toISOString(),
       sort_order:
         body.sort_order !== undefined && body.sort_order !== null

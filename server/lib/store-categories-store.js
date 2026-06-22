@@ -13,6 +13,7 @@ import {
   COMPATIBLE_TONER_SUBCATEGORY_ID,
   COMPATIBLE_TONER_SUBCATEGORY_SLUG,
 } from '../../shared/compatible-toner.js';
+import { LANDING_CATEGORY } from '../../shared/landing-categories.js';
 import { getStoreCategoriesPath } from './server-paths.js';
 
 const BUNDLED_STORE_CATEGORIES_PATH = path.join(
@@ -47,11 +48,11 @@ const DEFAULT_CATEGORIES = [
   },
   {
     id: 'cat-toner',
-    name: 'Suministros',
+    name: 'Toner y Suministros',
     slug: 'toner-suministros',
     parentId: null,
     sortOrder: 2,
-    inventoryLabels: ['Suministros', 'Toner y suministros', 'Tóner y Suministros'],
+    inventoryLabels: ['Suministros', 'Toner y Suministros', 'Toner y suministros', 'Tóner y Suministros', 'Toner'],
     image: '/categories/toner-suministros.png',
     tagline: 'Consumibles originales y compatibles',
   },
@@ -223,6 +224,46 @@ function mergeMissingRentalCategories(categories) {
   return changed ? [...byId.values()] : categories;
 }
 
+function migrateTonerCategoryDisplayNames(categories) {
+  let changed = false;
+
+  const updated = categories.map((row) => {
+    if (row.id === 'cat-toner') {
+      const labels = new Set(row.inventoryLabels ?? []);
+      labels.add(LANDING_CATEGORY.toner);
+      labels.add('Toner y Suministros');
+      labels.add('Toner y suministros');
+      labels.add('Tóner y Suministros');
+      labels.add('Toner');
+      const next = {
+        ...row,
+        name: LANDING_CATEGORY.toner,
+        inventoryLabels: [...labels],
+      };
+      if (row.name !== next.name || JSON.stringify(row.inventoryLabels ?? []) !== JSON.stringify(next.inventoryLabels)) {
+        changed = true;
+      }
+      return next;
+    }
+
+    if (
+      row.id === COMPATIBLE_TONER_SUBCATEGORY_ID ||
+      row.slug === COMPATIBLE_TONER_SUBCATEGORY_SLUG
+    ) {
+      const next = {
+        ...row,
+        name: LANDING_CATEGORY.tonerCompatible,
+      };
+      if (row.name !== next.name) changed = true;
+      return next;
+    }
+
+    return row;
+  });
+
+  return changed ? updated : categories;
+}
+
 function migrateCompatibleTonerSubcategory(categories) {
   let changed = false;
 
@@ -242,7 +283,7 @@ function migrateCompatibleTonerSubcategory(categories) {
 
     const next = {
       ...row,
-      name: CATEGORY_COMPATIBLE_TONER,
+      name: LANDING_CATEGORY.tonerCompatible,
       inventoryLabels: [...labels],
     };
 
@@ -292,6 +333,12 @@ export async function readStoreCategories() {
   const migrated = migrateCompatibleTonerSubcategory(categories);
   if (migrated !== categories) {
     categories = migrated;
+    needsWrite = true;
+  }
+
+  const renamed = migrateTonerCategoryDisplayNames(categories);
+  if (renamed !== categories) {
+    categories = renamed;
     needsWrite = true;
   }
 

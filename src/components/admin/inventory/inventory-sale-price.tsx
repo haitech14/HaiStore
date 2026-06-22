@@ -4,7 +4,7 @@ import {
   getUsdToPenSaleRate,
   normalizeUsdToPenRate,
 } from '@/lib/exchange-rate';
-import { usdToPenCharm } from '@/lib/pen-pricing';
+import { usdToPenCharm, usdToPenPrecise } from '@/lib/pen-pricing';
 import { cn } from '@/lib/utils';
 import type { PriceRole } from '@/types/product';
 
@@ -42,7 +42,7 @@ export function InventorySalePrice({
   const purchase = Number(purchaseUsd) || 0;
   const profitUsd = Math.round((sale - purchase) * 100) / 100;
   const salePen = usdToPenCharm(sale, saleRate);
-  const purchasePen = usdToPenCharm(purchase, purchaseRate);
+  const purchasePen = usdToPenPrecise(purchase, purchaseRate);
   const profitPen = salePen - purchasePen;
 
   const priceDisplay = <InventoryDualPrice usd={sale} exchangeRate={saleRate} />;

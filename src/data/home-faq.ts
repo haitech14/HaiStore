@@ -15,13 +15,16 @@ export interface HomeFaqItem {
   icon: LucideIcon;
 }
 
-/** Orden en grilla 2×3: columna izquierda primero, luego derecha. */
+/** Orden en grilla 2 columnas: izquierda y derecha como en el diseño de referencia. */
+export const HOME_FAQ_LEFT_COLUMN_IDS = ['garantia', 'factura', 'seminuevos'] as const;
+export const HOME_FAQ_RIGHT_COLUMN_IDS = ['delivery', 'soporte', 'cotizacion-empresa'] as const;
+
 export const HOME_FAQ_ITEMS: readonly HomeFaqItem[] = [
   {
     id: 'garantia',
     question: '¿Los equipos tienen garantía?',
     answer:
-      'Sí. Los equipos nuevos incluyen garantía oficial del fabricante. Los seminuevos y remanufacturados se entregan con revisión técnica HaiTech y garantía documentada según el modelo y la condición del equipo.',
+      'Sí. Los equipos nuevos incluyen garantía oficial del fabricante. Los seminuevos y remanufacturados se entregan con revisión técnica y garantía documentada según el modelo y la condición del equipo.',
     icon: Shield,
   },
   {

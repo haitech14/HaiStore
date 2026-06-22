@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
+import { FileText, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 
+import { CartQuoteDialog } from '@/components/cart/cart-quote-dialog';
 import { DualPrice } from '@/components/product-showcase-card';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,6 +29,7 @@ export function ShoppingCartDrawer() {
     removeItem,
     clear,
   } = useCart();
+  const [quoteOpen, setQuoteOpen] = useState(false);
 
   return (
     <Sheet open={isOpen} onOpenChange={setCartOpen}>
@@ -184,6 +187,15 @@ export function ShoppingCartDrawer() {
                     Ir al checkout
                   </Link>
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 w-full gap-2 border-red-200 text-red-700 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => setQuoteOpen(true)}
+                >
+                  <FileText className="size-4 shrink-0" aria-hidden="true" />
+                  Generar cotización
+                </Button>
                 <Button asChild variant="outline" className="min-h-11 w-full">
                   <Link to="/tienda" onClick={() => setCartOpen(false)}>
                     Seguir comprando
@@ -202,6 +214,8 @@ export function ShoppingCartDrawer() {
           ) : null}
         </div>
       </SheetContent>
+
+      <CartQuoteDialog open={quoteOpen} onOpenChange={setQuoteOpen} items={items} />
     </Sheet>
   );
 }

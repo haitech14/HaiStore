@@ -43,12 +43,18 @@ export function CategoryStripPreview({
 
   const productLabels = useMemo(() => {
     if (!category) return [];
-    return resolveCategoryPageProductLabels(category, storeCategory, activeSubSlug);
-  }, [category, storeCategory, activeSubSlug]);
+    return resolveCategoryPageProductLabels(
+      category,
+      storeCategory,
+      activeSubSlug,
+      categoryTree,
+    );
+  }, [category, storeCategory, activeSubSlug, categoryTree]);
 
   const { data: catalogData, isLoading: productsLoading, isError } = useCategoryCatalog({
     enabled: productLabels.length > 0,
     slug: categorySlug,
+    subSlug: activeSubSlug,
     labels: productLabels,
     attributeKeys: selectedSpecFilters,
     sortBy: 'price-asc',

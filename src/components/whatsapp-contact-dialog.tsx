@@ -1,6 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useId, useState, type FormEvent } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -13,12 +14,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { WhatsAppContact } from '@/lib/whatsapp-contact';
 
+export interface WhatsAppContactSubmitOptions {
+  generateQuote: boolean;
+}
+
 interface WhatsAppContactDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initial?: Partial<WhatsAppContact> | null;
-  onSubmit: (contact: WhatsAppContact) => void | Promise<void>;
+  onSubmit: (contact: WhatsAppContact, options: WhatsAppContactSubmitOptions) => void | Promise<void>;
   isSubmitting?: boolean;
+  showQuoteCheckbox?: boolean;
 }
 
 export function WhatsAppContactDialog({
@@ -27,19 +33,23 @@ export function WhatsAppContactDialog({
   initial,
   onSubmit,
   isSubmitting = false,
+  showQuoteCheckbox = true,
 }: WhatsAppContactDialogProps) {
+  const quoteCheckboxId = useId();
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [companyOrRuc, setCompanyOrRuc] = useState('');
   const [city, setCity] = useState('');
+  const [generateQuote, setGenerateQuote] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setName(initial?.name?.trim() ?? '');
-    setPhone(initial?.phone?.trim() ?? '');
+    setCompanyOrRuc(initial?.companyOrRuc?.trim() ?? '');
     setCity(initial?.city?.trim() ?? '');
+    setGenerateQuote(false);
     setError(null);
-  }, [open, initial?.name, initial?.phone, initial?.city]);
+  }, [open, initial?.name, initial?.companyOrRuc, initial?.city]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -47,22 +57,17 @@ export function WhatsAppContactDialog({
 
     const contact: WhatsAppContact = {
       name: name.trim(),
-      phone: phone.trim(),
+      companyOrRuc: companyOrRuc.trim(),
       city: city.trim(),
     };
 
-    if (!contact.name || !contact.phone || !contact.city) {
-      setError('Completa nombre, celular y ciudad.');
-      return;
-    }
-
-    if (contact.phone.replace(/\D/g, '').length < 9) {
-      setError('Introduce un celular válido.');
+    if (!contact.name || !contact.companyOrRuc || !contact.city) {
+      setError('Completa nombre, RUC/empresa y ciudad.');
       return;
     }
 
     try {
-      await onSubmit(contact);
+      await onSubmit(contact, { generateQuote: showQuoteCheckbox && generateQuote });
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo continuar.');
@@ -73,9 +78,9 @@ export function WhatsAppContactDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Consulta por WhatsApp</DialogTitle>
+          <DialogTitle>Comprar por WhatsApp</DialogTitle>
           <DialogDescription>
-            Indica tus datos para enviar el mensaje con el producto y el precio a nuestro equipo de
+            Completa tus datos para enviar el mensaje con el producto y el precio a nuestro equipo de
             ventas.
           </DialogDescription>
         </DialogHeader>
@@ -92,14 +97,13 @@ export function WhatsAppContactDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="wa-contact-phone">Celular</Label>
+            <Label htmlFor="wa-contact-company">RUC/Empresa</Label>
             <Input
-              id="wa-contact-phone"
-              type="tel"
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              autoComplete="tel"
-              placeholder="Ej. 999 888 777"
+              id="wa-contact-company"
+              value={companyOrRuc}
+              onChange={(event) => setCompanyOrRuc(event.target.value)}
+              autoComplete="organization"
+              placeholder="Ej. 20123456789 o Mi Empresa SAC"
               required
             />
           </div>
@@ -114,6 +118,25 @@ export function WhatsAppContactDialog({
               required
             />
           </div>
+
+          {showQuoteCheckbox ? (
+            <div className="flex items-start gap-3 rounded-md border border-border/70 bg-muted/30 p-3">
+              <Checkbox
+                id={quoteCheckboxId}
+                checked={generateQuote}
+                onCheckedChange={(checked) => setGenerateQuote(checked === true)}
+                className="mt-0.5"
+              />
+              <div className="space-y-1">
+                <Label htmlFor={quoteCheckboxId} className="cursor-pointer font-medium leading-snug">
+                  Generar cotización
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Se creará el PDF con tus datos y se abrirá WhatsApp con el mensaje del producto.
+                </p>
+              </div>
+            </div>
+          ) : null}
 
           {error && (
             <p role="alert" className="text-sm text-destructive">
@@ -130,7 +153,11 @@ export function WhatsAppContactDialog({
               disabled={isSubmitting}
               className="bg-[#25D366] text-white hover:bg-[#20BD5A] focus-visible:ring-[#25D366]"
             >
-              {isSubmitting ? 'Abriendo…' : 'Abrir WhatsApp'}
+              {isSubmitting
+                ? generateQuote
+                  ? 'Generando…'
+                  : 'Abriendo…'
+                : 'Enviar por WhatsApp'}
             </Button>
           </DialogFooter>
         </form>

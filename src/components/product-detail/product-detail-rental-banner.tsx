@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Calculator, CalendarDays, ChevronDown, FileText } from 'lucide-react';
+import { Calculator, ChevronDown, FileText, Wrench } from 'lucide-react';
 
 import { ProductRentalQuoteDialog } from '@/components/product-detail/product-rental-quote-dialog';
 import {
@@ -8,15 +8,14 @@ import {
 } from '@/components/product-detail/product-quote-pdf-viewer';
 import { DualPrice } from '@/components/product/product-dual-price';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+  MAINTENANCE_PLAN_FROM_MONTHLY_PEN,
   RENTAL_DEFAULT_MONTHLY_PAGES,
+  RENTAL_DEFAULT_TERM_MONTHS,
   RENTAL_EXCESS_COPY_COST_PEN,
-  RENTAL_OPERATOR_MONTHLY_PEN,
-  RENTAL_PAPER_SURCHARGE_PEN,
-  RENTAL_TERM_MONTHS,
+  RENTAL_TERM_OPTIONS,
   RENTAL_TERM_RENEWAL_NOTE,
   calculateRentalQuote,
   formatPen,
@@ -60,35 +59,24 @@ export function ProductDetailRentalBanner({
   className,
 }: ProductDetailRentalBannerProps) {
   const [open, setOpen] = useState(false);
+  const [termMonths, setTermMonths] = useState<number>(RENTAL_DEFAULT_TERM_MONTHS);
   const [monthlyPages, setMonthlyPages] = useState(RENTAL_DEFAULT_MONTHLY_PAGES);
-  const [includesPaper, setIncludesPaper] = useState(true);
-  const [includesOperator, setIncludesOperator] = useState(false);
   const [quoteOpen, setQuoteOpen] = useState(false);
   const [quotePdfPreview, setQuotePdfPreview] = useState<QuotePdfPreview | null>(null);
-
-  const fromMonthlyPen = useMemo(() => {
-    if (plans.length === 0) return 0;
-    const estimate = calculateRentalQuote({
-      monthlyPages: RENTAL_DEFAULT_MONTHLY_PAGES,
-      includesPaper: true,
-      includesOperator: false,
-      plans,
-    });
-    return estimate.monthlySubtotalPen;
-  }, [plans]);
 
   const quote = useMemo(
     () =>
       calculateRentalQuote({
         monthlyPages,
-        includesPaper,
-        includesOperator,
+        includesPaper: false,
+        includesOperator: false,
         plans,
+        termMonths,
       }),
-    [monthlyPages, includesPaper, includesOperator, plans],
+    [monthlyPages, plans, termMonths],
   );
 
-  const panelId = 'rental-simulator-panel';
+  const panelId = 'maintenance-plan-simulator-panel';
 
   if (plans.length === 0) return null;
 
@@ -103,37 +91,44 @@ export function ProductDetailRentalBanner({
   return (
     <>
       <section
-        aria-labelledby="rental-banner-title"
+        aria-labelledby="maintenance-plan-banner-title"
         className={cn(
-          'overflow-hidden rounded-xl border border-foreground/15 bg-background',
+          'overflow-hidden rounded-xl border border-sky-200 bg-sky-50',
           className,
         )}
       >
         <button
           type="button"
-          className="flex w-full items-start gap-3 border-b border-border/60 bg-muted/30 px-4 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-5"
+          className="flex w-full items-start gap-3 border-b border-sky-200/80 bg-sky-50 px-4 py-3 text-left transition-colors hover:bg-sky-100/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-5"
           aria-expanded={open}
           aria-controls={panelId}
           onClick={() => setOpen((value) => !value)}
         >
           <span
-            className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-foreground/15 bg-background text-foreground"
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-sky-300/80 bg-white text-sky-800"
             aria-hidden="true"
           >
-            <CalendarDays className="size-5" strokeWidth={2} />
+            <Wrench className="size-5" strokeWidth={2} />
           </span>
           <span className="min-w-0 flex-1">
             <span
-              id="rental-banner-title"
-              className="block text-base font-bold text-foreground sm:text-lg"
+              id="maintenance-plan-banner-title"
+              className="block text-balance text-sm font-bold leading-snug text-foreground sm:text-base"
             >
-              Alquílalo desde{' '}
-              <DualPrice usd={penToUsd(fromMonthlyPen)} className="inline font-bold" /> mensual
+              Plan de Mantenimiento y Suministros
             </span>
-            <span className="mt-0.5 block text-xs text-muted-foreground sm:text-sm">
+            <span className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span className="text-sm font-bold text-sky-900 sm:text-base">
+                Desde S/ {formatPen(MAINTENANCE_PLAN_FROM_MONTHLY_PEN)}/mes
+              </span>
+              <span className="text-xs text-muted-foreground sm:text-sm">
+                · {RENTAL_DEFAULT_TERM_MONTHS} meses
+              </span>
+            </span>
+            <span className="mt-1 block text-pretty text-xs leading-snug text-muted-foreground sm:text-sm">
               {open
-                ? `Simula producción mensual y servicios incluidos. Plazo fijo de ${RENTAL_TERM_MONTHS} meses con renovación automática del equipo nuevo.`
-                : '¿Prefieres alquilarla? Toca para simular tu plan.'}
+                ? 'Indica tu producción mensual y simula el costo del plan.'
+                : 'Mantenimiento preventivo, repuestos y suministros. Plazos 6, 12 o 36 meses.'}
             </span>
           </span>
           <ChevronDown
@@ -148,68 +143,67 @@ export function ProductDetailRentalBanner({
         {open ? (
           <div id={panelId} className="space-y-4 p-4 sm:p-5">
             <div
-              className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm text-foreground"
+              className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-foreground sm:text-sm"
               role="note"
             >
-              <p>
-                <span className="font-semibold">Plazo de alquiler:</span> {RENTAL_TERM_MONTHS} meses
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{RENTAL_TERM_RENEWAL_NOTE}</p>
+              <p className="font-medium">{RENTAL_TERM_RENEWAL_NOTE}</p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label
-                  htmlFor="rental-monthly-pages"
-                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                >
-                  Producción mensual (ejemplo)
-                </Label>
-                <Input
-                  id="rental-monthly-pages"
-                  type="number"
-                  min={1}
-                  step={500}
-                  value={monthlyPages}
-                  onChange={(event) =>
-                    setMonthlyPages(Math.max(1, Number(event.target.value) || 1))
-                  }
-                  className="h-11 tabular-nums"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Cuota base del plan: {quote.includedPages.toLocaleString('es-PE')} pág./mes.
-                  Referencia: {RENTAL_DEFAULT_MONTHLY_PAGES.toLocaleString('es-PE')} páginas/mes.
-                </p>
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Plazo del plan
+              </legend>
+              <div
+                className="flex flex-wrap gap-2"
+                role="radiogroup"
+                aria-label="Plazo del plan en meses"
+              >
+                {RENTAL_TERM_OPTIONS.map((months) => {
+                  const selected = termMonths === months;
+                  return (
+                    <button
+                      key={months}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      className={cn(
+                        'min-h-11 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        selected
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-border bg-background text-foreground hover:bg-muted/50',
+                      )}
+                      onClick={() => setTermMonths(months)}
+                    >
+                      {months} meses
+                    </button>
+                  );
+                })}
               </div>
+            </fieldset>
 
-              <fieldset className="space-y-3">
-                <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Servicios incluidos
-                </legend>
-                <div className="flex items-start gap-2.5">
-                  <Checkbox
-                    id="rental-includes-paper"
-                    checked={includesPaper}
-                    onCheckedChange={(checked) => setIncludesPaper(checked === true)}
-                  />
-                  <Label htmlFor="rental-includes-paper" className="text-sm font-normal leading-snug">
-                    Incluye papel (+ S/ {RENTAL_PAPER_SURCHARGE_PEN.toFixed(2)} por página)
-                  </Label>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <Checkbox
-                    id="rental-includes-operator"
-                    checked={includesOperator}
-                    onCheckedChange={(checked) => setIncludesOperator(checked === true)}
-                  />
-                  <Label
-                    htmlFor="rental-includes-operator"
-                    className="text-sm font-normal leading-snug"
-                  >
-                    Incluye operador (+ S/ {formatPen(RENTAL_OPERATOR_MONTHLY_PEN)} cuota fija mensual)
-                  </Label>
-                </div>
-              </fieldset>
+            <div className="space-y-2">
+              <Label
+                htmlFor="maintenance-monthly-pages"
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
+                Producción mensual
+              </Label>
+              <Input
+                id="maintenance-monthly-pages"
+                type="number"
+                min={1}
+                step={500}
+                value={monthlyPages}
+                onChange={(event) =>
+                  setMonthlyPages(Math.max(1, Number(event.target.value) || 1))
+                }
+                className="h-11 tabular-nums"
+                aria-describedby="maintenance-monthly-pages-hint"
+              />
+              <p id="maintenance-monthly-pages-hint" className="text-xs text-muted-foreground">
+                Base: {quote.includedPages.toLocaleString('es-PE')} pág./mes · ejemplo{' '}
+                {RENTAL_DEFAULT_MONTHLY_PAGES.toLocaleString('es-PE')} pág./mes
+              </p>
             </div>
 
             <div
@@ -219,7 +213,7 @@ export function ProductDetailRentalBanner({
             >
               <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
                 <Calculator className="size-4 shrink-0" aria-hidden="true" />
-                Estimación mensual
+                Estimación mensual · plazo {termMonths} meses
               </div>
 
               <dl className="space-y-2 text-sm">
@@ -232,30 +226,6 @@ export function ProductDetailRentalBanner({
                   />
                 ) : null}
 
-                {includesPaper ? (
-                  <BreakdownLine
-                    label={`Papel (${quote.monthlyPages.toLocaleString('es-PE')} × S/ ${RENTAL_PAPER_SURCHARGE_PEN.toFixed(2)})`}
-                    amountPen={quote.paperChargesPen}
-                  />
-                ) : (
-                  <div className="flex items-start justify-between gap-3 text-xs">
-                    <dt className="text-muted-foreground">Papel</dt>
-                    <dd className="text-amber-700">No incluido</dd>
-                  </div>
-                )}
-
-                {includesOperator ? (
-                  <BreakdownLine
-                    label="Operador — cuota fija mensual"
-                    amountPen={quote.operatorChargesPen}
-                  />
-                ) : (
-                  <div className="flex items-start justify-between gap-3 text-xs">
-                    <dt className="text-muted-foreground">Operador</dt>
-                    <dd className="text-amber-700">No incluido</dd>
-                  </div>
-                )}
-
                 <div className="border-t border-border/60 pt-2">
                   <div className="flex items-center justify-between gap-3 font-bold text-foreground">
                     <dt>Total mensual estimado</dt>
@@ -266,7 +236,7 @@ export function ProductDetailRentalBanner({
                 </div>
 
                 <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-2 text-base font-bold text-foreground">
-                  <dt>Total contrato ({quote.termMonths} meses)</dt>
+                  <dt>Total plan ({quote.termMonths} meses)</dt>
                   <dd className="tabular-nums">
                     <DualPrice usd={penToUsd(quote.contractTotalPen)} className="inline font-bold" />
                   </dd>
@@ -281,7 +251,7 @@ export function ProductDetailRentalBanner({
               onClick={() => setQuoteOpen(true)}
             >
               <FileText className="size-4 shrink-0" aria-hidden="true" />
-              Generar cotización de alquiler
+              Generar cotización del plan
             </Button>
           </div>
         ) : null}

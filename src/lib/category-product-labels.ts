@@ -1,6 +1,43 @@
 import { categories, type Category } from '@/data/categories';
-import { collectInventoryLabels } from '@/lib/store-category-display';
+import {
+  collectInventoryLabels,
+  findStoreCategoryBySlug,
+} from '@/lib/store-category-display';
 import type { StoreCategoryTreeNode } from '@/types/store-category';
+
+/** Paridad con shared/category-inventory-labels.js y store-categories.json */
+const SUBCATEGORY_INVENTORY_LABELS: Record<string, readonly string[]> = {
+  'multifuncionales-nuevas': [
+    'Multifuncionales Nuevas',
+    'Multifuncionales, Multifuncionales Nuevas',
+  ],
+  'multifuncionales-seminuevas': [
+    'Multifuncionales Seminuevas',
+    'Multifuncionales, Multifuncionales Seminuevas',
+  ],
+  'multifuncionales-remanufacturadas': [
+    'Multifuncionales Remanufacturadas',
+    'Multifuncionales, Multifuncionales Remanufacturadas',
+  ],
+  'impresoras-laser-nuevas': [
+    'Impresoras Laser Nuevas',
+    'Impresoras Láser Nuevas',
+    'Impresoras, Impresoras Laser Nuevas',
+    'Impresoras, Impresoras Láser Nuevas',
+  ],
+  'impresoras-laser-seminuevas': [
+    'Impresoras Laser Seminuevas',
+    'Impresoras Láser Seminuevas',
+  ],
+  'impresoras-laser-remanufacturadas': [
+    'Impresoras Laser Remanufacturadas',
+    'Impresoras Láser Remanufacturadas',
+  ],
+};
+
+function resolveSubcategoryInventoryLabels(subSlug: string): string[] {
+  return [...(SUBCATEGORY_INVENTORY_LABELS[subSlug] ?? [])];
+}
 
 export function getCategoryProductLabels(category: Category): readonly string[] {
   if (category.inventoryCategories?.length) {
@@ -26,19 +63,43 @@ export function findStoreSubcategoryBySlug(
   return undefined;
 }
 
+function resolveSubcategoryLabels(
+  category: Category,
+  storeCategory: StoreCategoryTreeNode | undefined,
+  categoryTree: StoreCategoryTreeNode[],
+  subSlug: string,
+): string[] | null {
+  const sub =
+    (storeCategory ? findStoreSubcategoryBySlug(storeCategory, subSlug) : undefined) ??
+    (categoryTree.length > 0 ? findStoreCategoryBySlug(categoryTree, subSlug) : undefined);
+
+  if (sub) {
+    return sub.inventoryLabels?.length ? [...sub.inventoryLabels] : [sub.name];
+  }
+
+  const staticLabels = resolveSubcategoryInventoryLabels(subSlug);
+  if (staticLabels.length > 0) return [...staticLabels];
+
+  const parentLabels = getCategoryProductLabels(category).filter((label) =>
+    label.toLowerCase().includes(subSlug.replace(/-/g, ' ')),
+  );
+  if (parentLabels.length > 0) return [...parentLabels];
+
+  return null;
+}
+
 /** Etiquetas de inventario para filtrar productos en `/categoria/:slug` (estáticas + árbol de tienda). */
 export function resolveCategoryPageProductLabels(
   category: Category,
   storeCategory: StoreCategoryTreeNode | undefined,
   subSlug: string | null,
+  categoryTree: StoreCategoryTreeNode[] = [],
 ): string[] {
   const staticLabels = [...getCategoryProductLabels(category)];
 
-  if (storeCategory && subSlug) {
-    const sub = findStoreSubcategoryBySlug(storeCategory, subSlug);
-    if (sub) {
-      return sub.inventoryLabels?.length ? [...sub.inventoryLabels] : [sub.name];
-    }
+  if (subSlug) {
+    const subLabels = resolveSubcategoryLabels(category, storeCategory, categoryTree, subSlug);
+    if (subLabels?.length) return subLabels;
   }
 
   const treeLabels = storeCategory ? collectInventoryLabels(storeCategory) : [];

@@ -11,32 +11,23 @@ import {
   resolveProductModelStockImage,
 } from '../../shared/product-stock-images.js';
 import { isImageMediaUrl } from '../../shared/product-media.js';
+import { isSyntheticProductMediaUrl } from '../../shared/product-media-sanitize.js';
 import { getPublicProductsDir } from './persist-product-media.js';
 
 function shouldUseStockFallback(options) {
-  return options?.stockFallback !== false;
+  return options?.stockFallback === true;
 }
 
-function isCategoryStockImageUrl(url) {
-  return (
-    url.startsWith('/categories/') ||
-    url.startsWith('/promotions/') ||
-    url.startsWith('/promo-cards/')
-  );
-}
-
-function isSyntheticStockImageUrl(product, url) {
-  if (url === resolveProductModelStockImage(product)) return true;
-  if (url === resolveProductCategoryStockImage(product)) return true;
-  if (url === publicProductMediaPath(product?.id ?? '')) return true;
-  return isCategoryStockImageUrl(url);
-}
-
-function isUsableProductImageUrl(product, url, options) {
+function isUsableExplicitImageUrl(url, options) {
   if (typeof url !== 'string' || url.length === 0) return false;
   if (url.startsWith('data:')) return false;
   if (!isImageMediaUrl(url)) return false;
-  if (!shouldUseStockFallback(options) && isSyntheticStockImageUrl(product, url)) return false;
+  return true;
+}
+
+function isUsableStoredImageUrl(product, url, options) {
+  if (!isUsableExplicitImageUrl(url, options)) return false;
+  if (isSyntheticProductMediaUrl(product, url)) return false;
   return true;
 }
 
@@ -54,40 +45,40 @@ function productWebpExists(productId) {
 }
 
 export function resolveProductStockImagePath(product) {
-  const modelImage = resolveProductModelStockImage(product);
-  if (modelImage) return modelImage;
-
-  const id = String(product?.id ?? '').trim();
-  if (id && productWebpExists(id)) {
-    return publicProductMediaPath(id);
-  }
-
-  return resolveProductCategoryStockImage(product);
+  return resolveProductImageUrl(product);
 }
 
 export function buildProductImageCandidates(product, options) {
   const candidates = [];
   const seen = new Set();
 
-  const push = (url) => {
-    if (!url || url.startsWith('data:') || seen.has(url)) return;
-    if (!isUsableProductImageUrl(product, url, options)) return;
+  const pushStored = (url) => {
+    if (!url || seen.has(url)) return;
+    if (!isUsableStoredImageUrl(product, url, options)) return;
     seen.add(url);
     candidates.push(url);
   };
 
-  push(product?.image_url);
+  const pushFallback = (url) => {
+    if (!url || seen.has(url)) return;
+    if (!shouldUseStockFallback(options)) return;
+    if (!isUsableExplicitImageUrl(url, options)) return;
+    seen.add(url);
+    candidates.push(url);
+  };
+
+  pushStored(product?.image_url);
   for (const url of product?.gallery ?? []) {
-    push(url);
+    pushStored(url);
   }
 
   if (shouldUseStockFallback(options)) {
-    push(resolveProductModelStockImage(product));
+    pushFallback(resolveProductModelStockImage(product));
     const id = String(product?.id ?? '').trim();
     if (id && productWebpExists(id)) {
-      push(publicProductMediaPath(id));
+      pushFallback(publicProductMediaPath(id));
     }
-    push(resolveProductCategoryStockImage(product));
+    pushFallback(resolveProductCategoryStockImage(product));
   }
 
   return candidates;
@@ -99,11 +90,11 @@ export function resolveProductImageUrl(product, options) {
 }
 
 export function resolveProductGallery(product, options) {
-  const gallery = Array.isArray(product?.gallery)
-    ? product.gallery.filter((url) => typeof url === 'string' && url.length > 0)
-    : [];
-  if (gallery.length > 0) {
-    return [...new Set(gallery)];
+  const authentic = (product?.gallery ?? []).filter(
+    (url) => typeof url === 'string' && url.length > 0 && isUsableStoredImageUrl(product, url, options),
+  );
+  if (authentic.length > 0) {
+    return [...new Set(authentic)];
   }
   const image = resolveProductImageUrl(product, options);
   return image ? [image] : [];

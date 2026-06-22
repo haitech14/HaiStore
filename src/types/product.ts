@@ -17,9 +17,11 @@ export {
 } from '@/lib/roles';
 
 import type { PriceRole, ProductRolePrices } from '@/lib/roles';
+import type { ProductVolumeRolePriceTier } from '@/lib/product-volume-role-prices';
 import type { SelectedEquipmentOption } from '@/lib/equipment-config-selection';
+import type { StoredFeatureBarItem, StoredHeroBullet } from '@/types/product-storefront';
 
-export type { SelectedEquipmentOption };
+export type { SelectedEquipmentOption, ProductVolumeRolePriceTier };
 
 export interface Product {
   id: string;
@@ -48,6 +50,12 @@ export interface Product {
   attributes?: ProductAttribute[];
   /** Documentos públicos (ficha técnica, manual, etc.). */
   attachments?: ProductAttachment[];
+  /** Tramos de precio por cantidad y rol (opcional; sustituye descuentos globales en este producto). */
+  volume_role_prices?: ProductVolumeRolePriceTier[];
+  /** Barra de características personalizada en ficha de tienda (6 ítems). */
+  storefront_feature_bar?: StoredFeatureBarItem[] | null;
+  /** Bullets del hero personalizados en ficha de tienda. */
+  storefront_hero_bullets?: StoredHeroBullet[] | null;
 }
 
 export interface InventorySupplier {
@@ -69,6 +77,8 @@ export interface ProductStockByWarehouse {
 export const PRODUCT_ATTACHMENT_KINDS = [
   'technical_sheet',
   'manual',
+  'printer_driver',
+  'firmware',
   'brochure',
   'other',
 ] as const;
@@ -117,6 +127,8 @@ export interface InventoryProduct extends Omit<Product, 'price' | 'price_role' |
   /** URLs de galería (la principal suele coincidir con image_url). */
   gallery: string[];
   prices: ProductRolePrices;
+  /** Tramos de precio por cantidad y rol. */
+  volume_role_prices?: ProductVolumeRolePriceTier[];
 }
 
 export interface CartConfigurationLine {

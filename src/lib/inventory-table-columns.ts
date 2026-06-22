@@ -43,7 +43,7 @@ const STORAGE_KEY = 'haistore-inventory-column-order-v8';
 const LEGACY_STORAGE_KEY = 'haistore-inventory-column-order-v7';
 
 const COLUMN_LABELS: Record<InventoryReorderableColumnId, string> = {
-  media: 'Imágenes',
+  media: 'Medios',
   code: 'Código',
   product: 'Título',
   brand: 'Marca',

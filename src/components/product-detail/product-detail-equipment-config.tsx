@@ -1,12 +1,9 @@
-import { useCallback, useId, useMemo, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  computeEquipmentExtrasPen,
-  type EquipmentSelectionState,
-} from '@/lib/equipment-config-selection';
+import type { EquipmentSelectionState } from '@/lib/equipment-config-selection';
 import { productPath } from '@/lib/product-path';
 import { cn } from '@/lib/utils';
 import type { EquipmentConfigStep } from '@/types/product-detail';
@@ -33,23 +30,6 @@ export function ProductDetailEquipmentConfig({
   hideTitle = false,
 }: ProductDetailEquipmentConfigProps) {
   const sectionId = useId();
-
-  const extrasTotalPen = useMemo(() => {
-    const selectedOptions = steps.flatMap((step) => {
-      const selectedIds = selection[step.id] ?? new Set<string>();
-      return step.options.filter((option) => selectedIds.has(option.id));
-    });
-    return computeEquipmentExtrasPen(
-      selectedOptions.map((option) => ({
-        stepNumber: 0,
-        stepTitle: '',
-        optionId: option.id,
-        optionName: option.name,
-        pricePen: option.pricePen,
-        ...(option.included ? { included: true } : {}),
-      })),
-    );
-  }, [selection, steps]);
 
   const toggleOption = useCallback(
     (stepId: string, optionId: string, checked: boolean) => {
@@ -85,12 +65,6 @@ export function ProductDetailEquipmentConfig({
           Configuración del equipo
         </h2>
       )}
-
-      {extrasTotalPen > 0 ? (
-        <p className="text-sm font-semibold text-red-600">
-          Adicionales: S/ {extrasTotalPen.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </p>
-      ) : null}
 
       <EquipmentConfigStepList
         sectionId={sectionId}
@@ -224,7 +198,7 @@ function EquipmentConfigStepList({
                           ) : null}
                           {option.sku ? (
                             <span className="mt-0.5 block text-[0.6875rem] text-muted-foreground/80">
-                              SKU: {option.sku}
+                              Código: {option.sku}
                             </span>
                           ) : null}
                         </span>

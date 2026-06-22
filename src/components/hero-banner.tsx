@@ -95,7 +95,7 @@ function HeroSlideContent({ slide, index }: { slide: HomeHeroSlide; index: numbe
           const { webpSrcSet, fallbackSrc, sizes } = heroSingleAssetSources(slide.backgroundImage);
           return (
             <div
-              className={cn('relative w-full overflow-hidden bg-white', heightClass)}
+              className={cn('relative w-full overflow-hidden bg-[#0f1f3d]', heightClass)}
               style={
                 fixedRowHeight
                   ? undefined
@@ -119,7 +119,7 @@ function HeroSlideContent({ slide, index }: { slide: HomeHeroSlide; index: numbe
                     'size-full',
                     objectFit === 'contain'
                       ? 'object-contain object-center'
-                      : 'object-cover object-center',
+                      : cn('object-cover', slide.objectPositionClass ?? 'object-[center_55%]'),
                   )}
                 />
               </picture>
@@ -184,7 +184,7 @@ function HeroSlideContent({ slide, index }: { slide: HomeHeroSlide; index: numbe
       'block w-full leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
     return (
-      <div className="relative w-full overflow-hidden bg-white">
+      <div className="relative w-full overflow-hidden bg-[#0f1f3d]">
         <h1 id={headingId} className="sr-only">
           {slide.imageAlt}
         </h1>
@@ -403,7 +403,7 @@ export function HeroBanner() {
     <section
       aria-labelledby="hero-titulo"
       aria-roledescription={showCarouselControls ? 'carrusel' : undefined}
-      className="relative w-full bg-white leading-none"
+      className="relative w-full bg-[#0f1f3d] leading-none"
       onMouseEnter={pauseAutoplay}
       onFocus={pauseAutoplay}
     >

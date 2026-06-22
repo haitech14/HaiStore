@@ -18,13 +18,25 @@ export interface ProductWhatsAppLineItem {
   quantity?: number;
 }
 
+export interface BuildProductWhatsAppMessageOptions {
+  generateQuote?: boolean;
+  quoteNumber?: string;
+}
+
 export function buildProductWhatsAppMessage(
   product: ProductWhatsAppLineItem,
   contact: WhatsAppContact,
+  options: BuildProductWhatsAppMessageOptions = {},
 ): string {
   const priceUsd = formatUsd(product.priceUsd);
   const pricePen = formatPenFromUsd(product.priceUsd);
   const meta = [product.brand?.trim(), product.category?.trim()].filter(Boolean).join(' · ');
+
+  const closingLine = options.generateQuote
+    ? options.quoteNumber
+      ? `¿Podrían brindarme más información o una cotización? (Cotización ${options.quoteNumber} generada)`
+      : '¿Podrían brindarme más información o una cotización? (Cotización generada)'
+    : '¿Podrían brindarme más información o una cotización?';
 
   return [
     `¡Hola! Soy *${contact.name.trim()}*`,
@@ -38,10 +50,10 @@ export function buildProductWhatsAppMessage(
     product.productUrl ? product.productUrl : null,
     '',
     '*Mis datos:*',
-    `Celular: ${contact.phone.trim()}`,
+    `RUC/Empresa: ${contact.companyOrRuc.trim()}`,
     `Ciudad: ${contact.city.trim()}`,
     '',
-    '¿Podrían brindarme más información o una cotización?',
+    closingLine,
     '¡Gracias!',
   ]
     .filter((line): line is string => line != null)
@@ -52,8 +64,9 @@ export function openProductWhatsAppChat(
   product: ProductWhatsAppLineItem,
   contact: WhatsAppContact,
   businessPhone = HAITECH_WHATSAPP_MSISDN,
+  options: BuildProductWhatsAppMessageOptions = {},
 ): boolean {
-  const message = buildProductWhatsAppMessage(product, contact);
+  const message = buildProductWhatsAppMessage(product, contact, options);
   const msisdn = normalizePeruWhatsAppMsisdn(businessPhone);
   const url = buildWhatsAppMeUrl(msisdn, message);
   if (!url) return false;

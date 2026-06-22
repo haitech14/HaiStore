@@ -39,8 +39,8 @@ export function ProductDetailRelated({ product, className }: ProductDetailRelate
       >
         <div className="h-6 w-40 animate-pulse rounded bg-muted" />
         <div className="mt-4 h-5 w-56 animate-pulse rounded bg-muted/80" />
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, index) => (
             <div key={index} className="aspect-[3/4] animate-pulse rounded-xl bg-muted/50" />
           ))}
         </div>
@@ -65,7 +65,7 @@ export function ProductDetailRelated({ product, className }: ProductDetailRelate
       </span>
 
       <CatalogFormatSubHeader
-        title="Mismo formato"
+        title="También te podría interesar"
         count={related.length}
         viewAllHref={categoryPath(CATEGORY_SLUG)}
         className="mb-4 sm:mb-5"
@@ -76,9 +76,9 @@ export function ProductDetailRelated({ product, className }: ProductDetailRelate
           {related.map((item) => (
             <li
               key={item.id}
-              className="min-w-0 flex-[0_0_72%] sm:flex-[0_0_45%] lg:flex-[0_0_32%] xl:flex-[0_0_24%]"
+              className="min-w-0 flex-[0_0_78%] sm:flex-[0_0_calc((100%-0.75rem)/2)] md:flex-[0_0_calc((100%-2rem)/3)] lg:flex-[0_0_calc((100%-4rem)/5)]"
             >
-              <ProductHighlightCard product={item} layout="card" />
+              <ProductHighlightCard product={item} />
             </li>
           ))}
         </ul>

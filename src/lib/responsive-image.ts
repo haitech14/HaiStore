@@ -3,7 +3,7 @@ export function imageBasePath(imagePath: string): string {
   return imagePath.replace(/\.(png|jpe?g|webp|avif)$/i, '');
 }
 
-/** Variantes WebP del hero banner (banner2-768.webp, etc.). */
+/** Variantes WebP del hero banner (fiestaspatriasbanner-768.webp, etc.). */
 export function heroSingleAssetSources(imagePath: string) {
   const base = imageBasePath(imagePath);
   return {

@@ -199,6 +199,14 @@ async function main() {
     `Inventario actualizado: ${actuallyCreated} nuevos, ${actuallyUpdated} actualizados (${created}/${updated} en merge).`,
   );
   console.log(`Total en inventario: ${products.length} productos.`);
+
+  const { regenerateHomeBundleSnapshotQuiet } = await import(
+    '../server/lib/home-catalog-bundle-snapshot.js'
+  );
+  const snapshot = await regenerateHomeBundleSnapshotQuiet();
+  if (snapshot) {
+    console.log(`Snapshot home: ${snapshot.bundle.featured.length} destacados → ${snapshot.filePath}`);
+  }
 }
 
 main().catch((error) => {

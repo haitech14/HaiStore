@@ -1,6 +1,17 @@
 import { useRef, useState } from 'react';
-import { ImageIcon, Loader2, Play, Plus, Video } from 'lucide-react';
+import {
+  BookOpen,
+  Cpu,
+  FileText,
+  ImageIcon,
+  Loader2,
+  Play,
+  Plus,
+  Printer,
+  Video,
+} from 'lucide-react';
 
+import { PRODUCT_ATTACHMENT_LABELS } from '@/lib/inventory-attachments';
 import { getProductMediaUrls } from '@/lib/inventory-product';
 import { isImageMediaUrl, mediaPreviewUrl } from '@/lib/product-media';
 import { cn } from '@/lib/utils';
@@ -21,7 +32,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { InventoryProduct } from '@/types/product';
+import type { InventoryProduct, ProductAttachmentKind } from '@/types/product';
+
+const DOCUMENT_ATTACHMENT_KINDS = [
+  'technical_sheet',
+  'printer_driver',
+  'manual',
+  'firmware',
+] as const satisfies readonly ProductAttachmentKind[];
+
+const ATTACHMENT_ACCEPT =
+  '.pdf,.doc,.docx,.zip,.exe,.bin,application/pdf,application/zip,application/octet-stream';
 
 function Thumb({ src, alt, className }: { src: string; alt: string; className?: string }) {
   return (
@@ -50,6 +71,8 @@ interface InventoryMediaCellProps {
   onAddVideo?: (files: FileList) => void | Promise<void>;
   /** Añade un vídeo de YouTube por URL. */
   onAddYoutube?: (url: string) => void | Promise<void>;
+  /** Adjunta ficha técnica, driver, manual o firmware. */
+  onAddAttachment?: (kind: ProductAttachmentKind, file: File) => void | Promise<void>;
   isAddingGallery?: boolean;
 }
 
@@ -61,11 +84,16 @@ export function InventoryMediaCell({
   onAddGallery,
   onAddVideo,
   onAddYoutube,
+  onAddAttachment,
   isAddingGallery = false,
 }: InventoryMediaCellProps) {
   const mainInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const [pendingAttachmentKind, setPendingAttachmentKind] = useState<ProductAttachmentKind | null>(
+    null,
+  );
   const [youtubeOpen, setYoutubeOpen] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [youtubeError, setYoutubeError] = useState<string | null>(null);
@@ -74,7 +102,8 @@ export function InventoryMediaCell({
   const main = urls.find((url) => isImageMediaUrl(url)) ?? urls[0] ?? null;
   const extraCount = Math.max(0, urls.length - (main ? 1 : 0));
   const canUploadMain = Boolean(onUploadMain) && !isAddingGallery;
-  const canAddMedia = Boolean(onAddGallery || onAddVideo || onAddYoutube) && !isAddingGallery;
+  const canAddMedia =
+    Boolean(onAddGallery || onAddVideo || onAddYoutube || onAddAttachment) && !isAddingGallery;
 
   const thumbButtonClass =
     'rounded-md ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
@@ -145,6 +174,45 @@ export function InventoryMediaCell({
     />
   ) : null;
 
+  const attachmentInput = onAddAttachment ? (
+    <input
+      ref={attachmentInputRef}
+      type="file"
+      accept={ATTACHMENT_ACCEPT}
+      className="sr-only"
+      tabIndex={-1}
+      aria-hidden
+      onChange={(event) => {
+        const file = event.target.files?.[0];
+        const kind = pendingAttachmentKind;
+        event.target.value = '';
+        setPendingAttachmentKind(null);
+        if (file && kind) void onAddAttachment(kind, file);
+      }}
+    />
+  ) : null;
+
+  const openAttachmentPicker = (kind: ProductAttachmentKind) => {
+    if (!onAddAttachment) return;
+    setPendingAttachmentKind(kind);
+    window.setTimeout(() => attachmentInputRef.current?.click(), 0);
+  };
+
+  const attachmentMenuIcon = (kind: (typeof DOCUMENT_ATTACHMENT_KINDS)[number]) => {
+    switch (kind) {
+      case 'technical_sheet':
+        return FileText;
+      case 'printer_driver':
+        return Printer;
+      case 'manual':
+        return BookOpen;
+      case 'firmware':
+        return Cpu;
+      default:
+        return FileText;
+    }
+  };
+
   const mainSlot = main ? (
     <button
       type="button"
@@ -191,7 +259,7 @@ export function InventoryMediaCell({
           )}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-52">
+      <DropdownMenuContent align="start" className="w-56">
         {onAddGallery ? (
           <DropdownMenuItem onSelect={() => galleryInputRef.current?.click()}>
             <ImageIcon className="size-4" aria-hidden="true" />
@@ -215,6 +283,17 @@ export function InventoryMediaCell({
             Subir vídeo MP4
           </DropdownMenuItem>
         ) : null}
+        {onAddAttachment
+          ? DOCUMENT_ATTACHMENT_KINDS.map((kind) => {
+              const Icon = attachmentMenuIcon(kind);
+              return (
+                <DropdownMenuItem key={kind} onSelect={() => openAttachmentPicker(kind)}>
+                  <Icon className="size-4" aria-hidden="true" />
+                  {PRODUCT_ATTACHMENT_LABELS[kind]}
+                </DropdownMenuItem>
+              );
+            })
+          : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -224,6 +303,7 @@ export function InventoryMediaCell({
       {mainInput}
       {galleryInput}
       {videoInput}
+      {attachmentInput}
       {mainSlot}
       {addButton}
 

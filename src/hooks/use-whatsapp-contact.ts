@@ -15,19 +15,21 @@ interface MeContactPayload {
 
 async function fetchAccountContact(): Promise<WhatsAppContact | null> {
   try {
-    const data = await apiFetch<MeContactPayload>('/api/customers/me');
+    const data = await apiFetch<MeContactPayload & { contact: { companyOrRuc?: string } }>(
+      '/api/customers/me',
+    );
     if (isCompleteWhatsAppContact(data.contact)) {
       return {
         name: data.contact.name.trim(),
-        phone: data.contact.phone.trim(),
+        companyOrRuc: data.contact.companyOrRuc.trim(),
         city: data.contact.city.trim(),
       };
     }
     const partial = data.contact;
-    if (partial.name?.trim() || partial.phone?.trim() || partial.city?.trim()) {
+    if (partial.name?.trim() || partial.companyOrRuc?.trim() || partial.city?.trim()) {
       return {
         name: partial.name?.trim() ?? '',
-        phone: partial.phone?.trim() ?? '',
+        companyOrRuc: partial.companyOrRuc?.trim() ?? '',
         city: partial.city?.trim() ?? '',
       };
     }
@@ -49,7 +51,7 @@ export function useWhatsAppContact() {
         if (account) return account;
         return {
           name: user.name?.trim() ?? '',
-          phone: '',
+          companyOrRuc: '',
           city: '',
         } satisfies WhatsAppContact;
       }

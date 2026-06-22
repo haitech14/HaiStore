@@ -1,5 +1,7 @@
 import type { ProductSpecRow } from '@/types/product-detail';
 import type { Product } from '@/types/product';
+import { resolveProductImageUrl } from '@/lib/product-image-url';
+import { publicProductMediaPath } from '@/lib/product-stock-images';
 
 export interface ProductComparisonRow {
   id: string;
@@ -24,6 +26,8 @@ export interface ProductComparisonData {
 interface ComparisonModelSpec {
   match: RegExp;
   label: string;
+  /** Id en inventario cuando el nombre no coincide con el patrón. */
+  productId?: string;
   image?: string;
   values: Record<string, string | boolean>;
 }
@@ -51,6 +55,7 @@ const RICOH_IM_MONO_MODELS: ComparisonModelSpec[] = [
   {
     match: /\bIM\s*430F\b/i,
     label: 'IM 430F',
+    productId: 'ricoh-im-430f',
     values: {
       speed: '45 ppm',
       tray: '500 hojas',
@@ -62,12 +67,25 @@ const RICOH_IM_MONO_MODELS: ComparisonModelSpec[] = [
   {
     match: /\bIM\s*550F\b/i,
     label: 'IM 550F',
+    productId: '328f41ef-d935-4807-85d0-e1db5bdf73fb',
     values: {
       speed: '55 ppm',
       tray: '550 hojas',
       duplex: true,
       screen: '7" color',
       volume: '10,000 – 30,000 pág.',
+    },
+  },
+  {
+    match: /\bIM\s*600F\b/i,
+    label: 'IM 600F',
+    productId: 'b32a43a1-09e4-49f6-8950-3639c9534700',
+    values: {
+      speed: '60 ppm',
+      tray: '550 hojas',
+      duplex: true,
+      screen: '7" color',
+      volume: '15,000 – 40,000 pág.',
     },
   },
 ];
@@ -87,10 +105,31 @@ function isRicohImMonochromeFamily(equipment: Product): boolean {
 }
 
 function findCatalogMatch(catalog: Product[], spec: ComparisonModelSpec): Product | undefined {
+  if (spec.productId) {
+    const byId = catalog.find((row) => row.id === spec.productId);
+    if (byId) return byId;
+  }
+
   return catalog.find((row) => {
     const haystack = normalizeText(`${row.name} ${row.id}`);
     return spec.match.test(haystack);
   });
+}
+
+function resolveComparisonImage(
+  catalogMatch: Product | undefined,
+  spec: ComparisonModelSpec,
+): string | null {
+  if (catalogMatch) {
+    const fromCatalog = resolveProductImageUrl(catalogMatch, { stockFallback: true });
+    if (fromCatalog) return fromCatalog;
+  }
+
+  if (spec.productId) {
+    return publicProductMediaPath(spec.productId);
+  }
+
+  return spec.image ?? null;
 }
 
 function specsToComparisonValues(specs: ProductSpecRow[]): Record<string, string | boolean> {
@@ -126,15 +165,16 @@ function resolveModelColumn(
     return {
       productId: catalogMatch.id,
       modelLabel: spec.label,
-      image: catalogMatch.image_url ?? null,
+      image: resolveComparisonImage(catalogMatch, spec),
       isCurrent,
-      values: isCurrent ? spec.values : spec.values,
+      values: spec.values,
     };
   }
 
   return {
+    ...(spec.productId ? { productId: spec.productId } : {}),
     modelLabel: spec.label,
-    image: spec.image ?? null,
+    image: resolveComparisonImage(undefined, spec),
     isCurrent,
     values: spec.values,
   };
@@ -159,7 +199,9 @@ export function resolveEquipmentComparison(
     columns.unshift({
       productId: equipment.id,
       modelLabel: equipment.name.replace(/ricoh\s*/i, 'IM ').trim() || 'Este equipo',
-      image: equipment.image_url ?? null,
+      image:
+        resolveProductImageUrl(equipment, { stockFallback: true }) ??
+        publicProductMediaPath(equipment.id),
       isCurrent: true,
       values: specsToComparisonValues(specs),
     });
@@ -169,6 +211,6 @@ export function resolveEquipmentComparison(
     title: '¿Cómo se compara?',
     subtitle: 'Elige el equipo ideal para tu oficina',
     rows: COMPARISON_ROWS,
-    columns: columns.slice(0, 3),
+    columns: columns.slice(0, 4),
   };
 }

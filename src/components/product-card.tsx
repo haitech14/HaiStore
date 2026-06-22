@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ImageOff, ShoppingCart } from 'lucide-react';
 import { AddToCartButton, getAddToCartLabel } from '@/components/cart/add-to-cart-button';
 import { ProductCardPricing } from '@/components/product/product-card-pricing';
 import { ProductCardTitle } from '@/components/product/product-card-title';
 import { ProductWhatsAppButton } from '@/components/product-whatsapp-button';
-import { ProductCardImage } from '@/components/product/product-card-image';
+import { ProductCardHoverImage } from '@/components/product/product-card-hover-image';
 import { buildProductImageCandidates } from '@/lib/product-image-url';
 import { productPath } from '@/lib/product-path';
 import { cn } from '@/lib/utils';
@@ -23,17 +23,6 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
   const outOfStock = product.stock <= 0;
   const detailHref = productPath(product.id);
   const imageCandidates = useMemo(() => buildProductImageCandidates(product), [product]);
-  const [imageIndex, setImageIndex] = useState(0);
-  const [imagesExhausted, setImagesExhausted] = useState(false);
-  const imageUrl = imagesExhausted ? null : (imageCandidates[imageIndex] ?? null);
-
-  const handleImageError = () => {
-    if (imageIndex + 1 < imageCandidates.length) {
-      setImageIndex((current) => current + 1);
-      return;
-    }
-    setImagesExhausted(true);
-  };
 
   const cartActions = (
     <div className="flex items-stretch gap-2">
@@ -71,21 +60,18 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
             </Link>
             <div
               className="flex aspect-square items-center justify-center rounded-lg bg-muted/50"
-              aria-hidden={imageUrl ? undefined : true}
             >
-              {imageUrl ? (
-                <ProductCardImage
-                  src={imageUrl}
-                  alt=""
-                  className="max-h-full max-w-full object-contain p-1.5"
-                  onError={handleImageError}
-                />
-              ) : (
-                <div className="flex flex-col items-center gap-1.5 text-center text-muted-foreground">
-                  <ImageOff className="size-8 text-muted-foreground/70" aria-hidden="true" />
-                  <span className="text-xs font-medium">Sin Imagen</span>
-                </div>
-              )}
+              <ProductCardHoverImage
+                candidates={imageCandidates}
+                className="size-full p-1.5"
+                imageClassName="max-h-full max-w-full object-contain"
+                placeholder={
+                  <div className="flex flex-col items-center gap-1.5 text-center text-muted-foreground">
+                    <ImageOff className="size-8 text-muted-foreground/70" aria-hidden="true" />
+                    <span className="text-xs font-medium">Sin Imagen</span>
+                  </div>
+                }
+              />
             </div>
           </div>
         </div>
@@ -126,21 +112,18 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
             </Link>
             <div
               className="flex aspect-[4/3] items-center justify-center rounded-lg bg-muted/50 sm:aspect-square"
-              aria-hidden={imageUrl ? undefined : true}
             >
-              {imageUrl ? (
-                <ProductCardImage
-                  src={imageUrl}
-                  alt=""
-                  className="max-h-full max-w-full object-contain p-1.5 sm:p-2"
-                  onError={handleImageError}
-                />
-              ) : (
-                <div className="flex flex-col items-center gap-2 text-center text-muted-foreground">
-                  <ImageOff className="size-10 text-muted-foreground/70" aria-hidden="true" />
-                  <span className="text-xs font-medium">Sin Imagen</span>
-                </div>
-              )}
+              <ProductCardHoverImage
+                candidates={imageCandidates}
+                className="size-full p-1.5 sm:p-2"
+                imageClassName="max-h-full max-w-full object-contain"
+                placeholder={
+                  <div className="flex flex-col items-center gap-2 text-center text-muted-foreground">
+                    <ImageOff className="size-10 text-muted-foreground/70" aria-hidden="true" />
+                    <span className="text-xs font-medium">Sin Imagen</span>
+                  </div>
+                }
+              />
             </div>
           </div>
         </div>

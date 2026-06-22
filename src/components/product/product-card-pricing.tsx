@@ -68,7 +68,13 @@ export function ProductCardPricing({
             productId={productId}
             displayUsd={pricing.currentUsd}
             className={priceMainClass}
-          />
+          >
+            <DualPrice
+              usd={pricing.currentUsd}
+              alwaysBoth={featured}
+              {...(featured ? { className: 'text-[#0f1f3d]' } : {})}
+            />
+          </AdminRolePricesTooltip>
         )}
       </div>
       <div className="flex w-full flex-wrap items-baseline justify-between gap-x-1.5 gap-y-0.5">

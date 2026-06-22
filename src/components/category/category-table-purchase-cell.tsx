@@ -10,6 +10,7 @@ export function CategoryTablePurchaseCell({ purchasePriceUsd }: CategoryTablePur
     <InventoryDualPrice
       usd={purchasePriceUsd}
       exchangeRate={getUsdToPenPurchaseRate()}
+      useCharm={false}
     />
   );
 }

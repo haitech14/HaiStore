@@ -30,11 +30,13 @@ export const ADMIN_ROUTES = {
   SHIPPING: '/admin/envios',
   CATEGORIES: '/admin/categorias',
   PRICE_LISTS: '/admin/listas-precios',
+  ALBUM: '/admin/album',
   APPEARANCE: '/admin/apariencia',
 } as const;
 
 export const ADMIN_CATALOG_NAV = [
   { label: 'Inventario', href: ADMIN_ROUTES.INVENTORY },
+  { label: 'Álbum', href: ADMIN_ROUTES.ALBUM },
   { label: 'Categorías', href: ADMIN_ROUTES.CATEGORIES },
   { label: 'Listas de Precios', href: ADMIN_ROUTES.PRICE_LISTS },
 ] as const;

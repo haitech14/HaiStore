@@ -30,6 +30,7 @@ import {
 } from '../lib/catalog-query.js';
 import { listHomeFeaturedProducts } from '../lib/home-featured-products.js';
 import { listHomeCatalogSections } from '../lib/home-catalog-sections.js';
+import { listHomeCatalogBundleWithSnapshot } from '../lib/home-catalog-bundle-snapshot.js';
 import { shouldPreferSupabaseCatalog } from '../lib/catalog-source.js';
 import { getSupabaseAdmin } from '../lib/supabase-auth.js';
 
@@ -49,6 +50,26 @@ productsRouter.get('/', async (req, res, next) => {
     const products = await listProducts({ role, adminView: false });
     res.set('Cache-Control', LIST_CACHE_CONTROL);
     res.json(products);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productsRouter.get('/home-bundle', async (req, res, next) => {
+  try {
+    const role = await resolveRequestRole(req);
+    const featuredLimit = req.query.featuredLimit;
+    const sectionsLimit = req.query.sectionsLimit;
+    const category =
+      typeof req.query.category === 'string' ? req.query.category : 'multifuncionales';
+    const payload = await listHomeCatalogBundleWithSnapshot({
+      role,
+      featuredLimit,
+      sectionsLimit,
+      featuredCategorySlug: category,
+    });
+    res.set('Cache-Control', HOME_CACHE_CONTROL);
+    res.json(payload);
   } catch (error) {
     next(error);
   }
@@ -284,6 +305,7 @@ productsRouter.get('/by-category', async (req, res, next) => {
     const result = await queryProductsByCategory({
       role,
       slug: typeof req.query.slug === 'string' ? req.query.slug : '',
+      subSlug: typeof req.query.sub === 'string' ? req.query.sub : null,
       labels,
       condition: typeof req.query.condition === 'string' ? req.query.condition : null,
       inStockOnly: req.query.inStock === '1' || req.query.inStock === 'true',
@@ -378,6 +400,7 @@ productsRouter.get('/:id', async (req, res, next) => {
     const role = await resolveRequestRole(req);
     const product = await getPublicProductById(req.params.id, role);
     if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
+    res.set('Cache-Control', LIST_CACHE_CONTROL);
     res.json(product);
   } catch (error) {
     next(error);

@@ -1,7 +1,6 @@
 import * as React from 'react';
 
 import { buildEquipmentCartLineId, getPaidEquipmentOptions } from '@/lib/equipment-config-selection';
-import { penToUsd } from '@/lib/utils';
 import type { CartConfigurationLine, CartItem, Product } from '@/types/product';
 
 export interface AddToCartOptions {
@@ -36,9 +35,7 @@ const CartContext = React.createContext<CartContextValue | null>(null);
 const HIGHLIGHT_MS = 2200;
 
 function cartLineUnitUsd(item: CartItem): number {
-  const extrasUsd = penToUsd(item.configuration?.extrasPen ?? 0);
-  const baseUsd = item.volumeUnitPriceUsd ?? item.product.price;
-  return baseUsd + extrasUsd;
+  return item.volumeUnitPriceUsd ?? item.product.price;
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Menu } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { ChevronDown, Menu, Package } from 'lucide-react';
 
 import { CatalogMegaMenuPanel } from '@/components/layout/catalog-mega-menu-panel';
 import { Button } from '@/components/ui/button';
@@ -10,16 +11,26 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useStoreCategoriesTree } from '@/hooks/use-store-categories';
 import { buildLandingCatalogMegaMenu } from '@/lib/mega-menu-from-store-categories';
-import { mainNavLinkClass } from '@/components/layout/main-nav-styles';
+import {
+  MAIN_NAV_CATEGORIES_BUTTON_CLASS,
+  MAIN_NAV_ICON_CLASS,
+  mainNavLinkClass,
+} from '@/components/layout/main-nav-styles';
 import { cn } from '@/lib/utils';
 
 const HOVER_CLOSE_DELAY_MS = 180;
 
 interface CategoriesMegaMenuProps {
-  triggerVariant?: 'button' | 'nav';
+  triggerVariant?: 'button' | 'nav' | 'categories-button';
 }
 
 export function CategoriesMegaMenu({ triggerVariant = 'button' }: CategoriesMegaMenuProps) {
+  const location = useLocation();
+  const isCatalogRoute =
+    location.pathname.startsWith('/categoria') ||
+    location.pathname.startsWith('/tienda') ||
+    location.pathname.startsWith('/producto');
+
   const { data: categoryTree = [] } = useStoreCategoriesTree();
   const menu = useMemo(() => buildLandingCatalogMegaMenu(categoryTree), [categoryTree]);
 
@@ -86,7 +97,7 @@ export function CategoriesMegaMenu({ triggerVariant = 'button' }: CategoriesMega
   return (
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenuTrigger asChild>
-        {triggerVariant === 'nav' ? (
+        {triggerVariant === 'categories-button' ? (
           <button
             ref={triggerRef}
             type="button"
@@ -95,8 +106,26 @@ export function CategoriesMegaMenu({ triggerVariant = 'button' }: CategoriesMega
             onMouseEnter={openMenu}
             onMouseLeave={scheduleClose}
             onFocus={openMenu}
-            className={cn(mainNavLinkClass(open), 'gap-1')}
+            className={cn(
+              MAIN_NAV_CATEGORIES_BUTTON_CLASS,
+              (open || isCatalogRoute) && 'bg-red-700',
+            )}
           >
+            <Menu className={MAIN_NAV_ICON_CLASS} aria-hidden="true" />
+            Todas las categorías
+          </button>
+        ) : triggerVariant === 'nav' ? (
+          <button
+            ref={triggerRef}
+            type="button"
+            aria-haspopup="true"
+            aria-expanded={open}
+            onMouseEnter={openMenu}
+            onMouseLeave={scheduleClose}
+            onFocus={openMenu}
+            className={cn(mainNavLinkClass(open || isCatalogRoute), 'gap-1')}
+          >
+            <Package className={MAIN_NAV_ICON_CLASS} strokeWidth={1.75} aria-hidden="true" />
             Productos
             <ChevronDown
               aria-hidden="true"

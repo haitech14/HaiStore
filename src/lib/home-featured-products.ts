@@ -1,18 +1,18 @@
 import { FEATURED_PRODUCT_IDS } from '@/data/featured-products';
-import { HOME_HIGHLIGHTED_MODEL_PATTERNS } from '@/data/home-highlighted-products';
+import {
+  HOME_HIGHLIGHTED_ROW_SIZE,
+  MIN_HOME_FEATURED,
+} from '@/data/home-highlighted-products';
 import type { FeaturedProduct } from '@/data/featured-products';
 import { shuffleProductsDaily } from '@/lib/daily-shuffle';
 import { enrichFeaturedFromCatalog } from '@/lib/featured-catalog-enrich';
 import { productMatchesCategoryFilter } from '@/lib/inventory-categories';
 import { productToFeatured } from '@/lib/store-products';
 import type { Product } from '@/types/product';
+// @ts-expect-error módulo JS compartido sin declaración de tipos
+import { resolveHomeHighlightedRowProducts as resolveHighlightedRow } from '../../shared/home-highlighted-products.js';
 
-/** Productos visibles en la fila «Lo más destacado» del inicio. */
-export const HOME_HIGHLIGHTED_ROW_SIZE = 6;
-
-/** Múltiplo de 5 para páginas completas en el carrusel (cada bullet = 5 productos). */
-export const HOME_FEATURED_LIMIT = 15;
-export const MIN_HOME_FEATURED = 3;
+export { HOME_HIGHLIGHTED_ROW_SIZE, MIN_HOME_FEATURED };
 
 export function filterInStockProductsForCategoryLabels(
   products: Product[] | undefined,
@@ -35,38 +35,13 @@ export function countInStockProductsForCategoryLabels(
   return filterInStockProductsForCategoryLabels(products, labels).length;
 }
 
-/** Fila fija de 6 equipos Ricoh en el orden del diseño de referencia. */
+/** Fila fija de equipos Ricoh: prioriza nuevas con foto de inventario (IM 430F/550F/600F). */
 export function resolveHomeHighlightedRowProducts(inCategory: Product[]): Product[] {
-  if (inCategory.length === 0) return [];
-
-  const usedIds = new Set<string>();
-  const ordered: Product[] = [];
-
-  for (const pattern of HOME_HIGHLIGHTED_MODEL_PATTERNS) {
-    const match = inCategory.find(
-      (product) => !usedIds.has(product.id) && pattern.test(`${product.name} ${product.code ?? ''}`),
-    );
-    if (match) {
-      usedIds.add(match.id);
-      ordered.push(match);
-    }
-  }
-
-  if (ordered.length < HOME_HIGHLIGHTED_ROW_SIZE) {
-    const featured = resolveHomeFeaturedProducts(inCategory, HOME_HIGHLIGHTED_ROW_SIZE);
-    const byId = new Map(inCategory.map((product) => [product.id, product]));
-
-    for (const item of featured) {
-      if (ordered.length >= HOME_HIGHLIGHTED_ROW_SIZE) break;
-      const product = byId.get(item.id);
-      if (!product || usedIds.has(product.id)) continue;
-      usedIds.add(product.id);
-      ordered.push(product);
-    }
-  }
-
-  return ordered.slice(0, HOME_HIGHLIGHTED_ROW_SIZE);
+  return resolveHighlightedRow(inCategory, HOME_HIGHLIGHTED_ROW_SIZE);
 }
+
+/** Múltiplo de 5 para páginas completas en el carrusel (cada bullet = 5 productos). */
+export const HOME_FEATURED_LIMIT = 15;
 
 /**
  * Productos destacados del inicio: solo inventario en vivo con stock,

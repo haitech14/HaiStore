@@ -52,6 +52,8 @@ export interface EquipmentConfigOption {
   priceUsd?: number;
 }
 
+export type EquipmentConfigSelectionMode = 'single' | 'multiple';
+
 export interface EquipmentConfigStep {
   id: string;
   stepNumber: number;
@@ -60,6 +62,8 @@ export interface EquipmentConfigStep {
   pricePen: number;
   icon: LucideIcon;
   defaultSelected: boolean;
+  /** single = una opción (garantía); multiple = varias (accesorios, tóner). */
+  selectionMode?: EquipmentConfigSelectionMode;
   options: EquipmentConfigOption[];
 }
 
@@ -98,6 +102,8 @@ export interface ProductHeroSpecBullet {
   /** Formato optimizado: etiqueta en negrita + valor. */
   label?: string;
   value?: string;
+  /** Varias etiquetas en un mismo ítem (p. ej. Formato + Manejo de papel). */
+  parts?: { label: string; value: string }[];
 }
 
 export interface ProductDescriptionContent {

@@ -3,6 +3,8 @@ import { Link, Navigate, createBrowserRouter, isRouteErrorResponse, useRouteErro
 
 import { RootLayout } from '@/components/layout/root-layout';
 import { lazyWithRetry } from '@/lib/lazy-with-retry';
+import { prefetchHomeCatalog } from '@/lib/prefetch-home-catalog';
+import { queryClient } from '@/providers';
 
 const HomePage = lazyWithRetry(() => import('@/pages/home').then((m) => ({ default: m.HomePage })), 'inicio');
 const StorePage = lazyWithRetry(() => import('@/pages/store').then((m) => ({ default: m.StorePage })), 'tienda');
@@ -104,6 +106,10 @@ const AdminPlaceholder = lazyWithRetry(
 const AdminInventarioPage = lazyWithRetry(
   () => import('@/pages/admin/AdminInventarioPage').then((m) => ({ default: m.AdminInventarioPage })),
   'inventario',
+);
+const AdminAlbumPage = lazyWithRetry(
+  () => import('@/pages/admin/AdminAlbumPage').then((m) => ({ default: m.AdminAlbumPage })),
+  'album',
 );
 const AdminClientesPage = lazyWithRetry(
   () => import('@/pages/admin/AdminClientesPage').then((m) => ({ default: m.AdminClientesPage })),
@@ -272,6 +278,7 @@ export const router = createBrowserRouter([
       { path: 'pedidos', element: <Navigate to="/admin/ventas" replace /> },
       { path: 'productos', element: <Navigate to="/admin/inventario" replace /> },
       { path: 'inventario', element: withSuspense(<AdminInventarioPage />) },
+      { path: 'album', element: withSuspense(<AdminAlbumPage />) },
       { path: 'clientes', element: withSuspense(<AdminClientesPage />) },
       {
         path: 'crm',
@@ -337,7 +344,11 @@ export const router = createBrowserRouter([
     path: '/',
     element: <RootLayout />,
     children: [
-      { index: true, element: withSuspense(<HomePage />) },
+      {
+        index: true,
+        loader: () => prefetchHomeCatalog(queryClient),
+        element: withSuspense(<HomePage />),
+      },
       { path: 'tienda', element: withSuspense(<StorePage />) },
       { path: 'servicios', element: withSuspense(<ServiciosPage />) },
       { path: 'haiprotect', element: withSuspense(<HaiProtectPage />) },

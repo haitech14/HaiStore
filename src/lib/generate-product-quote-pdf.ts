@@ -509,6 +509,9 @@ function drawHeroOverlay(doc: jsPDF, x: number, y: number, w: number, h: number)
 }
 
 function formatHeroSpecBullet(bullet: ProductHeroSpecBullet): string {
+  if (bullet.parts?.length) {
+    return bullet.parts.map((part) => `${part.label}: ${part.value}`).join(' · ');
+  }
   if (bullet.label && bullet.value) return `${bullet.label}: ${bullet.value}`;
   return bullet.text?.trim() ?? '';
 }

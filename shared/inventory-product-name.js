@@ -61,6 +61,75 @@ export function formatSeminuevaProductName(name) {
 const YIELD_PAREN_PATTERN =
   /\((?:Rend\s+[^)]+|\d[\d,.\s]*5%-A4[^)]*)\)/i;
 
+const XREF_PREFIX_PATTERN = /^\s*\[xref\s+to\s+[^\]]+\]\s*/i;
+const GRAMAJE_LEADING_PATTERN =
+  /^(\d+(?:[.,]\d+)?\s*(?:ML|ml|G|g|KG|kg|GR|gr|L|l))\s*[—–-]\s+(.+)$/i;
+
+/** Elimina prefijos de referencia cruzada del inventario Ricoh LP. */
+export function stripXrefProductNamePrefix(name) {
+  let result = String(name ?? '').trim();
+  while (XREF_PREFIX_PATTERN.test(result)) {
+    result = result.replace(XREF_PREFIX_PATTERN, '').trim();
+  }
+  return result;
+}
+
+/** Prefijo legible para unidades PCDU / PCU en repuestos Ricoh. */
+export function applySparePartUnitPrefix(name) {
+  const trimmed = String(name ?? '').trim();
+  if (!trimmed) return trimmed;
+
+  if (/PCDU/i.test(trimmed)) {
+    if (/unidad de imagen \+ unidad de revelado original/i.test(trimmed)) {
+      return trimmed;
+    }
+    return `Unidad de imagen + Unidad de Revelado Original — ${trimmed}`;
+  }
+
+  if (/\bPCU\b|PCU:/i.test(trimmed)) {
+    if (/unidad de imagen\/cilindro original/i.test(trimmed)) {
+      return trimmed;
+    }
+    return `Unidad de Imagen/Cilindro Original — ${trimmed}`;
+  }
+
+  return trimmed;
+}
+
+/** Mueve gramaje/volumen inicial al final (p. ej. «600 ML — PRO-L5160e Cyan»). */
+export function moveGramajeToSuffix(name) {
+  const trimmed = String(name ?? '').trim();
+  const match = trimmed.match(GRAMAJE_LEADING_PATTERN);
+  if (!match?.[1] || !match[2]) return trimmed;
+  return `${match[2].trim()} — ${match[1].trim()}`;
+}
+
+/** Mueve segmentos «Rend …» al final del título. */
+export function moveRendSegmentsToSuffix(name) {
+  const trimmed = String(name ?? '').trim();
+  /** @type {string[]} */
+  const rendSegments = [];
+
+  let result = trimmed
+    .replace(/\s*[—–-]\s*Rend\s+([^—–-]+?)(?=\s*[—–-]|$)/gi, (_, segment) => {
+      rendSegments.push(`Rend ${segment.trim()}`);
+      return '';
+    })
+    .replace(/\s*\(Rend\s+([^)]+)\)/gi, (_, segment) => {
+      rendSegments.push(`Rend ${segment.trim()}`);
+      return '';
+    });
+
+  result = result
+    .replace(/\s*[—–-]\s*[—–-]+/g, ' — ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  if (rendSegments.length === 0) return trimmed;
+
+  return `${result} — ${rendSegments.join(' — ')}`.replace(/\s{2,}/g, ' ').trim();
+}
+
 /**
  * Mueve bloques entre paréntesis al final del título (tras el sufijo de modelos).
  * Ej.: «Filtro (180,000 5%-A4) — IM-430F» → «Filtro — IM-430F (180,000 5%-A4)»
@@ -93,17 +162,42 @@ export function moveParentheticalSuffixToEnd(name) {
   return `${base} ${parenSuffix}`.replace(/\s{2,}/g, ' ').trim();
 }
 
-/** Nombre de inventario/tienda: paréntesis al final, color de tóner y reglas seminueva. */
+/** Nombre de inventario/tienda: xref, PCDU/PCU, rendimiento, gramaje, color y seminueva. */
 export function formatInventoryProductName(name) {
   return formatSeminuevaProductName(
     normalizeTonerColorProductName(
-      moveParentheticalSuffixToEnd(normalizeTonerCartridgeProductLabel(name)),
+      moveParentheticalSuffixToEnd(
+        moveRendSegmentsToSuffix(
+          moveGramajeToSuffix(
+            applySparePartUnitPrefix(
+              stripXrefProductNamePrefix(normalizeTonerCartridgeProductLabel(name)),
+            ),
+          ),
+        ),
+      ),
     ),
   );
 }
 
 export function isSeminuevaProductName(name) {
   return /\bseminueva\b/i.test(String(name ?? '').trim());
+}
+
+/** Equipo nuevo en inventario: «NUEVA» en el nombre y sin «seminueva». */
+export function productQualifiesAsNuevaEquipment(product) {
+  const name = String(product?.name ?? '').trim();
+  if (!name) return false;
+  if (isSeminuevaProductName(name)) return false;
+  if (/\bremanufacturad/i.test(name)) return false;
+  return /\bnueva\b/i.test(name);
+}
+
+/** Equipo seminuevo: «seminueva» en el nombre o categoría de seminuevas. */
+export function productQualifiesAsSeminuevaEquipment(product) {
+  const name = String(product?.name ?? '').trim();
+  if (isSeminuevaProductName(name)) return true;
+  const category = String(product?.category ?? '').toLowerCase();
+  return category.includes('seminuevas');
 }
 
 export function hasTonerColorCode(name) {

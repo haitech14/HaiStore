@@ -2,8 +2,20 @@ import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 
 import { DualPrice } from '@/components/product/product-dual-price';
+import { formatProductDisplayCode } from '@/lib/product-display-code';
+import {
+  formatCostPerCopyPen,
+  formatYieldLabel,
+} from '@/lib/product-cost-per-copy';
+import {
+  buildSparePartsDisplayGroups,
+  flattenConsumableGroupItems,
+  splitTonerItemsBySupplyType,
+  sumCostPerCopyPen,
+  type ConsumableGroup,
+  type ConsumableItem,
+} from '@/lib/product-equipment-consumables';
 import { productPath } from '@/lib/product-path';
-import type { ConsumableGroup } from '@/lib/product-equipment-consumables';
 import { cn } from '@/lib/utils';
 
 interface ProductDetailConsumablesProps {
@@ -11,91 +23,202 @@ interface ProductDetailConsumablesProps {
   className?: string;
 }
 
-function ConsumableCard({ item }: { item: ConsumableGroup['items'][number] }) {
+function SparePartsRow({
+  item,
+  isToner,
+}: {
+  item: ConsumableGroup['items'][number];
+  isToner: boolean;
+}) {
+  const displaySku =
+    formatProductDisplayCode(item.sku, { name: item.name, isToner }) ?? item.sku?.trim() ?? null;
+
   return (
-    <article className="flex gap-3 rounded-lg border border-border/60 bg-white p-3">
-      <div className="flex size-16 shrink-0 items-center justify-center rounded-md bg-muted/25 p-1.5 sm:size-20">
-        {item.image ? (
-          <img
-            src={item.image}
-            alt=""
-            className="max-h-full max-w-full object-contain"
-            loading="lazy"
-          />
-        ) : (
-          <span className="text-xs font-semibold text-muted-foreground">Sin Imagen</span>
-        )}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <h4 className="line-clamp-2 text-sm font-semibold leading-snug text-[#0f1f3d]">{item.name}</h4>
-        {item.sku ? (
-          <p className="mt-0.5 text-[0.6875rem] text-muted-foreground">SKU: {item.sku}</p>
-        ) : null}
-        <p className="mt-1.5 text-sm font-bold text-[#0f1f3d]">
-          <DualPrice usd={item.priceUsd} />
-        </p>
-        <Link
-          to={productPath(item.productId)}
-          className="mt-auto inline-flex items-center gap-0.5 pt-2 text-xs font-bold text-red-600 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
-        >
-          Ver producto
-          <ChevronRight className="size-3.5" aria-hidden="true" />
-        </Link>
-      </div>
-    </article>
+    <tr className="border-b border-border/50 last:border-b-0">
+      <td className="py-1.5 pr-2 align-middle">
+        <div className="flex min-w-0 items-center gap-2">
+          <Link
+            to={productPath(item.productId)}
+            className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded border border-border/50 bg-muted/20 p-0.5 sm:size-10"
+            aria-label={`Ver ${item.name}`}
+          >
+            {item.image ? (
+              <img
+                src={item.image}
+                alt=""
+                className="max-h-full max-w-full object-contain"
+                loading="lazy"
+              />
+            ) : (
+              <span className="px-0.5 text-center text-[0.5rem] font-medium leading-tight text-muted-foreground">
+                N/D
+              </span>
+            )}
+          </Link>
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            {displaySku ? (
+              <span className="shrink-0 font-mono text-[0.6875rem] tabular-nums text-muted-foreground">
+                {displaySku}
+              </span>
+            ) : null}
+            <Link
+              to={productPath(item.productId)}
+              className="min-w-0 text-sm font-semibold leading-snug text-[#0f1f3d] no-underline hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+            >
+              <span className="line-clamp-2">{item.name}</span>
+            </Link>
+          </div>
+        </div>
+      </td>
+      <td className="whitespace-nowrap py-1.5 pr-2 align-middle text-sm font-semibold text-[#0f1f3d]">
+        <DualPrice usd={item.priceUsd} />
+      </td>
+      <td className="py-1.5 pr-2 align-middle text-sm text-muted-foreground">
+        {formatYieldLabel(item.yieldPages ?? null, item.yieldLabel ?? null)}
+      </td>
+      <td className="whitespace-nowrap py-1.5 align-middle text-sm font-semibold text-red-600">
+        {formatCostPerCopyPen(item.costPerCopyPen)}
+      </td>
+    </tr>
   );
 }
 
-function ConsumableItemGrid({ items }: { items: ConsumableGroup['items'] }) {
+function SparePartsTable({
+  items,
+  isToner,
+}: {
+  items: ConsumableGroup['items'];
+  isToner: boolean;
+}) {
   if (items.length === 0) return null;
 
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {items.map((item) => (
-        <li key={item.productId}>
-          <ConsumableCard item={item} />
-        </li>
-      ))}
-    </ul>
+    <div className="overflow-x-auto rounded-lg border border-border/60">
+      <table className="w-full min-w-[36rem] border-collapse text-left">
+        <thead>
+          <tr className="border-b border-border/60 bg-muted/20 text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">
+            <th scope="col" className="px-2 py-2">
+              Producto
+            </th>
+            <th scope="col" className="px-2 py-2">
+              Precio
+            </th>
+            <th scope="col" className="px-2 py-2">
+              Rendimiento
+            </th>
+            <th scope="col" className="px-2 py-2">
+              Costo por copia
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/50">
+          {items.map((item) => (
+            <SparePartsRow key={item.productId} item={item} isToner={isToner} />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TonerColumn({
+  title,
+  items,
+}: {
+  title: string;
+  items: ConsumableItem[];
+}) {
+  return (
+    <div className="min-w-0">
+      <h4 className="mb-3 border-b border-border/60 pb-2 text-sm font-bold text-[#0f1f3d]">
+        {title}
+      </h4>
+      {items.length > 0 ? (
+        <SparePartsTable items={items} isToner />
+      ) : (
+        <p className="rounded-lg border border-dashed border-border/60 px-3 py-4 text-sm text-muted-foreground">
+          Sin productos catalogados.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function TonerTwoColumnSection({ items }: { items: ConsumableItem[] }) {
+  const { original, compatible } = splitTonerItemsBySupplyType(items);
+
+  return (
+    <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-5">
+      <TonerColumn title="Original" items={original} />
+      <TonerColumn title="Compatible" items={compatible} />
+    </div>
   );
 }
 
 export function ProductDetailConsumables({ groups, className }: ProductDetailConsumablesProps) {
-  const visibleGroups = groups.filter(
-    (group) => group.items.length > 0 || group.subgroups.length > 0,
-  );
+  const displayGroups = buildSparePartsDisplayGroups(groups);
+  const allItems = flattenConsumableGroupItems(displayGroups);
+  const totalCostPerCopy = sumCostPerCopyPen(allItems);
+  const itemsWithCost = allItems.filter((item) => item.costPerCopyPen != null && item.costPerCopyPen > 0);
 
-  if (visibleGroups.length === 0) {
+  if (displayGroups.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No hay consumibles compatibles catalogados para este equipo por el momento.
+        No hay repuestos ni tóner catalogados para este equipo por el momento.
       </p>
     );
   }
 
   return (
     <div className={cn('space-y-8', className)}>
-      {visibleGroups.map((group) => (
-        <section key={group.id} aria-labelledby={`consumible-${group.id}`}>
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        Costo por copia = precio del producto ÷ rendimiento (páginas). La sumatoria incluye solo
+        ítems con rendimiento conocido.
+      </p>
+
+      {displayGroups.map((group) => (
+        <section key={group.id} aria-labelledby={`repuesto-${group.id}`}>
           <h3
-            id={`consumible-${group.id}`}
-            className="border-b border-border/60 pb-2 text-base font-bold text-[#0f1f3d] sm:text-lg"
+            id={`repuesto-${group.id}`}
+            className="border-b-2 border-red-600 pb-2 text-base font-bold text-red-600 sm:text-lg"
           >
             {group.label}
           </h3>
 
-          <div className="mt-4 space-y-5">
-            <ConsumableItemGrid items={group.items} />
-
-            {group.subgroups.map((subgroup) => (
-              <div key={subgroup.label}>
-                <h4 className="mb-3 text-sm font-semibold text-muted-foreground">{subgroup.label}</h4>
-                <ConsumableItemGrid items={subgroup.items} />
-              </div>
-            ))}
+          <div className="mt-4">
+            {group.id === 'toner' ? (
+              <TonerTwoColumnSection items={group.items} />
+            ) : (
+              <SparePartsTable items={group.items} isToner={false} />
+            )}
           </div>
         </section>
       ))}
+
+      {itemsWithCost.length > 0 ? (
+        <div className="rounded-lg border border-border/60 bg-muted/15 px-4 py-4 sm:px-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-bold text-[#0f1f3d]">
+              Sumatoria costo por copia ({itemsWithCost.length}{' '}
+              {itemsWithCost.length === 1 ? 'producto' : 'productos'})
+            </p>
+            <p className="text-lg font-bold text-red-600">{formatCostPerCopyPen(totalCostPerCopy)}</p>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Suma de los costos por copia de tóner y repuestos listados con rendimiento definido.
+          </p>
+        </div>
+      ) : null}
+
+      <p className="text-xs text-muted-foreground">
+        <Link
+          to="/tienda"
+          className="inline-flex items-center gap-0.5 font-semibold text-red-600 hover:text-red-500"
+        >
+          Ver catálogo de suministros
+          <ChevronRight className="size-3.5" aria-hidden="true" />
+        </Link>
+      </p>
     </div>
   );
 }

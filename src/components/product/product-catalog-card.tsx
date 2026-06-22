@@ -1,13 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Check,
   Heart,
   ImageOff,
-  ShoppingCart,
 } from 'lucide-react';
 
-import { AddToCartButton, getAddToCartLabel, isProductOutOfStock } from '@/components/cart/add-to-cart-button';
+import { isProductOutOfStock } from '@/components/cart/add-to-cart-button';
 import { ProductRating } from '@/components/product/product-rating';
 import { AdminRolePricesTooltip } from '@/components/admin/admin-role-prices-tooltip';
 import { useDisplayCurrency } from '@/context/display-currency-context';
@@ -20,7 +19,8 @@ import {
   getCatalogCardSpecLines,
 } from '@/lib/product-catalog-card-meta';
 import { PRODUCT_CARD_DISCOUNT_CLASS } from '@/lib/product-card-title';
-import { ProductCardImage } from '@/components/product/product-card-image';
+import { ProductCardHoverImage } from '@/components/product/product-card-hover-image';
+import { ProductQuantityAddFooter } from '@/components/product/product-quantity-add-footer';
 import { buildProductImageCandidates } from '@/lib/product-image-url';
 import { formatProductCardTitle } from '@/lib/product-card-title';
 import { productPath } from '@/lib/product-path';
@@ -158,14 +158,10 @@ export function ProductCatalogCard({ product }: ProductCatalogCardProps) {
   const outOfStock = isProductOutOfStock(product);
   const detailHref = productPath(product.id);
   const imageCandidates = useMemo(() => buildProductImageCandidates(product), [product]);
-  const [imageIndex, setImageIndex] = useState(0);
-  const [imagesExhausted, setImagesExhausted] = useState(false);
-  const imageUrl = imagesExhausted ? null : (imageCandidates[imageIndex] ?? null);
   const wishlistSelected = isWishlisted(product.id);
   const displayTitle = formatProductCardTitle(product);
   const rating = getCatalogCardRating(product);
   const specLines = getCatalogCardSpecLines(product);
-  const buyLabel = outOfStock ? getAddToCartLabel(product) : 'Comprar';
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-lg border border-border/60 bg-card shadow-sm transition-shadow duration-200 hover:shadow-md">
@@ -202,25 +198,17 @@ export function ProductCatalogCard({ product }: ProductCatalogCardProps) {
           className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
           aria-label={`Ver ficha de ${product.name}`}
         >
-          {imageUrl ? (
-            <ProductCardImage
-              src={imageUrl}
-              alt=""
-              className="size-full object-contain object-center p-0.5"
-              onError={() => {
-                if (imageIndex + 1 < imageCandidates.length) {
-                  setImageIndex((current) => current + 1);
-                  return;
-                }
-                setImagesExhausted(true);
-              }}
-            />
-          ) : (
-            <div className="flex flex-col items-center gap-2 px-4 text-center text-muted-foreground">
-              <ImageOff className="size-8" aria-hidden="true" />
-              <span className="text-xs font-medium">Sin Imagen</span>
-            </div>
-          )}
+          <ProductCardHoverImage
+            candidates={imageCandidates}
+            className="size-full"
+            imageClassName="size-full object-contain object-center p-0.5"
+            placeholder={
+              <div className="flex flex-col items-center gap-2 px-4 text-center text-muted-foreground">
+                <ImageOff className="size-8" aria-hidden="true" />
+                <span className="text-xs font-medium">Sin Imagen</span>
+              </div>
+            }
+          />
         </Link>
       </div>
 
@@ -266,20 +254,8 @@ export function ProductCatalogCard({ product }: ProductCatalogCardProps) {
           </div>
         </div>
 
-        <div className="mt-auto pt-1.5">
-          <AddToCartButton
-            product={product}
-            addOptions={{ quantity: 1 }}
-            className={cn(
-              'min-h-9 w-full gap-1.5 rounded-md px-3 text-sm font-semibold focus-visible:ring-red-600',
-              outOfStock
-                ? 'border border-red-600/30 bg-background text-red-600 hover:bg-red-50'
-                : 'bg-red-600 text-white hover:bg-red-500',
-            )}
-          >
-            <ShoppingCart className="size-3.5 shrink-0" aria-hidden="true" />
-            <span>{buyLabel}</span>
-          </AddToCartButton>
+        <div className="mt-auto border-t border-border/50 pt-2">
+          <ProductQuantityAddFooter product={product} size="sm" />
         </div>
       </div>
     </article>

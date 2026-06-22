@@ -1,13 +1,14 @@
-import { Link, Outlet, ScrollRestoration } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 
 import { ForumHeader } from '@/components/forum/forum-header';
+import { ScrollToTop } from '@/components/layout/scroll-to-top';
 import { cn } from '@/lib/utils';
 import { ForumFeatureBar } from '@/components/forum/forum-feature-bar';
 
 export function ForumLayout() {
   return (
     <div className="forum-shell flex min-h-dvh flex-col bg-[hsl(var(--forum-bg))] text-[hsl(var(--forum-fg))]">
-      <ScrollRestoration />
+      <ScrollToTop />
       <a
         href="#contenido-foro"
         className="skip-link focus-visible:bg-[hsl(var(--forum-accent))] focus-visible:text-white"

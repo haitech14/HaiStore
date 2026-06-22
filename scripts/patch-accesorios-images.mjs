@@ -1,49 +1,40 @@
 import 'dotenv/config';
 
-import { ACCESORIOS_DEFAULT_IMAGE } from '../server/lib/ricoh-lp-web-excel.js';
+import { sanitizeStoredProductMedia } from '../shared/product-media-sanitize.js';
 import {
   ensureProductSortOrders,
   readInventory,
   writeInventory,
 } from '../server/lib/inventory-store.js';
-import { readStoreCategories, updateStoreCategory } from '../server/lib/store-categories-store.js';
-
-const LEGACY_IMAGE = '/categories/toner-suministros.png';
-
-function shouldUseAccesoriosPlaceholder(product) {
-  const imageUrl = String(product.image_url ?? '').trim();
-  if (!imageUrl || imageUrl === LEGACY_IMAGE || imageUrl === ACCESORIOS_DEFAULT_IMAGE) {
-    return imageUrl !== ACCESORIOS_DEFAULT_IMAGE;
-  }
-  if (imageUrl.startsWith('/products/')) {
-    return false;
-  }
-  return imageUrl.includes('toner-suministros');
-}
 
 async function main() {
   const inventory = await readInventory();
   let updated = 0;
 
   const products = inventory.products.map((product) => {
-    if (product.category !== 'Accesorios' || !shouldUseAccesoriosPlaceholder(product)) {
+    if (product.category !== 'Accesorios') {
       return product;
     }
 
-    updated += 1;
+    const media = sanitizeStoredProductMedia(product);
+    const hadMedia = Boolean(product.image_url) || (product.gallery?.length ?? 0) > 0;
+    const hasMedia = Boolean(media.image_url) || media.gallery.length > 0;
+
+    if (hadMedia && !hasMedia) {
+      updated += 1;
+    } else if (
+      product.image_url !== media.image_url ||
+      JSON.stringify(product.gallery ?? []) !== JSON.stringify(media.gallery)
+    ) {
+      updated += 1;
+    }
+
     return {
       ...product,
-      image_url: ACCESORIOS_DEFAULT_IMAGE,
-      gallery: [ACCESORIOS_DEFAULT_IMAGE],
+      image_url: media.image_url,
+      gallery: media.gallery,
     };
   });
-
-  const categories = await readStoreCategories();
-  const accCat = categories.find((row) => row.id === 'cat-toner-accesorios');
-  if (accCat && accCat.image !== ACCESORIOS_DEFAULT_IMAGE) {
-    await updateStoreCategory('cat-toner-accesorios', { image: ACCESORIOS_DEFAULT_IMAGE });
-    console.log('Subcategoría Accesorios: imagen de categoría actualizada.');
-  }
 
   const { products: sorted } = ensureProductSortOrders(products);
 
@@ -53,7 +44,7 @@ async function main() {
     warehouses: inventory.warehouses,
   });
 
-  console.log(`Imagen de accesorios actualizada en ${updated} productos → ${ACCESORIOS_DEFAULT_IMAGE}`);
+  console.log(`Accesorios sin imagen por defecto: ${updated} producto(s) actualizado(s).`);
 }
 
 main().catch((error) => {

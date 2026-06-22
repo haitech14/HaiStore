@@ -1,4 +1,5 @@
 import { isPrinterEquipment } from '@/lib/build-product-detail';
+import { IM430F_ORIGINAL_TONER_PRODUCT_ID } from '@/lib/equipment-config-catalog';
 import { buildProductImageCandidates } from '@/lib/product-image-url';
 import { ensureFullPrices } from '@/lib/roles';
 import type { ProductComboItem } from '@/types/product-detail';
@@ -6,7 +7,6 @@ import type { Product } from '@/types/product';
 import { usdToPen } from '@/lib/utils';
 
 const TONER_STOCK_IMAGE = '/categories/toner-suministros.png';
-const IM430F_TONER_CATALOG_ID = 'toner-419078';
 
 function normalizeText(value: string): string {
   return value
@@ -166,7 +166,7 @@ function resolveCatalogPublicUsd(product: Product): number {
 
 function findCuratedCatalogMatch(accessory: CuratedAccessory, catalog: Product[]): Product | undefined {
   if (accessory.id === 'combo-toner-cartucho-im430f') {
-    const preferred = catalog.find((row) => row.id === IM430F_TONER_CATALOG_ID);
+    const preferred = catalog.find((row) => row.id === IM430F_ORIGINAL_TONER_PRODUCT_ID);
     if (preferred) return preferred;
   }
 
@@ -181,7 +181,7 @@ const CURATED_COMBO_DEDICATED_IMAGES = new Set([
 function buildCuratedComboItem(accessory: CuratedAccessory, catalog: Product[]): ProductComboItem {
   const matched = findCuratedCatalogMatch(accessory, catalog);
   const linkedProduct =
-    accessory.id === 'combo-toner-cartucho-im430f' && matched?.id === IM430F_TONER_CATALOG_ID
+    accessory.id === 'combo-toner-cartucho-im430f' && matched?.id === IM430F_ORIGINAL_TONER_PRODUCT_ID
       ? matched
       : matched && Math.abs(resolveCatalogPublicUsd(matched) - accessory.priceUsd) < 0.01
         ? matched

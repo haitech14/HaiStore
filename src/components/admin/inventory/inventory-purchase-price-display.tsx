@@ -18,7 +18,11 @@ export function InventoryPurchasePriceDisplay({
   );
 
   const priceDisplay = (
-    <InventoryDualPrice usd={product.purchase_price_usd} exchangeRate={exchangeRate} />
+    <InventoryDualPrice
+      usd={product.purchase_price_usd}
+      exchangeRate={exchangeRate}
+      useCharm={false}
+    />
   );
 
   if (!hasSuppliers) {

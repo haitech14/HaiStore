@@ -18,6 +18,12 @@ import {
   appendYoutubeToProduct,
   prepareInventoryPayloadForApi,
 } from '@/lib/inventory-product';
+import {
+  PRODUCT_ATTACHMENT_LABELS,
+  readAttachmentFile,
+  upsertProductAttachment,
+} from '@/lib/inventory-attachments';
+import type { ProductAttachmentKind } from '@/types/product';
 
 import { InventoryAttributesCell } from '@/components/admin/inventory/inventory-attributes-cell';
 import { InventoryPurchasePriceDisplay } from '@/components/admin/inventory/inventory-purchase-price-display';
@@ -246,6 +252,23 @@ export function InventoryRowCells({
     const handleUploadMain = (files: FileList) => persistUploadedFiles(files, 1);
     const handleAddGallery = (files: FileList) => persistUploadedFiles(files);
 
+    const persistAttachment = async (kind: ProductAttachmentKind, file: File) => {
+      setAddingGallery(true);
+      try {
+        const attachment = await readAttachmentFile(file, kind);
+        const attachments = upsertProductAttachment(product.attachments, attachment);
+        await onPatch({ attachments });
+        toast.success(`${PRODUCT_ATTACHMENT_LABELS[kind]} guardado`);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : 'No se pudo guardar el archivo adjunto',
+        );
+        throw error;
+      } finally {
+        setAddingGallery(false);
+      }
+    };
+
     return (
       <>
         <InventoryMediaCell
@@ -255,6 +278,7 @@ export function InventoryRowCells({
           onAddGallery={handleAddGallery}
           onAddVideo={persistUploadedVideos}
           onAddYoutube={persistYoutubeUrl}
+          onAddAttachment={persistAttachment}
           isAddingGallery={addingGallery}
         />
         <InventoryImagePreviewDialog
@@ -276,7 +300,11 @@ export function InventoryRowCells({
         onClose={close}
         display={
           <code className="block truncate rounded bg-muted px-1 py-0.5 text-[0.7rem] font-semibold tabular-nums">
-            {formatProductDisplayCode(product.code, { brand: product.brand }) ?? product.code}
+            {formatProductDisplayCode(product.code, {
+              brand: product.brand,
+              category: product.category,
+              name: product.name,
+            }) ?? product.code}
           </code>
         }
         edit={
@@ -294,7 +322,11 @@ export function InventoryRowCells({
   if (columnId === 'product') {
     const bundleProduct = isBundleProduct(product);
     const displayCode =
-      formatProductDisplayCode(product.code, { brand: product.brand }) ?? product.code?.trim();
+      formatProductDisplayCode(product.code, {
+        brand: product.brand,
+        category: product.category,
+        name: product.name,
+      }) ?? product.code?.trim();
     return (
       <InventoryInlineField
         fieldId={fieldKey('name')}
@@ -560,6 +592,7 @@ export function InventoryRowCells({
             ariaLabel="Precio de compra"
             onSave={savePurchaseUsd}
             onClose={close}
+            useCharm={false}
           />
         }
       />

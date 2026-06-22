@@ -1,5 +1,6 @@
 import XLSX from 'xlsx';
 
+import { normalizeProductCode } from '../../shared/product-code-prefix.js';
 import { normalizeAttributes } from './inventory-attributes.js';
 import { normalizeProductInput } from './inventory-store.js';
 
@@ -123,7 +124,7 @@ export function mapRepuestosExcelRowToEntry(row, carryModelo = '') {
   const modeloCell = String(row[0] ?? '').trim();
   const carryModeloNext = modeloCell || carryModelo;
 
-  const code = String(row[1] ?? '').trim();
+  const code = normalizeProductCode(String(row[1] ?? '').trim());
   const descripcion = String(row[2] ?? '').trim();
 
   if (!code || !descripcion) {

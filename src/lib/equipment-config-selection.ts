@@ -1,4 +1,5 @@
 import type { EquipmentConfigStep } from '@/types/product-detail';
+import { penToUsd } from '@/lib/utils';
 
 export type EquipmentSelectionState = Record<string, Set<string>>;
 
@@ -13,6 +14,32 @@ export interface SelectedEquipmentOption {
   sku?: string;
   imageUrl?: string | null;
   priceUsd?: number;
+}
+
+export function selectEquipmentOption(
+  selection: EquipmentSelectionState,
+  step: EquipmentConfigStep,
+  optionId: string,
+): EquipmentSelectionState {
+  const option = step.options.find((entry) => entry.id === optionId);
+  if (!option) return selection;
+
+  const mode = step.selectionMode ?? 'multiple';
+  const current = selection[step.id] ?? new Set<string>();
+
+  if (mode === 'single') {
+    return { ...selection, [step.id]: new Set([optionId]) };
+  }
+
+  const next = new Set(current);
+  if (next.has(optionId)) {
+    if (option.included) return selection;
+    next.delete(optionId);
+  } else {
+    next.add(optionId);
+  }
+
+  return { ...selection, [step.id]: next };
 }
 
 export function buildInitialEquipmentSelection(steps: EquipmentConfigStep[]): EquipmentSelectionState {
@@ -61,6 +88,15 @@ export function getPaidEquipmentOptions(options: SelectedEquipmentOption[]): Sel
 
 export function computeEquipmentExtrasPen(options: SelectedEquipmentOption[]): number {
   return getPaidEquipmentOptions(options).reduce((sum, option) => sum + option.pricePen, 0);
+}
+
+export function computeEquipmentExtrasUsd(options: SelectedEquipmentOption[]): number {
+  return getPaidEquipmentOptions(options).reduce((sum, option) => {
+    if (option.priceUsd != null && option.priceUsd > 0) {
+      return sum + option.priceUsd;
+    }
+    return sum + penToUsd(option.pricePen);
+  }, 0);
 }
 
 export function buildEquipmentCartLineId(

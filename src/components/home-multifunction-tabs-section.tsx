@@ -9,7 +9,7 @@ export function HomeMultifunctionTabsSection() {
   if (MULTIFUNCTION_SECTIONS.length === 0) return null;
 
   return (
-    <section className="border-t border-border/60 bg-muted/30 py-8 sm:py-10 lg:py-12">
+    <section className="py-8 sm:py-10 lg:py-12">
       <div className="container">
         <CatalogCategorySections sectionsConfig={MULTIFUNCTION_SECTIONS} />
       </div>

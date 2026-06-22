@@ -10,36 +10,34 @@ import { normalizeAttachments } from '@/lib/inventory-attachments';
 import { normalizeBundleComponents } from '@/lib/product-bundle';
 import { normalizeSuppliers, resolvePurchasePriceUsd } from '@/lib/inventory-suppliers';
 import { applyStockFields, DEFAULT_WAREHOUSES } from '@/lib/inventory-stock';
+import { normalizeVolumeRolePrices } from '@/lib/product-volume-role-prices';
+import { normalizeProductGalleryFields } from '@/lib/product-gallery';
+import {
+  heroBulletsToDescriptionText,
+  normalizeStorefrontFeatureBar,
+  normalizeStorefrontHeroBullets,
+} from '@/lib/product-storefront-detail';
 import { ensureFullPrices } from '@/lib/roles';
 import type { InventoryProduct, ProductRolePrices } from '@/types/product';
 
 async function optimizeProductImages(product: InventoryProduct): Promise<InventoryProduct> {
-  const gallery = product.gallery ?? [];
+  const galleryFields = normalizeProductGalleryFields(product.image_url, product.gallery);
   const optimizedGallery = await Promise.all(
-    gallery.map((url) =>
+    galleryFields.gallery.map((url) =>
       url.startsWith('data:image/') ? optimizeImageDataUrl(url, 'product') : Promise.resolve(url),
     ),
   );
-  const image_url = product.image_url
-    ? product.image_url.startsWith('data:image/')
-      ? await optimizeImageDataUrl(product.image_url, 'product')
-      : product.image_url
+  const image_url = galleryFields.image_url
+    ? galleryFields.image_url.startsWith('data:image/')
+      ? await optimizeImageDataUrl(galleryFields.image_url, 'product')
+      : galleryFields.image_url
     : optimizedGallery.find((url) => isImageMediaUrl(url)) ?? null;
 
-  const deduped: string[] = [];
-  const seen = new Set<string>();
-  for (const url of [image_url, ...optimizedGallery]) {
-    if (!url || seen.has(url)) continue;
-    seen.add(url);
-    deduped.push(url);
-  }
-
-  const mainImage = deduped.find((url) => isImageMediaUrl(url)) ?? null;
+  const normalized = normalizeProductGalleryFields(image_url, optimizedGallery);
 
   return {
     ...product,
-    image_url: mainImage,
-    gallery: deduped,
+    ...normalized,
   };
 }
 
@@ -54,15 +52,26 @@ export async function prepareInventoryPayloadForApi(
   const suppliers = normalizeSuppliers(product.suppliers, product.purchase_price_usd);
   const attachments = normalizeAttachments(product.attachments);
   const attributes = normalizeAttributes(product.attributes);
+  const storefront_feature_bar = normalizeStorefrontFeatureBar(product.storefront_feature_bar);
+  const storefront_hero_bullets = normalizeStorefrontHeroBullets(product.storefront_hero_bullets);
+  const description =
+    product.description?.trim() ||
+    (storefront_hero_bullets.length > 0
+      ? heroBulletsToDescriptionText(storefront_hero_bullets)
+      : product.description ?? null);
 
   const base: InventoryProduct = applyStockFields(
     {
       ...product,
       id,
       prices,
+      volume_role_prices: normalizeVolumeRolePrices(product.volume_role_prices),
       suppliers,
       attachments,
       attributes,
+      storefront_feature_bar,
+      storefront_hero_bullets,
+      description,
       purchase_price_usd: resolvePurchasePriceUsd(suppliers, product.purchase_price_usd),
       code: product.code?.trim() || id.replace(/-/g, '').slice(0, 24).toUpperCase(),
       gallery: product.gallery ?? [],
@@ -93,6 +102,7 @@ export function createEmptyInventoryProduct(): InventoryProduct {
     created_at: new Date().toISOString(),
     sort_order: 0,
     prices: ensureFullPrices({}),
+    volume_role_prices: [],
   };
 }
 
@@ -103,13 +113,9 @@ export function normalizeInventoryProduct(
 ): InventoryProduct {
   const prices = ensureFullPrices(raw.prices ?? { public: 0 });
   const publicPrice = prices.public ?? 0;
-  const gallery = Array.isArray(raw.gallery)
-    ? raw.gallery.filter((url): url is string => typeof url === 'string' && url.length > 0)
-    : raw.image_url
-      ? [raw.image_url]
-      : [];
-
-  const image_url = raw.image_url ?? gallery[0] ?? null;
+  const galleryFields = normalizeProductGalleryFields(raw.image_url, raw.gallery);
+  const image_url = galleryFields.image_url;
+  const gallery = galleryFields.gallery;
   const fallbackPurchase = Number(
     raw.purchase_price_usd ?? Math.round(publicPrice * 0.72 * 100) / 100,
   );
@@ -126,7 +132,7 @@ export function normalizeInventoryProduct(
       category: raw.category ?? null,
       brand: raw.brand ?? null,
       image_url,
-      gallery: gallery.length > 0 ? gallery : image_url ? [image_url] : [],
+      gallery,
       suppliers,
       attachments: normalizeAttachments(raw.attachments),
       attributes: normalizeAttributes(raw.attributes),
@@ -139,7 +145,10 @@ export function normalizeInventoryProduct(
         ? Math.max(0, Math.floor(Number(raw.view_count)))
         : 0,
       prices,
-  };
+      volume_role_prices: normalizeVolumeRolePrices(raw.volume_role_prices),
+      storefront_feature_bar: normalizeStorefrontFeatureBar(raw.storefront_feature_bar),
+      storefront_hero_bullets: normalizeStorefrontHeroBullets(raw.storefront_hero_bullets),
+    };
 
   return applyStockFields(
     {
@@ -168,6 +177,9 @@ export function mergeInventoryProductPatch(
   if (patch.attachments !== undefined) merged.attachments = patch.attachments;
   if (patch.stock_by_warehouse !== undefined) {
     merged.stock_by_warehouse = patch.stock_by_warehouse;
+  }
+  if (patch.volume_role_prices !== undefined) {
+    merged.volume_role_prices = patch.volume_role_prices;
   }
 
   return normalizeInventoryProduct(merged, warehouses);
@@ -217,31 +229,10 @@ function appendGalleryUrlsToProduct(
   product: InventoryProduct,
   urls: string[],
 ): Pick<InventoryProduct, 'image_url' | 'gallery'> {
-  const existingGallery = product.gallery ?? [];
-  const newUrls = urls.filter((url) => !existingGallery.includes(url));
-  const image_url =
-    product.image_url && isImageMediaUrl(product.image_url)
-      ? product.image_url
-      : newUrls.find((url) => isImageMediaUrl(url)) ?? product.image_url ?? null;
+  const { image_url, gallery } = normalizeProductGalleryFields(product.image_url, product.gallery);
+  const newUrls = urls.filter((url) => url !== image_url && !gallery.includes(url));
 
-  const gallery = dedupeMediaUrls([
-    ...(image_url ? [image_url] : []),
-    ...existingGallery.filter((item) => item !== image_url),
-    ...newUrls.filter((url) => url !== image_url),
-  ]);
-
-  return { image_url, gallery };
-}
-
-function dedupeMediaUrls(urls: (string | null | undefined)[]): string[] {
-  const seen = new Set<string>();
-  const result: string[] = [];
-  for (const url of urls) {
-    if (!url || seen.has(url)) continue;
-    seen.add(url);
-    result.push(url);
-  }
-  return result;
+  return normalizeProductGalleryFields(image_url, [...gallery, ...newUrls]);
 }
 
 /** Reemplaza una URL de la galería o la foto principal por otra. */
@@ -250,29 +241,20 @@ export function replaceProductMediaUrl(
   targetUrl: string | null,
   newUrl: string,
 ): Pick<InventoryProduct, 'image_url' | 'gallery'> {
+  const { image_url, gallery } = normalizeProductGalleryFields(product.image_url, product.gallery);
+
   if (!targetUrl) {
-    return {
-      image_url: newUrl,
-      gallery: dedupeMediaUrls([newUrl, ...(product.gallery ?? [])]),
-    };
+    return normalizeProductGalleryFields(newUrl, gallery);
   }
 
-  const isMain = product.image_url === targetUrl;
-  const gallery = (product.gallery ?? []).map((url) => (url === targetUrl ? newUrl : url));
+  const isMain = image_url === targetUrl;
+  const nextGallery = gallery.map((url) => (url === targetUrl ? newUrl : url));
 
   if (isMain) {
-    return {
-      image_url: newUrl,
-      gallery: dedupeMediaUrls([newUrl, ...gallery]),
-    };
+    return normalizeProductGalleryFields(newUrl, nextGallery);
   }
 
-  return {
-    image_url: product.image_url,
-    gallery: dedupeMediaUrls(
-      product.image_url ? [product.image_url, ...gallery] : gallery,
-    ),
-  };
+  return normalizeProductGalleryFields(image_url, nextGallery);
 }
 
 /** Marca una URL de la galería como foto principal (solo imágenes). */
@@ -284,10 +266,8 @@ export function setProductMainMediaUrl(
     throw new Error('La foto principal debe ser una imagen');
   }
 
-  return {
-    image_url: url,
-    gallery: dedupeMediaUrls([url, ...(product.gallery ?? []), product.image_url]),
-  };
+  const { image_url, gallery } = normalizeProductGalleryFields(product.image_url, product.gallery);
+  return normalizeProductGalleryFields(url, [...gallery, image_url].filter(Boolean) as string[]);
 }
 
 /** Quita una imagen de la galería (y la principal si aplica). */
@@ -295,18 +275,17 @@ export function removeProductMediaUrl(
   product: InventoryProduct,
   targetUrl: string,
 ): Pick<InventoryProduct, 'image_url' | 'gallery'> {
-  const gallery = (product.gallery ?? []).filter((url) => url !== targetUrl);
-  const image_url = product.image_url === targetUrl ? (gallery[0] ?? null) : product.image_url;
-  return {
-    image_url,
-    gallery: dedupeMediaUrls(image_url ? [image_url, ...gallery] : gallery),
-  };
+  const { image_url, gallery } = normalizeProductGalleryFields(product.image_url, product.gallery);
+  const nextGallery = gallery.filter((url) => url !== targetUrl);
+  const nextMain = image_url === targetUrl ? (nextGallery.find((url) => isImageMediaUrl(url)) ?? null) : image_url;
+
+  return normalizeProductGalleryFields(nextMain, nextGallery);
 }
 
 export function getProductMediaUrls(product: InventoryProduct): string[] {
   const { image_url, gallery } = sanitizeStoredProductMedia(product);
-  const seen = new Set<string>();
   const urls: string[] = [];
+  const seen = new Set<string>();
   for (const url of [image_url, ...gallery]) {
     if (!url || seen.has(url)) continue;
     seen.add(url);

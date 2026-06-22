@@ -4,6 +4,8 @@ import { HomeHighlightedSection } from '@/components/home-highlighted-section';
 import { HomeTrustStrip } from '@/components/home-trust-strip';
 import { lazy, LazyHomeSection } from '@/components/home/lazy-home-section';
 import { FooterBrandsSection } from '@/components/layout/footer-brands-section';
+import { HOME_LANDING_SURFACE_CLASS } from '@/lib/home-landing-layout';
+import { cn } from '@/lib/utils';
 
 const HomeMultifunctionTabsSection = lazy(() =>
   import('@/components/home-multifunction-tabs-section').then((m) => ({
@@ -31,10 +33,15 @@ const HomeEquipmentAdvisorSection = lazy(() =>
     default: m.HomeEquipmentAdvisorSection,
   })),
 );
+const HomeTechnicalServiceBanner = lazy(() =>
+  import('@/components/home-technical-service-banner').then((m) => ({
+    default: m.HomeTechnicalServiceBanner,
+  })),
+);
 
 export function HomePage() {
   return (
-    <div className="flex flex-col">
+    <div className={cn('flex flex-col', HOME_LANDING_SURFACE_CLASS)}>
       <HeroBanner />
       <CategoryStrip />
       <HomeTrustStrip />
@@ -46,6 +53,10 @@ export function HomePage() {
 
       <LazyHomeSection minHeight="260px">
         <HomeSuppliesSpareTabsSection />
+      </LazyHomeSection>
+
+      <LazyHomeSection minHeight="220px">
+        <HomeTechnicalServiceBanner />
       </LazyHomeSection>
 
       <LazyHomeSection minHeight="120px">
@@ -60,12 +71,11 @@ export function HomePage() {
         <ClientsSection />
       </LazyHomeSection>
 
-      <LazyHomeSection minHeight="200px">
-        <HomeFaqSection />
-      </LazyHomeSection>
-
-      <LazyHomeSection minHeight="320px">
-        <HomeEquipmentAdvisorSection />
+      <LazyHomeSection minHeight="520px">
+        <div className="bg-white">
+          <HomeFaqSection />
+          <HomeEquipmentAdvisorSection />
+        </div>
       </LazyHomeSection>
     </div>
   );

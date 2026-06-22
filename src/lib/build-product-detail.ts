@@ -3,11 +3,9 @@ import {
   BookOpen,
   Cloud,
   Copy,
-  Cpu,
   FileText,
-  FlipHorizontal2,
   Gauge,
-  Grid3x3,
+  Gift,
   Inbox,
   Layers,
   Leaf,
@@ -19,14 +17,19 @@ import {
   Settings,
   Shield,
   Smartphone,
-  Timer,
   Usb,
   Wifi,
 } from 'lucide-react';
 
 import type { FeaturedProduct } from '@/data/featured-products';
 import { DEFAULT_BULK_DISCOUNT_TIERS } from '@/lib/bulk-discount-tiers';
+import { normalizeAttributes } from '@/lib/inventory-attributes';
 import { buildProductBreadcrumbs } from '@/lib/build-product-breadcrumbs';
+import {
+  IM430F_ORIGINAL_TONER_PRODUCT_ID,
+  IM550F_COMPATIBLE_TONER_PRODUCT_ID,
+  IM550F_ORIGINAL_TONER_PRODUCT_ID,
+} from '@/lib/equipment-config-catalog';
 import type {
   BulkDiscountTier,
   EquipmentConfigStep,
@@ -45,6 +48,14 @@ import type { Product } from '@/types/product';
 import { productHasNuevoCornerBadge } from '@/lib/product-detail-badges';
 import { findTechnicalSheetAttachment } from '@/lib/inventory-attachments';
 import { buildProductGalleryItems } from '@/lib/product-media';
+import { formatProductDisplayCode } from '@/lib/product-display-code';
+import {
+  heroBulletsToStored,
+  highlightsToStoredFeatureBar,
+  normalizeStorefrontHeroBullets,
+  resolveStoredFeatureBar,
+  resolveStoredHeroBullets,
+} from '@/lib/product-storefront-detail';
 import { ensureFullPrices } from '@/lib/roles';
 import { usdToPen } from '@/lib/utils';
 
@@ -79,31 +90,218 @@ const IM430F_BULLETS = [
   'Conectividad móvil y nube',
 ];
 
-const IM430F_HERO_SPEC_BULLETS: ProductHeroSpecBullet[] = [
-  { label: 'Multifunción 4 en 1', value: 'impresión, copia, escaneo y fax' },
-  { label: 'Velocidad de impresión', value: 'hasta 45 ppm (A4)' },
-  { label: 'Calidad de impresión', value: '1200 x 1200 dpi' },
-  { label: 'Pantalla', value: 'táctil a color de 10.1"' },
-  { label: 'Conectividad', value: 'Wi-Fi, USB, LAN' },
-  {
-    label: 'Manejo de papel',
-    value: 'casetera 500 hojas + bypass 80 hojas | ADF dúplex 50 hojas',
-  },
-  { label: 'Rendimiento de tóner', value: 'hasta 15,000 páginas' },
-];
+const IM_BN_A4_FORMAT_BULLET: ProductHeroSpecBullet = {
+  icon: FileText,
+  text: 'Formato A4, A5, A6 Bypass Formato A4-Carta',
+};
+
+const IM_BN_A4_MONTHLY_PRODUCTION_BULLET: ProductHeroSpecBullet = {
+  icon: Gauge,
+  text: 'Producción mensual 50,000 páginas al mes',
+};
+
+const IM_BN_A4_GIFT_BULLET: ProductHeroSpecBullet = {
+  icon: Gift,
+  text: 'Regalo: 04 Toner de Inicio mínimo al 40% y Envío Gratis',
+};
 
 const IM430F_HERO_LEAD = '';
 
 const IM430F_HERO_DESCRIPTION = '';
 
-const IM430F_FEATURE_BAR: ProductDescriptionHighlight[] = [
-  { icon: Gauge, title: '45 ppm', subtitle: 'Velocidad de impresión' },
-  { icon: Wifi, title: 'Wi-Fi', subtitle: 'Conectividad inalámbrica' },
-  { icon: Smartphone, title: 'Pantalla 10.1"', subtitle: 'Smart Operation Panel' },
-  { icon: Inbox, title: 'ADF', subtitle: 'Alimentador automático' },
-  { icon: Layers, title: '550 hojas', subtitle: 'Capacidad estándar' },
-  { icon: ScanLine, title: 'Escaneo a color', subtitle: 'Calidad profesional' },
-];
+function resolvePrinterSpeedTitle(specs: ProductSpecRow[]): string {
+  const speed = specValue(specs, 'velocidad') || '40 ppm';
+  return speed.replace(/^hasta\s+/i, '').trim();
+}
+
+function resolveAdfFeatureBarTile(
+  product: Product,
+  specs: ProductSpecRow[],
+): { title: string; subtitle: string } {
+  if (isImBnA4Sibling(product)) {
+    return { title: 'SPDF', subtitle: 'Alimentador de originales doble scan' };
+  }
+
+  const adf = specValue(specs, 'adf') || findProductAttribute(product, 'alimentador', 'adf') || '';
+  if (/doble\s*scan/i.test(adf)) {
+    return { title: 'SPDF', subtitle: 'Alimentador de originales doble scan' };
+  }
+  if (/est[aá]ndar/i.test(adf)) {
+    return { title: 'ADF', subtitle: 'Alimentador de documentos estándar' };
+  }
+  return { title: 'SPDF', subtitle: 'Alimentador de originales doble scan' };
+}
+
+function resolveFormatFeatureBarTile(
+  product: Product,
+  specs: ProductSpecRow[],
+): { title: string; subtitle: string } {
+  const format =
+    specValue(specs, 'formato') || findProductAttribute(product, 'formato') || 'A4';
+  if (format.toLowerCase().includes('a4')) {
+    return { title: 'Papel A4', subtitle: 'Formato estándar oficina' };
+  }
+  return { title: format, subtitle: 'Formato de impresión' };
+}
+
+function formatConnectivityBullet(connectivity: string): string {
+  const formatted = connectivity
+    .replace(/\s*\/\s*/g, ', ')
+    .replace(/\s+y\s+/i, ', ')
+    .replace(/Red/gi, 'LAN');
+  return `Conectividad: ${formatted}`;
+}
+
+function resolveAdfBulletText(product: Product, specs: ProductSpecRow[]): string {
+  if (isImBnA4Sibling(product)) {
+    return 'SPDF — Alimentador de originales doble scan';
+  }
+
+  const adf = specValue(specs, 'adf') || findProductAttribute(product, 'alimentador', 'adf') || '';
+  if (/doble\s*scan/i.test(adf)) {
+    return 'SPDF — Alimentador de originales doble scan';
+  }
+  if (adf.trim()) return adf.trim();
+  return 'SPDF — Alimentador de originales doble scan';
+}
+
+function resolveFormatBulletText(product: Product, specs: ProductSpecRow[]): string {
+  const format =
+    specValue(specs, 'formato') || findProductAttribute(product, 'formato') || '';
+  if (!format || format.toLowerCase().includes('a4')) {
+    return IM_BN_A4_FORMAT_BULLET.text ?? 'Formato A4, A5, A6 Bypass Formato A4-Carta';
+  }
+  return `Formato ${format}`;
+}
+
+function resolveMonthlyProductionBullet(
+  product: Product,
+  specs: ProductSpecRow[],
+): ProductHeroSpecBullet | null {
+  const volume = specValue(specs, 'volumen');
+  if (volume) {
+    const monthly = volume.replace(/^hasta\s+/i, '');
+    return { icon: Gauge, text: `Producción mensual ${monthly}` };
+  }
+
+  if (/nuev/i.test(product.category ?? '')) {
+    return IM_BN_A4_MONTHLY_PRODUCTION_BULLET;
+  }
+
+  return null;
+}
+
+function shouldShowGiftBullet(product: Product): boolean {
+  return /nuev/i.test(product.category ?? '') || isImBnA4Sibling(product);
+}
+
+function buildPrinterFeatureBar(product: Product, specs: ProductSpecRow[]): ProductDescriptionHighlight[] {
+  const screen = specValue(specs, 'pantalla');
+  const connectivityRaw = specValue(specs, 'conectividad') || 'Wi-Fi / Red / USB';
+  const formatTile = resolveFormatFeatureBarTile(product, specs);
+  const adfTile = resolveAdfFeatureBarTile(product, specs);
+
+  return [
+    { icon: Printer, title: '4 en 1', subtitle: 'Imprime, copia, escanea y faxea' },
+    {
+      icon: Gauge,
+      title: resolvePrinterSpeedTitle(specs),
+      subtitle: 'Velocidad de impresión',
+    },
+    {
+      icon: Smartphone,
+      title: screen ? shortenScreenLabel(screen) : 'Pantalla táctil',
+      subtitle: 'Panel de operación',
+    },
+    { icon: FileText, title: formatTile.title, subtitle: formatTile.subtitle },
+    { icon: ScanLine, title: adfTile.title, subtitle: adfTile.subtitle },
+    {
+      icon: Cloud,
+      title: 'Conectividad',
+      subtitle: formatConnectivitySubtitle(connectivityRaw),
+    },
+  ];
+}
+
+function buildPrinterHeroSpecBullets(product: Product, specs: ProductSpecRow[]): ProductHeroSpecBullet[] {
+  const bullets: ProductHeroSpecBullet[] = [];
+  const functions = specValue(specs, 'funciones');
+  const connectivity = specValue(specs, 'conectividad');
+
+  bullets.push({ icon: Copy, text: 'Copiadora, Impresora, Escaner y fax' });
+  bullets.push({ icon: Printer, text: `Imprime hasta ${resolvePrinterSpeedTitle(specs)}` });
+
+  if (connectivity) {
+    bullets.push({ icon: Wifi, text: formatConnectivityBullet(connectivity) });
+  }
+
+  bullets.push({ icon: ScanLine, text: resolveAdfBulletText(product, specs) });
+
+  if (functions) {
+    const normalized = functions.replace(/\s*\/\s*/g, ', ').toLowerCase();
+    const firstBullet = bullets[0]?.text?.toLowerCase() ?? '';
+    const isRedundant =
+      /impresi|copia|escane|fax/.test(normalized) &&
+      /copiadora|impresora|escaner|fax/.test(firstBullet);
+    if (!isRedundant) {
+      bullets.push({
+        icon: ScanLine,
+        text: functions.replace(/\s*\/\s*/g, ', '),
+      });
+    }
+  }
+
+  bullets.push({ icon: FileText, text: resolveFormatBulletText(product, specs) });
+
+  const monthly = resolveMonthlyProductionBullet(product, specs);
+  if (monthly) bullets.push(monthly);
+
+  if (shouldShowGiftBullet(product)) {
+    bullets.push(IM_BN_A4_GIFT_BULLET);
+  }
+
+  return bullets.slice(0, 10);
+}
+
+function buildPrinterDescriptionVisual(product: Product, specs: ProductSpecRow[]): ProductDescriptionVisual {
+  const screen = specValue(specs, 'pantalla');
+  const monthly = specValue(specs, 'volumen');
+  const paper = specValue(specs, 'capacidad', 'papel');
+  const adf = specValue(specs, 'adf') || findProductAttribute(product, 'alimentador', 'adf') || '';
+  const adfIsDobleScan = /doble\s*scan/i.test(adf);
+  const adfLines = adfIsDobleScan
+    ? ['Alimentador de originales doble scan']
+    : adf.trim()
+      ? [adf.trim()]
+      : ['Alimentador de originales doble scan'];
+
+  return {
+    functions: [
+      { icon: Copy, label: 'Copiadora' },
+      { icon: Printer, label: 'Impresora' },
+      { icon: ScanLine, label: 'Escáner' },
+    ],
+    connectivity: [...PRINTER_CONNECTIVITY_VISUAL],
+    specs: [
+      { icon: Gauge, title: 'Velocidad', lines: [resolvePrinterSpeedTitle(specs)] },
+      { icon: FileText, title: 'Papel A4', lines: ['Formato estándar oficina'] },
+      ...(screen
+        ? [{ icon: Smartphone, title: 'Pantalla', lines: [shortenScreenLabel(screen)] }]
+        : [{ icon: Smartphone, title: 'Pantalla', lines: ['Pantalla táctil'] }]),
+      {
+        icon: ScanLine,
+        title: adfIsDobleScan ? 'SPDF' : 'ADF',
+        lines: adfLines,
+      },
+      ...(monthly
+        ? [{ icon: Layers, title: 'Rendimiento Mensual', lines: [shortenMonthlyVolume(monthly)] }]
+        : [{ icon: Layers, title: 'Rendimiento Mensual', lines: ['Alto volumen mensual'] }]),
+      ...(paper
+        ? [{ icon: Printer, title: 'Capacidad de papel', lines: [`Estándar: ${paper}`] }]
+        : [{ icon: Printer, title: 'Capacidad de papel', lines: ['Bandeja estándar'] }]),
+    ],
+  };
+}
 
 function buildHeroSpecTitle(_product: Product, _isPrinter: boolean): string | null {
   return null;
@@ -115,80 +313,15 @@ function buildHeroSpecBullets(
   isPrinter: boolean,
 ): ProductHeroSpecBullet[] {
   if (!isPrinter) return [];
-  if (isIm430f(product)) return IM430F_HERO_SPEC_BULLETS;
-
-  const bullets: ProductHeroSpecBullet[] = [];
-
-  const functions = specs.find((row) => row.label === 'Funciones');
-  if (functions) {
-    bullets.push({ icon: Copy, text: 'Copiadora, Impresora, Escaner y fax' });
-  }
-
-  const speed = specs.find((row) => row.label === 'Velocidad');
-  const format = specs.find(
-    (row) => row.label === 'Formatos' || row.label === 'Formato' || row.label === 'Formato papel',
-  );
-  if (speed) {
-    const ppm = /^hasta\s/i.test(speed.value) ? speed.value : `hasta ${speed.value}`;
-    const formatoSuffix = format?.value.toLowerCase().includes('a4') ? ' en Formato A4' : '';
-    bullets.push({ icon: Printer, text: `Imprime ${ppm}${formatoSuffix}` });
-  } else if (format?.value.toLowerCase().includes('a4')) {
-    bullets.push({ icon: FileText, text: 'Formato A4' });
-  }
-
-  const resolution = specs.find((row) => row.label.toLowerCase().includes('resolución'));
-  if (resolution) {
-    bullets.push({
-      icon: Grid3x3,
-      text: `Resolución de impresión: ${resolution.value.replace(/^hasta\s+/i, '')}`,
-    });
-  }
-
-  const screen = specs.find((row) => row.label === 'Pantalla');
-  if (screen) {
-    bullets.push({ icon: Monitor, text: screen.value });
-  }
-
-  const connectivity = specs.find((row) => row.label === 'Conectividad');
-  if (connectivity) {
-    const formatted = connectivity.value
-      .replace(/\s*\/\s*/g, ', ')
-      .replace(/\s+y\s+/i, ', ')
-      .replace(/Red/gi, 'LAN');
-    bullets.push({ icon: Wifi, text: `Conectividad: ${formatted}` });
-  }
-
-  const paper = specs.find((row) => row.label.toLowerCase().includes('papel'));
-  if (paper) {
-    bullets.push({ icon: Layers, text: `Capacidad de papel: ${paper.value}` });
-  }
-
-  const adf = specs.find((row) => row.label.toLowerCase().includes('adf'));
-  if (adf) {
-    bullets.push({ icon: ScanLine, text: adf.value });
-  }
-
-  const volume = specs.find((row) => row.label.toLowerCase().includes('volumen'));
-  if (volume) {
-    const monthly = volume.value.replace(/^hasta\s+/i, '');
-    bullets.push({
-      icon: Gauge,
-      text: `Ciclo Mensual: ${monthly}`,
-    });
-  } else if (functions && bullets.length < 9) {
-    bullets.push({ icon: ScanLine, text: functions.value });
-  }
-
-  return bullets.slice(0, 9);
+  return buildPrinterHeroSpecBullets(product, specs);
 }
 
 function resolveHeroLead(product: Product, isPrinter: boolean, isSupply: boolean): string {
   if (isIm430f(product)) return IM430F_HERO_LEAD;
   if (isPrinter) {
-    return (
-      product.description ??
-      'Equipo multifuncional profesional diseñado para oficinas que buscan productividad y confiabilidad.'
-    );
+    const description = product.description?.trim() ?? '';
+    if (description.includes('\n')) return '';
+    return description;
   }
   if (isSupply) return 'Consumible compatible de alta calidad para un rendimiento constante.';
   return product.category ?? 'Producto HaiStore';
@@ -196,12 +329,7 @@ function resolveHeroLead(product: Product, isPrinter: boolean, isSupply: boolean
 
 function resolveHeroDescription(product: Product, isPrinter: boolean, isSupply: boolean): string {
   if (isIm430f(product)) return IM430F_HERO_DESCRIPTION;
-  if (isPrinter) {
-    return (
-      product.description ??
-      'Rendimiento, conectividad y facilidad de uso en un solo equipo. Consulta con nuestros asesores la configuración ideal para tu operación.'
-    );
-  }
+  if (isPrinter) return '';
   if (isSupply) {
     return 'Calidad de impresión consistente y compatibilidad verificada para tu equipo.';
   }
@@ -220,44 +348,31 @@ function resolveHeroCategoryLabel(product: Product, isPrinter: boolean): string 
   return product.category ?? 'Productos';
 }
 
-function buildHeroHighlights(
-  specs: ProductSpecRow[],
-  isPrinter: boolean,
-): ProductDescriptionHighlight[] {
-  if (!isPrinter) return [];
-
-  const speedRaw = specs.find((row) => row.label === 'Velocidad')?.value ?? '40 ppm';
-  const speedSubtitle = /^hasta\s/i.test(speedRaw) ? speedRaw : `Hasta ${speedRaw}`;
-
-  const connectivityRaw =
-    specs.find((row) => row.label === 'Conectividad')?.value ?? 'Wi-Fi / Red / Móvil';
-  const connectivitySubtitle = connectivityRaw
+function formatConnectivitySubtitle(connectivityRaw: string): string {
+  let connectivitySubtitle = connectivityRaw
     .replace(/\s*\/\s*/g, ', ')
     .replace(/\s+y\s+/i, ', ')
-    .replace(/Red/gi, 'Ethernet');
+    .replace(/Red/gi, 'Ethernet')
+    .replace(/LAN/gi, 'Ethernet')
+    .replace(/,?\s*Móvil/gi, '')
+    .replace(/,\s*,/g, ',')
+    .replace(/^,\s*/, '')
+    .trim();
 
-  return [
-    {
-      icon: Printer,
-      title: '4 EN 1',
-      subtitle: 'Imprime, copia, escanea y faxea',
-    },
-    {
-      icon: Timer,
-      title: 'ALTA VELOCIDAD',
-      subtitle: speedSubtitle,
-    },
-    {
-      icon: FlipHorizontal2,
-      title: 'DÚPLEX AUTOMÁTICO',
-      subtitle: 'Ahorro de papel',
-    },
-    {
-      icon: Cloud,
-      title: 'CONECTIVIDAD TOTAL',
-      subtitle: connectivitySubtitle,
-    },
-  ];
+  if (!connectivitySubtitle.toLowerCase().includes('usb')) {
+    connectivitySubtitle = `${connectivitySubtitle}, USB`;
+  }
+
+  return connectivitySubtitle;
+}
+
+function buildHeroHighlights(
+  _specs: ProductSpecRow[],
+  isPrinter: boolean,
+): ProductDescriptionHighlight[] {
+  // Las impresoras usan `featureBar` (una sola fila bajo la galería).
+  if (isPrinter) return [];
+  return [];
 }
 
 const IM430F_SPECS: ProductSpecRow[] = [
@@ -285,29 +400,33 @@ const PRINTER_CONNECTIVITY_VISUAL = [
   { icon: Smartphone, label: 'Móvil' },
 ] as const;
 
-const IM430F_DESCRIPTION_VISUAL: ProductDescriptionVisual = {
-  functions: [
-    { icon: Copy, label: 'Copiadora' },
-    { icon: Printer, label: 'Impresora' },
-    { icon: ScanLine, label: 'Escáner' },
-  ],
-  connectivity: [...PRINTER_CONNECTIVITY_VISUAL],
-  specs: [
-    { icon: Gauge, title: 'Velocidad', lines: ['45 ppm'] },
-    { icon: Cpu, title: 'Memoria', lines: ['2 GB'] },
-    { icon: Smartphone, title: 'Pantalla', lines: ['LCD 10,1"'] },
-    { icon: Layers, title: 'Rendimiento Mensual', lines: ['10,000 páginas x mes'] },
-    { icon: Printer, title: 'Capacidad de papel', lines: ['Estándar: 550 Hojas'] },
-    { icon: Inbox, title: 'ADF', lines: ['Casetera 500 Hojas', 'Bypass: 100 Hojas'] },
-  ],
-};
-
 function specValue(specs: ProductSpecRow[], ...labels: string[]): string {
   for (const label of labels) {
     const row = specs.find((entry) => entry.label.toLowerCase().includes(label.toLowerCase()));
     if (row?.value?.trim()) return row.value.trim();
   }
   return '';
+}
+
+function normalizeAttrKey(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim();
+}
+
+function findProductAttribute(product: Product, ...needles: string[]): string | null {
+  const attributes = normalizeAttributes(product.attributes);
+  for (const attr of attributes) {
+    const key = normalizeAttrKey(attr.name);
+    if (!key) continue;
+    if (needles.some((needle) => key.includes(normalizeAttrKey(needle)))) {
+      const value = attr.value?.trim();
+      if (value) return value;
+    }
+  }
+  return null;
 }
 
 function shortenScreenLabel(value: string): string {
@@ -331,69 +450,32 @@ function buildFeatureBar(
   isPrinter: boolean,
 ): ProductDescriptionHighlight[] {
   if (!isPrinter) return [];
-  if (isIm430f(product)) return IM430F_FEATURE_BAR;
-
-  const speed = specValue(specs, 'velocidad') || '40 ppm';
-  const screen = specValue(specs, 'pantalla');
-  const paper = specValue(specs, 'capacidad', 'papel');
-
-  return [
-    {
-      icon: Gauge,
-      title: speed.replace(/^hasta\s+/i, ''),
-      subtitle: 'Velocidad de impresión',
-    },
-    { icon: Wifi, title: 'Wi-Fi', subtitle: 'Conectividad inalámbrica' },
-    {
-      icon: Smartphone,
-      title: screen ? shortenScreenLabel(screen) : 'Pantalla táctil',
-      subtitle: 'Panel de operación',
-    },
-    { icon: Inbox, title: 'ADF', subtitle: 'Alimentador automático' },
-    {
-      icon: Layers,
-      title: paper ? paper.replace(/.*(\d[\d.,]*\s*hojas?).*/i, '$1') : 'Bandeja estándar',
-      subtitle: 'Capacidad estándar',
-    },
-    { icon: ScanLine, title: 'Escaneo a color', subtitle: 'Calidad profesional' },
-  ];
+  return buildPrinterFeatureBar(product, specs);
 }
 
 function buildDescriptionVisual(
   product: Product,
   specs: ProductSpecRow[],
   isPrinter: boolean,
+  heroSpecBullets: ProductHeroSpecBullet[],
 ): ProductDescriptionVisual | null {
   if (!isPrinter) return null;
-  if (isIm430f(product)) return IM430F_DESCRIPTION_VISUAL;
 
-  const speed = specValue(specs, 'velocidad') || '40 ppm';
-  const screen = specValue(specs, 'pantalla');
-  const monthly = specValue(specs, 'volumen');
-  const paper = specValue(specs, 'capacidad', 'papel');
+  const storedBullets = normalizeStorefrontHeroBullets(product.storefront_hero_bullets);
+  if (storedBullets.length > 0) {
+    return {
+      functions: [],
+      specs: heroSpecBullets
+        .filter((bullet) => bullet.text?.trim())
+        .map((bullet) => ({
+          icon: bullet.icon ?? Printer,
+          title: '',
+          lines: [bullet.text!.trim()],
+        })),
+    };
+  }
 
-  return {
-    functions: [
-      { icon: Copy, label: 'Copiadora' },
-      { icon: Printer, label: 'Impresora' },
-      { icon: ScanLine, label: 'Escáner' },
-    ],
-    connectivity: [...PRINTER_CONNECTIVITY_VISUAL],
-    specs: [
-      { icon: Gauge, title: 'Velocidad', lines: [speed.replace(/^hasta\s+/i, '')] },
-      { icon: Cpu, title: 'Memoria', lines: ['2 GB'] },
-      ...(screen
-        ? [{ icon: Smartphone, title: 'Pantalla', lines: [shortenScreenLabel(screen)] }]
-        : [{ icon: Smartphone, title: 'Pantalla', lines: ['Pantalla táctil'] }]),
-      ...(monthly
-        ? [{ icon: Layers, title: 'Rendimiento Mensual', lines: [shortenMonthlyVolume(monthly)] }]
-        : [{ icon: Layers, title: 'Rendimiento Mensual', lines: ['Alto volumen mensual'] }]),
-      ...(paper
-        ? [{ icon: Printer, title: 'Capacidad de papel', lines: [`Estándar: ${paper}`] }]
-        : [{ icon: Printer, title: 'Capacidad de papel', lines: ['Bandeja estándar'] }]),
-      { icon: Inbox, title: 'ADF', lines: ['Casetera ampliable', 'Bypass incluido'] },
-    ],
-  };
+  return buildPrinterDescriptionVisual(product, specs);
 }
 
 const IM430F_FEATURE_CARDS: ProductFeatureCard[] = [
@@ -530,6 +612,27 @@ export function isPrinterEquipment(product: Product): boolean {
   );
 }
 
+export function isColorPrinterEquipment(product: Product): boolean {
+  const cat = (product.category ?? '').toLowerCase();
+  const name = product.name.toLowerCase();
+  const haystack = `${name} ${cat}`;
+
+  if (/\bb\/n\b|\bmonocrom/i.test(haystack)) return false;
+
+  const colorAttr = product.attributes?.find((attribute) =>
+    attribute.name.toLowerCase().includes('color'),
+  )?.value;
+  if (colorAttr?.toLowerCase().includes('color')) return true;
+
+  return (
+    haystack.includes('color') ||
+    haystack.includes('a color') ||
+    /\b(mp\s+)?c\d{3,4}\b/i.test(product.name) ||
+    /\bim\s+c\d{3,4}/i.test(product.name) ||
+    /\bbizhub\s+c/i.test(product.name)
+  );
+}
+
 function isSupplyProduct(product: Product): boolean {
   const cat = (product.category ?? '').toLowerCase();
   const name = product.name.toLowerCase();
@@ -546,6 +649,20 @@ function isSupplyProduct(product: Product): boolean {
 function isIm430f(product: Product): boolean {
   if (product.id === 'ricoh-im-430f') return true;
   return /\bim\s*430\s*f\b/i.test(product.name);
+}
+
+function isIm550f(product: Product): boolean {
+  if (product.id === '328f41ef-d935-4807-85d0-e1db5bdf73fb') return true;
+  return /\bim\s*550\s*f\b/i.test(product.name);
+}
+
+function isIm600f(product: Product): boolean {
+  if (product.id === 'b32a43a1-09e4-49f6-8950-3639c9534700') return true;
+  return /\bim\s*600\s*f\b/i.test(product.name);
+}
+
+function isImBnA4Sibling(product: Product): boolean {
+  return isIm550f(product) || isIm600f(product);
 }
 
 const PRINTER_CATEGORY_PREFIX_PATTERN = /^(?:impresora\s+)?multifuncional(?:es)?\s+/i;
@@ -658,7 +775,21 @@ function buildTagPills(
   return pills;
 }
 
+const IM430F_GALLERY_URLS = [
+  '/products/ricoh-im-430f.webp',
+  '/products/ricoh-im-430f-2.webp',
+  '/products/ricoh-im-430f-3.webp',
+] as const;
+
 function buildGallery(product: Product): ProductGalleryItem[] {
+  if (isIm430f(product)) {
+    return IM430F_GALLERY_URLS.map((src) => ({
+      type: 'image' as const,
+      src,
+      alt: product.name,
+    }));
+  }
+
   const items = buildProductGalleryItems(product);
   if (items.length > 0) return items;
   return [];
@@ -707,7 +838,7 @@ function buildSupplyBullets(): string[] {
 function buildGenericSpecs(product: Product, brandLabel: string, sku: string): ProductSpecRow[] {
   return [
     { label: 'Marca', value: brandLabel },
-    { label: 'SKU', value: sku },
+    { label: 'Código', value: sku },
     { label: 'Categoría', value: product.category ?? 'General' },
     { label: 'Disponibilidad', value: product.stock > 0 ? `${product.stock} unidades` : 'Agotado' },
     { label: 'Moneda', value: product.currency },
@@ -716,16 +847,40 @@ function buildGenericSpecs(product: Product, brandLabel: string, sku: string): P
 }
 
 function buildPrinterSpecs(product: Product, brandLabel: string, sku: string): ProductSpecRow[] {
+  const isBnA4 = isImBnA4Sibling(product);
+  const speedAttr = findProductAttribute(product, 'velocidad');
+  const adfAttr = findProductAttribute(product, 'alimentador', 'adf');
+  const formatAttr = findProductAttribute(product, 'formato');
+  const colorAttr = findProductAttribute(product, 'color');
+  const connectivityAttr = findProductAttribute(product, 'conectividad');
+  const isColor = colorAttr?.toLowerCase().includes('color') ?? false;
+
   return [
-    { label: 'Velocidad', value: '40 ppm' },
+    {
+      label: 'Velocidad',
+      value: speedAttr ?? (isBnA4 ? '30 ppm' : '40 ppm'),
+    },
     { label: 'Marca', value: brandLabel },
     { label: 'Modelo', value: product.name },
-    { label: 'SKU', value: sku },
+    { label: 'Código', value: sku },
     { label: 'Categoría', value: product.category ?? 'Multifuncionales' },
-    { label: 'Tipo', value: 'Monocromática' },
-    { label: 'Formatos', value: 'A4, oficio, sobres' },
-    { label: 'Conectividad', value: 'Wi-Fi, Ethernet, USB' },
-    { label: 'Funciones', value: 'Impresión, copia, escaneo, fax' },
+    { label: 'Tipo', value: isColor ? 'Color' : 'Monocromática' },
+    {
+      label: 'Formatos',
+      value: formatAttr ?? (isBnA4 ? 'A4' : 'A4, oficio, sobres'),
+    },
+    {
+      label: 'Conectividad',
+      value: connectivityAttr ?? 'Wi-Fi, Ethernet, USB',
+    },
+    ...(isBnA4
+      ? []
+      : [{ label: 'Funciones', value: 'Impresión, copia, escaneo, fax' }]),
+    ...(isBnA4
+      ? [{ label: 'ADF', value: 'SPDF — Alimentador de originales doble scan' }]
+      : adfAttr
+        ? [{ label: 'ADF', value: adfAttr }]
+        : []),
     { label: 'Garantía', value: '12 meses' },
   ];
 }
@@ -803,173 +958,171 @@ function buildComboItems(product: Product, isPrinter: boolean, isSupply: boolean
   ];
 }
 
-function buildEquipmentConfigSteps(isPrinter: boolean, isSupply: boolean): EquipmentConfigStep[] {
+function buildStarterTonerLabel(product: Product): string {
+  const name = product.name;
+  if (/IM\s*550F/i.test(name) || /IM\s*600F/i.test(name)) {
+    return 'Tóner RICOH IM 550F, IM 600F';
+  }
+
+  const modelMatch = name.match(/\b(IM\s*\d+\s*[A-Z]?\w*)\b/i) ?? name.match(/\b(MP\s*[\w]+)\b/i);
+  if (modelMatch?.[1]) {
+    return `Tóner RICOH ${modelMatch[1].replace(/\s+/g, ' ').trim()}`;
+  }
+
+  const brand = product.brand?.trim() || 'RICOH';
+  return `Tóner de inicio ${brand}`;
+}
+
+function buildEquipmentConfigSteps(product: Product, isPrinter: boolean, isSupply: boolean): EquipmentConfigStep[] {
   if (isSupply || !isPrinter) return [];
+
+  const starterToner = buildStarterTonerLabel(product);
+  const tonerOptions = isIm430f(product)
+    ? [
+        {
+          id: 'toner-inicio',
+          name: `Tóner de inicio (${starterToner})`,
+          description: '8,000 páginas — incluido con el equipo',
+          pricePen: 0,
+          included: true,
+        },
+        {
+          id: 'toner-ricoh-im-430f',
+          productId: IM430F_ORIGINAL_TONER_PRODUCT_ID,
+          name: 'Toner RICOH IM 430F',
+          description: 'Cartucho original — Rend 14,500',
+          pricePen: 0,
+        },
+      ]
+    : isImBnA4Sibling(product)
+      ? [
+          {
+            id: 'toner-ricoh-im-550f',
+            productId: IM550F_ORIGINAL_TONER_PRODUCT_ID,
+            name: 'Toner Original RICOH IM 550F',
+            description: '04 tóner de inicio (mín. 40%) — incluido con el equipo',
+            pricePen: 0,
+            included: true,
+          },
+          {
+            id: 'toner-compatible',
+            productId: IM550F_COMPATIBLE_TONER_PRODUCT_ID,
+            name: 'Tóner compatible',
+            description: 'Rendimiento según modelo',
+            pricePen: 0,
+          },
+        ]
+      : [
+          {
+            id: 'toner-inicio',
+            name: `Tóner de inicio (${starterToner})`,
+            description: '8,000 páginas — incluido con el equipo',
+            pricePen: 0,
+            included: true,
+          },
+          {
+            id: 'toner-compatible',
+            name: 'Tóner compatible',
+            description: 'Rendimiento según modelo',
+            pricePen: 0,
+          },
+        ];
+
+  const tonerSubtitle = isImBnA4Sibling(product)
+    ? 'Tóner original RICOH y compatibles'
+    : 'Tóner de inicio y compatibles';
 
   return [
     {
-      id: 'bandeja-accesorios',
-      stepNumber: 2,
-      title: 'Bandeja de papel y accesorios opcionales',
-      subtitle: 'Bandejas, pedestal y alimentadores',
-      pricePen: 0,
-      icon: Inbox,
-      defaultSelected: true,
-      options: [
-        {
-          id: 'bandeja-estandar',
-          name: 'Bandeja estándar 550 hojas',
-          description: 'Configuración de fábrica incluida.',
-          pricePen: 0,
-          included: true,
-        },
-        {
-          id: 'bandeja-500',
-          name: 'Bandeja adicional 500 hojas',
-          description: 'Amplía la capacidad de papel.',
-          pricePen: 420,
-        },
-        {
-          id: 'pedestal',
-          name: 'Pedestal / soporte de piso',
-          description: 'Eleva el equipo y libera espacio en escritorio.',
-          pricePen: 890,
-        },
-        {
-          id: 'adf-alto-volumen',
-          name: 'Alimentador automático de alto volumen',
-          description: 'Para lotes de escaneo y copiado frecuentes.',
-          pricePen: 1250,
-        },
-      ],
-    },
-    {
-      id: 'acabado',
-      stepNumber: 3,
-      title: 'Opciones de acabado',
-      subtitle: 'Grapado, perforado y finisher',
-      pricePen: 0,
-      icon: Settings,
-      defaultSelected: true,
-      options: [
-        {
-          id: 'sin-acabado',
-          name: 'Sin unidad de acabado',
-          description: 'Impresión y copiado sin grapado.',
-          pricePen: 0,
-          included: true,
-        },
-        {
-          id: 'finisher-grapado',
-          name: 'Finisher con grapado',
-          description: 'Agrupa y grapa documentos automáticamente.',
-          pricePen: 1680,
-        },
-        {
-          id: 'finisher-grapado-perforado',
-          name: 'Finisher grapado + perforado',
-          description: 'Acabado profesional para carpetas y reportes.',
-          pricePen: 2190,
-        },
-      ],
-    },
-    {
-      id: 'impresion-escaneo',
-      stepNumber: 4,
-      title: 'Opciones de impresión/escaneo',
-      subtitle: 'Escaneo, OCR y funciones avanzadas',
-      pricePen: 0,
-      icon: ScanLine,
-      defaultSelected: true,
-      options: [
-        {
-          id: 'escaneo-duplex',
-          name: 'Escaneo dúplex automático',
-          description: 'Digitaliza ambas caras en un solo paso.',
-          pricePen: 0,
-          included: true,
-        },
-        {
-          id: 'kit-ocr',
-          name: 'Kit OCR / escaneo buscable',
-          description: 'Convierte documentos en PDF editables.',
-          pricePen: 540,
-        },
-        {
-          id: 'impresion-segura',
-          name: 'Impresión segura con marca de agua',
-          description: 'Protege documentos confidenciales.',
-          pricePen: 320,
-        },
-      ],
-    },
-    {
-      id: 'seguridad-accesorios',
-      stepNumber: 5,
-      title: 'Accesorios de seguridad y otros accesorios',
-      subtitle: 'Control de acceso y almacenamiento',
-      pricePen: 0,
-      icon: Lock,
-      defaultSelected: true,
-      options: [
-        {
-          id: 'sin-seguridad-extra',
-          name: 'Sin accesorios de seguridad adicionales',
-          pricePen: 0,
-          included: true,
-        },
-        {
-          id: 'hdd-cifrado',
-          name: 'Disco duro cifrado',
-          description: 'Almacenamiento local con cifrado de datos.',
-          pricePen: 760,
-        },
-        {
-          id: 'auth-tarjeta',
-          name: 'Autenticación por tarjeta / PIN',
-          description: 'Libera trabajos solo con credencial autorizada.',
-          pricePen: 480,
-        },
-        {
-          id: 'bandeja-bypass',
-          name: 'Bandeja bypass para formatos especiales',
-          description: 'Sobres, etiquetas y papeles de distinto gramaje.',
-          pricePen: 290,
-        },
-      ],
-    },
-    {
-      id: 'suministros',
-      stepNumber: 6,
-      title: 'Suministros',
-      subtitle: 'Tóner y kits de mantenimiento',
+      id: 'toner',
+      stepNumber: 1,
+      title: 'Tóner',
+      subtitle: tonerSubtitle,
       pricePen: 0,
       icon: Printer,
       defaultSelected: true,
+      selectionMode: 'multiple',
+      options: tonerOptions,
+    },
+    {
+      id: 'accesorios',
+      stepNumber: 2,
+      title: 'Accesorios',
+      subtitle: 'Bandejas, pedestal y OCR',
+      pricePen: 0,
+      icon: Inbox,
+      defaultSelected: true,
+      selectionMode: 'multiple',
       options: [
         {
-          id: 'starter-kit',
-          name: 'Kit de inicio incluido',
-          description: 'Tóner y unidad de imagen de fábrica.',
+          id: 'casetera-pb-1160',
+          name: 'Casetera PB 1160',
+          description: 'Código 418475',
+          sku: '418475',
+          pricePen: 0,
+        },
+        {
+          id: 'tall-cabinet-u',
+          name: 'Tall Cabinet Type U',
+          description: 'Pedestal de piso',
+          pricePen: 0,
+        },
+        {
+          id: 'ocr-m13',
+          name: 'OCR Unit Type M13',
+          description: 'Reconocimiento PDF',
+          pricePen: 0,
+        },
+      ],
+    },
+    {
+      id: 'estabilizador',
+      stepNumber: 3,
+      title: 'Protección eléctrica',
+      subtitle: 'Estabilizador de voltaje',
+      pricePen: 0,
+      icon: Shield,
+      defaultSelected: true,
+      selectionMode: 'multiple',
+      options: [
+        {
+          id: 'estabilizador-2000w',
+          name: 'Estabilizador Sólido 2000 Watts',
+          priceUsd: 150,
+          pricePen: usdToPen(150),
+        },
+      ],
+    },
+    {
+      id: 'garantia',
+      stepNumber: 4,
+      title: 'Garantía',
+      subtitle: 'Cobertura estándar y extensiones',
+      pricePen: 0,
+      icon: Shield,
+      defaultSelected: true,
+      selectionMode: 'single',
+      options: [
+        {
+          id: 'garantia-base',
+          name: 'Garantía 1 año y/o 20,000 páginas',
+          description: 'Incluido',
           pricePen: 0,
           included: true,
         },
         {
-          id: 'toner-extra',
-          name: 'Cartucho de tóner negro adicional',
-          description: 'Alto rendimiento para puesta en marcha.',
-          pricePen: 185,
+          id: 'garantia-2y',
+          name: 'Garantía extendida 2 años y/o 100,000 páginas',
+          description: '$200 o S/ 600 adicional',
+          priceUsd: 200,
+          pricePen: 600,
         },
         {
-          id: 'kit-mantenimiento',
-          name: 'Kit de mantenimiento preventivo',
-          description: 'Repuestos de desgaste para el primer año.',
-          pricePen: 340,
-        },
-        {
-          id: 'waste-bottle',
-          name: 'Botella de tóner residual adicional',
-          pricePen: 95,
+          id: 'garantia-3y',
+          name: 'Garantía extendida 3 años y/o 100,000 páginas',
+          description: '$350 adicional',
+          priceUsd: 350,
+          pricePen: usdToPen(350),
         },
       ],
     },
@@ -1034,7 +1187,12 @@ export function buildProductDetail(
   const categoryLabel = resolveHeroCategoryLabel(product, isPrinter);
 
   const pricing = resolvePricing(product, featuredMeta);
-  const sku = isIm430f(product) ? '9900129' : skuFromId(product.id);
+  const sku =
+    formatProductDisplayCode(product.code, {
+      brand: product.brand,
+      category: product.category,
+      name: product.name,
+    }) || skuFromId(product.id);
   const colorLabel = isIm430f(product)
     ? 'Blanco/Negro'
     : isSupply
@@ -1065,11 +1223,14 @@ export function buildProductDetail(
         ? buildPrinterSpecs(product, brandLabel, sku)
         : buildGenericSpecs(product, brandLabel, sku);
 
-  const heroSpecBullets = buildHeroSpecBullets(product, specs, isPrinter);
+  const heroSpecBullets = resolveStoredHeroBullets(
+    product,
+    buildHeroSpecBullets(product, specs, isPrinter),
+  );
   const heroSpecTitle = buildHeroSpecTitle(product, isPrinter);
 
-  const descriptionVisual = buildDescriptionVisual(product, specs, isPrinter);
-  const featureBar = buildFeatureBar(product, specs, isPrinter);
+  const descriptionVisual = buildDescriptionVisual(product, specs, isPrinter, heroSpecBullets);
+  const featureBar = resolveStoredFeatureBar(product, buildFeatureBar(product, specs, isPrinter));
 
   const showNuevo = productHasNuevoCornerBadge(product);
 
@@ -1129,7 +1290,7 @@ export function buildProductDetail(
       { id: '3y', label: '3 años adicionales', priceUsd: 199 },
     ],
     comboItems: buildComboItems(product, isPrinter, isSupply),
-    equipmentConfigSteps: buildEquipmentConfigSteps(isPrinter, isSupply),
+    equipmentConfigSteps: buildEquipmentConfigSteps(product, isPrinter, isSupply),
     bulkDiscountTiers,
     rentalPlans: isPrinter ? rentalPlansFromApi : [],
     isPrinterEquipment: isPrinter,
@@ -1139,5 +1300,27 @@ export function buildProductDetail(
     discountPercent: pricing.discountPercent,
     technicalSheetUrl,
     wholesalePriceUsd,
+  };
+}
+
+/** Valores por defecto de ficha tienda (barra + bullets) a partir de atributos. */
+export function generateDefaultStorefrontDetail(product: Product) {
+  const isPrinter = isPrinterEquipment(product);
+  if (!isPrinter) {
+    return { featureBar: [], heroBullets: [] };
+  }
+
+  const brandLabel = product.brand ?? 'Haitech';
+  const sku =
+    formatProductDisplayCode(product.code, {
+      brand: product.brand,
+      category: product.category,
+      name: product.name,
+    }) || skuFromId(product.id);
+  const specs = buildPrinterSpecs(product, brandLabel, sku);
+
+  return {
+    featureBar: highlightsToStoredFeatureBar(buildPrinterFeatureBar(product, specs)),
+    heroBullets: heroBulletsToStored(buildPrinterHeroSpecBullets(product, specs)),
   };
 }

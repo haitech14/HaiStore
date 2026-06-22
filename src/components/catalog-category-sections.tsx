@@ -1,6 +1,7 @@
 import { Fragment, useMemo } from 'react';
 
 import { CatalogSectionWithTabs } from '@/components/catalog-section-with-tabs';
+import { HomeCatalogLoadError } from '@/components/home-catalog-load-error';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useHomeCatalogSections } from '@/hooks/use-home-catalog-sections';
 import {
@@ -54,7 +55,7 @@ export function CatalogCategorySections({
     [sectionsConfig],
   );
 
-  const { data, isLoading, isError } = useHomeCatalogSections(sectionIds, limit);
+  const { data, isLoading, isError, refetch, isFetching } = useHomeCatalogSections(sectionIds, limit);
 
   const sections = useMemo(() => {
     const apiSections = data?.sections ?? [];
@@ -72,21 +73,23 @@ export function CatalogCategorySections({
       );
   }, [data?.sections, sectionsConfig]);
 
-  if (isLoading) {
+  if (isError && !data?.sections?.length) {
+    return (
+      <HomeCatalogLoadError
+        message="No se pudieron cargar los productos de esta sección. Inténtalo de nuevo."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    );
+  }
+
+  if (isLoading && !data?.sections?.length) {
     return (
       <div className="flex flex-col gap-14 sm:gap-16">
         {sectionsConfig.map((section) => (
           <CatalogSectionSkeleton key={section.id} />
         ))}
       </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <p role="alert" className="text-sm text-destructive">
-        No se pudieron cargar los productos de esta sección. Inténtalo de nuevo más tarde.
-      </p>
     );
   }
 

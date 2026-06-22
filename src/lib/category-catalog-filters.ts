@@ -1,7 +1,7 @@
 import {
-  CATALOG_FORMAT_BN_SUBSECTION_SPOTLIGHTS,
   CATALOG_FORMAT_CROSS_LIST_TO_A4_PATTERNS,
 } from '@/data/catalog-format-spotlight';
+import { sortProductsByPublicPriceAsc } from '@/lib/inventory-product-order';
 import type { Product } from '@/types/product';
 
 export const FORMATO_PAPEL_ATTR = 'Formato papel';
@@ -138,7 +138,7 @@ export function inferAdf(product: Product): 'Estándar' | 'Doble Scan' | null {
   if (stored) return normalizeAdfValue(stored.value);
 
   if (/\blaser\b/.test(haystack) && !/multifunc/i.test(product.category ?? '')) return null;
-  if (/\bim\s*430f\b|\bim\s*460f\b/.test(haystack)) return 'Doble Scan';
+  if (/\bim\s*430f\b|\bim\s*460f\b|\bim\s*550f\b|\bim\s*600f\b/.test(haystack)) return 'Doble Scan';
   if (/multifunc/i.test(product.category ?? '') || /\b(impresora|multifunc)/i.test(haystack)) {
     return 'Estándar';
   }
@@ -362,35 +362,8 @@ function productMatchesModelPatterns(product: Product, patterns: readonly RegExp
   return patterns.some((pattern) => pattern.test(haystack));
 }
 
-function prioritizeCatalogFormatSubsectionProducts(
-  subsectionId: string,
-  products: readonly Product[],
-): Product[] {
-  const spotlightPatterns =
-    CATALOG_FORMAT_BN_SUBSECTION_SPOTLIGHTS[
-      subsectionId as keyof typeof CATALOG_FORMAT_BN_SUBSECTION_SPOTLIGHTS
-    ];
-  if (!spotlightPatterns?.length || products.length <= 1) {
-    return [...products];
-  }
-
-  const usedIds = new Set<string>();
-  const prioritized: Product[] = [];
-
-  for (const pattern of spotlightPatterns) {
-    const match = products.find(
-      (product) => !usedIds.has(product.id) && productMatchesModelPatterns(product, [pattern]),
-    );
-    if (!match) continue;
-    usedIds.add(match.id);
-    prioritized.push(match);
-  }
-
-  for (const product of products) {
-    if (!usedIds.has(product.id)) prioritized.push(product);
-  }
-
-  return prioritized;
+function sortCatalogSubsectionProducts(products: readonly Product[]): Product[] {
+  return sortProductsByPublicPriceAsc([...products]);
 }
 
 function splitProductsByPaperFormat(products: readonly Product[]): {
@@ -446,13 +419,13 @@ export function buildCatalogFormatSections(
       subsections: [
         {
           id: 'bn-a4',
-          title: 'Formato A4',
-          products: prioritizeCatalogFormatSubsectionProducts('bn-a4', bnA4WithCrossList),
+          title: 'A4',
+          products: sortCatalogSubsectionProducts(bnA4WithCrossList),
         },
         {
           id: 'bn-a3',
-          title: 'Formato A3',
-          products: prioritizeCatalogFormatSubsectionProducts('bn-a3', bnByPaper.a3),
+          title: 'A3',
+          products: sortCatalogSubsectionProducts(bnByPaper.a3),
         },
       ],
     },
@@ -460,8 +433,8 @@ export function buildCatalogFormatSections(
       id: 'color',
       title: 'Color',
       subsections: [
-        { id: 'color-a4', title: 'Formato A4', products: colorByPaper.a4 },
-        { id: 'color-a3', title: 'Formato A3', products: colorByPaper.a3 },
+        { id: 'color-a4', title: 'A4', products: sortCatalogSubsectionProducts(colorByPaper.a4) },
+        { id: 'color-a3', title: 'A3', products: sortCatalogSubsectionProducts(colorByPaper.a3) },
       ],
     },
   ];

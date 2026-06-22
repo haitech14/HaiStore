@@ -20,7 +20,7 @@ function CategoryImage({ category, priority }: { category: Category; priority?: 
   const showImage = Boolean(category.image) && !hasError;
 
   return (
-    <div className="flex size-[6.25rem] items-center justify-center overflow-hidden rounded-full bg-neutral-200 sm:size-36 md:size-40 lg:size-44">
+    <div className="flex size-[6.25rem] items-center justify-center overflow-hidden rounded-full bg-white shadow-[0_2px_10px_rgba(15,23,42,0.08)] ring-1 ring-border/50 sm:size-36 md:size-40 lg:size-44">
       {showImage ? (
         (() => {
           const { webpSrcSet, fallbackSrc, sizes } = categoryImageSources(category.image!);
@@ -58,10 +58,10 @@ function CategoryCard({ category, priority }: { category: Category; priority?: b
   return (
     <Link
       to={categoryLandingPath(category.slug)}
-      className="group flex w-full flex-col items-center gap-1.5 rounded-lg py-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:gap-2"
+      className="group flex w-full flex-col items-center gap-1.5 rounded-lg py-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:gap-2"
       aria-label={`Ver productos de ${category.name}`}
     >
-      <div className="rounded-full transition-shadow group-hover:ring-2 group-hover:ring-red-600/40 group-hover:ring-offset-2 group-hover:ring-offset-white">
+      <div className="rounded-full transition-shadow group-hover:ring-2 group-hover:ring-red-600/40 group-hover:ring-offset-2 group-hover:ring-offset-background">
         <CategoryImage category={category} {...(priority ? { priority: true } : {})} />
       </div>
 
@@ -111,17 +111,16 @@ export function CategoryStrip() {
   );
 
   return (
-    <section aria-labelledby="categorias-titulo" className="bg-white">
-      <div className="container pb-6 pt-1 sm:pb-8 sm:pt-2 lg:pt-2">
+    <section aria-labelledby="categorias-titulo">
+      <div className="container pb-4 pt-3 sm:pb-5 sm:pt-4">
         <header className="mx-auto mb-5 max-w-3xl text-center sm:mb-6">
           <div className="flex items-center justify-center gap-3 sm:gap-4">
             <span className="h-px w-10 bg-red-600 sm:w-14" aria-hidden="true" />
             <h2
               id="categorias-titulo"
-              className="text-balance text-xl font-bold tracking-tight sm:text-2xl lg:text-3xl"
+              className="text-balance text-xl font-bold tracking-tight text-[#0f1f3d] sm:text-2xl"
             >
-              <span className="text-red-600">Explora</span>{' '}
-              <span className="text-foreground">nuestras categorías</span>
+              Explora nuestras categorías
             </h2>
             <span className="h-px w-10 bg-red-600 sm:w-14" aria-hidden="true" />
           </div>

@@ -3,35 +3,28 @@ import { megaMenuServiceLinks } from '@/data/mega-menu';
 import { productMatchesCategoryFilter, productMatchesCategoryFilterTree } from '@/lib/inventory-categories';
 import type { Product } from '@/types/product';
 import type { StoreCategoryTreeNode } from '@/types/store-category';
+import {
+  normalizeCatalogSearchText,
+  productMatchesSearchQuery,
+  productSearchHaystack,
+  sortProductsBySearchRelevance,
+} from '../../shared/catalog-search.js';
 
 export const MIN_PRODUCT_SEARCH_LENGTH = 3;
-export const PRODUCT_SEARCH_SUGGESTION_LIMIT = 8;
+export const PRODUCT_SEARCH_INITIAL_VISIBLE = 6;
+export const PRODUCT_SEARCH_LOAD_MORE_STEP = 6;
+export const PRODUCT_SEARCH_MAX_LIMIT = 24;
+/** @deprecated Usar PRODUCT_SEARCH_INITIAL_VISIBLE + paginación en el panel. */
+export const PRODUCT_SEARCH_SUGGESTION_LIMIT = PRODUCT_SEARCH_MAX_LIMIT;
 export const SEARCH_CATEGORY_SUGGESTION_LIMIT = 3;
 export const SEARCH_SERVICE_SUGGESTION_LIMIT = 2;
 
 export function normalizeSearchText(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '');
+  return normalizeCatalogSearchText(value);
 }
 
 function searchTerms(query: string): string[] {
   return normalizeSearchText(query).split(/\s+/).filter(Boolean);
-}
-
-function productSearchHaystack(product: Product): string {
-  return [
-    product.name,
-    product.code,
-    product.description,
-    product.brand,
-    product.category,
-    ...(product.attributes?.map((attr) => `${attr.name} ${attr.value}`) ?? []),
-  ]
-    .filter(Boolean)
-    .join(' ');
 }
 
 function textMatchesSearchQuery(haystack: string, query: string): boolean {
@@ -41,13 +34,7 @@ function textMatchesSearchQuery(haystack: string, query: string): boolean {
   return terms.every((term) => normalizedHaystack.includes(term));
 }
 
-export function productMatchesSearchQuery(product: Product, query: string): boolean {
-  const normalizedQuery = normalizeSearchText(query);
-  if (normalizedQuery.length < MIN_PRODUCT_SEARCH_LENGTH) {
-    return false;
-  }
-  return textMatchesSearchQuery(productSearchHaystack(product), query);
-}
+export { productMatchesSearchQuery, productSearchHaystack };
 
 export interface SearchCategorySuggestion {
   type: 'category';
@@ -137,6 +124,7 @@ export function getSearchCategoryEmoji(category: string): string {
 /** Agrupa resultados de búsqueda por categoría para el panel de sugerencias. */
 export function groupSearchProductsByCategory(
   products: Product[],
+  query?: string,
 ): SearchProductCategoryGroup[] {
   const groups = new Map<string, Product[]>();
 
@@ -147,6 +135,13 @@ export function groupSearchProductsByCategory(
     groups.set(category, bucket);
   }
 
+  const sortProducts = (items: Product[]) => {
+    if (query?.trim()) {
+      return sortProductsBySearchRelevance(items, query);
+    }
+    return [...items].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  };
+
   return Array.from(groups.entries())
     .sort(([a], [b]) => {
       const rankDiff = getSearchCategorySortRank(a) - getSearchCategorySortRank(b);
@@ -155,7 +150,7 @@ export function groupSearchProductsByCategory(
     })
     .map(([category, items]) => ({
       category,
-      products: [...items].sort((a, b) => a.name.localeCompare(b.name, 'es')),
+      products: sortProducts(items),
     }));
 }
 
@@ -211,7 +206,7 @@ export function filterProductsBySearch(
     );
   }
 
-  const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  const sorted = sortProductsBySearchRelevance(list, query);
   const limit = options.limit;
   return limit != null && limit > 0 ? sorted.slice(0, limit) : sorted;
 }

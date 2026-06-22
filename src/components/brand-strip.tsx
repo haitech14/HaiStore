@@ -33,7 +33,7 @@ interface BrandStripProps {
   className?: string;
 }
 
-function BrandLogoCard({
+export function BrandLogoCard({
   brand,
   isDark,
   linkable,

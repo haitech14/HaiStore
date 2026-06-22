@@ -1,18 +1,12 @@
-import { useEffect, useState } from 'react';
-
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCompanySettings } from '@/hooks/use-company-settings';
+import { useLinkedPenUsdPrice } from '@/hooks/use-linked-pen-usd-price';
 import {
   getUsdToPenPurchaseRate,
   getUsdToPenSaleRate,
   normalizeUsdToPenRate,
 } from '@/lib/exchange-rate';
-import {
-  penCharmToUsd,
-  roundPenCharm99,
-  usdToPenCharm,
-} from '@/lib/pen-pricing';
 import { cn } from '@/lib/utils';
 import {
   PRICE_ROLE_LABELS,
@@ -40,6 +34,7 @@ function PriceField({
   exchangeRate,
   required,
   readOnly,
+  useCharm = true,
 }: {
   id: string;
   label: string;
@@ -49,29 +44,14 @@ function PriceField({
   exchangeRate: number;
   required?: boolean;
   readOnly?: boolean;
+  useCharm?: boolean;
 }) {
-  const penFromUsd = usdToPenCharm(usdValue, exchangeRate);
-  const [penInput, setPenInput] = useState(String(penFromUsd || ''));
-
-  useEffect(() => {
-    setPenInput(penFromUsd > 0 ? String(penFromUsd) : '');
-  }, [penFromUsd]);
-
-  const handleUsdChange = (raw: string) => {
-    onUsdChange(raw);
-  };
-
-  const handlePenChange = (raw: string) => {
-    const parsed = Number(raw);
-    if (!raw.trim() || !Number.isFinite(parsed) || parsed < 0) {
-      setPenInput(raw);
-      if (!raw.trim()) onUsdChange('0');
-      return;
-    }
-    const charm = roundPenCharm99(parsed);
-    setPenInput(String(charm));
-    onUsdChange(String(penCharmToUsd(charm, exchangeRate)));
-  };
+  const { penInput, handlePenChange, handlePenFocus, handlePenBlur } = useLinkedPenUsdPrice({
+    usdValue,
+    onUsdChange,
+    exchangeRate,
+    useCharm,
+  });
 
   const penId = `${id}-pen`;
 
@@ -108,7 +88,7 @@ function PriceField({
             step="0.01"
             inputMode="decimal"
             value={usdValue || ''}
-            onChange={(event) => handleUsdChange(event.target.value)}
+            onChange={(event) => onUsdChange(event.target.value)}
             required={required}
             readOnly={readOnly}
             aria-readonly={readOnly || undefined}
@@ -131,10 +111,12 @@ function PriceField({
             id={penId}
             type="number"
             min={0}
-            step={1}
-            inputMode="numeric"
+            step={0.01}
+            inputMode="decimal"
             value={penInput}
             onChange={(event) => handlePenChange(event.target.value)}
+            onFocus={handlePenFocus}
+            onBlur={handlePenBlur}
             readOnly={readOnly}
             aria-readonly={readOnly || undefined}
             className={cn(
@@ -172,8 +154,9 @@ export function InventoryRolePricesFieldset({
     <fieldset className="rounded-lg border p-3">
       <legend className="px-1 text-sm font-medium">Precios (USD / PEN)</legend>
       <p className="mb-2 text-xs text-muted-foreground">
-        Los soles se redondean a enteros terminados en 9 (ej. 2 188 → 2 199). Puedes editar
-        cualquiera de las dos monedas.
+        Puedes ingresar el precio en dólares o en soles; al editar una moneda se actualiza la otra.
+        Los precios de venta en soles se redondean a la centésima terminada en 9 al salir del
+        campo (ej. 10.04 → 10.09). El precio de compra conserva el tipo de cambio exacto.
       </p>
       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         <PriceField
@@ -184,6 +167,7 @@ export function InventoryRolePricesFieldset({
           onUsdChange={onPurchaseChange}
           exchangeRate={purchaseRate}
           readOnly={purchaseFromSuppliers}
+          useCharm={false}
         />
         {PRICE_ROLES_EDIT_ORDER.map((priceRole) => {
           const usd = Number(prices[priceRole]) || 0;

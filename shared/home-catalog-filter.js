@@ -1,5 +1,10 @@
 /** Filtros de catálogo home (paridad con src/lib/product-condition.ts y store-products.ts). */
 
+import {
+  productQualifiesAsNuevaEquipment,
+  productQualifiesAsSeminuevaEquipment,
+} from './inventory-product-name.js';
+
 export const PRODUCT_CONDITIONS = ['originales', 'compatibles', 'remanufacturados', 'partes'];
 
 export const EQUIPMENT_PRODUCT_CONDITIONS = ['originales', 'compatibles', 'remanufacturados'];
@@ -234,6 +239,13 @@ function productMatchesSuppliesCondition(product, condition) {
 function productMatchesEquipmentCondition(product, condition) {
   if (condition === 'partes') return isPartsProduct(product);
 
+  const name = String(product.name ?? '');
+
+  // El nombre manda sobre una categoría de inventario mal asignada.
+  if (/\bseminueva\b/i.test(name)) {
+    return condition === 'compatibles';
+  }
+
   const categoryHint =
     product.category != null ? inferProductConditionFromText(product.category) : null;
   if (categoryHint !== null) return condition === categoryHint;
@@ -241,10 +253,14 @@ function productMatchesEquipmentCondition(product, condition) {
   const haystack = productHaystack(product);
 
   if (condition === 'remanufacturados') return hasRemanufactured(haystack);
-  if (condition === 'compatibles') return hasCompatible(haystack) && !hasRemanufactured(haystack);
+  if (condition === 'compatibles') {
+    return (
+      productQualifiesAsSeminuevaEquipment(product) ||
+      (hasCompatible(haystack) && !hasRemanufactured(haystack))
+    );
+  }
   if (condition === 'originales') {
-    if (hasRemanufactured(haystack) || hasCompatible(haystack)) return false;
-    return hasOriginal(haystack) || (!hasRemanufactured(haystack) && !hasCompatible(haystack));
+    return productQualifiesAsNuevaEquipment(product);
   }
   return false;
 }
@@ -338,7 +354,7 @@ export function toFeaturedProduct(product, imageUrl) {
     code: product.code ?? null,
     ...(product.attributes?.length ? { attributes: product.attributes } : {}),
     price: product.price,
-    image: imageUrl ?? '/promo-cards/b2b-printer.png',
+    image: imageUrl ?? null,
     rating: 5,
     reviews: 0,
   };

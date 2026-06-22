@@ -36,6 +36,25 @@ export function formatPenInteger(pen: number): string {
   }).format(pen);
 }
 
+/** Mensaje promocional: «Si llevas N, ahorra S/ X soles». */
+export function formatOfferQuantitySavingsMessage(
+  targetQuantity: number,
+  savingsPen: number,
+): string {
+  const amount = savingsPen.toLocaleString('es-PE', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `Si llevas ${targetQuantity}, ahorra S/ ${amount} soles`;
+}
+
+export function formatOfferQuantitySavingsMessageFromUsd(
+  targetQuantity: number,
+  savingsUsd: number,
+): string {
+  return formatOfferQuantitySavingsMessage(targetQuantity, usdToPen(savingsUsd));
+}
+
 export function discountedUsdPrice(usd: number, discountPercent: number): number {
   return Math.round(usd * (1 - discountPercent / 100) * 100) / 100;
 }

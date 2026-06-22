@@ -9,8 +9,8 @@ export const CATEGORY_STRIP_HERO_HEIGHT_CLASS =
 /** Padding vertical del hero compacto (pegado al nav y a categorías). */
 export const CATEGORY_STRIP_HERO_PADDING_CLASS = 'p-0';
 
-/** Recorte vertical simétrico (~28 %) para reducir márgenes blancos del PNG del banner. */
-export const CATEGORY_STRIP_HERO_VERTICAL_CROP = 0.72;
+/** Recorte vertical simétrico para reducir márgenes blancos del PNG del banner. */
+export const CATEGORY_STRIP_HERO_VERTICAL_CROP = 0.92;
 
 /** Contenedor del carrusel; el hero compacto usa el mismo ancho hasta las flechas. */
 export const CATEGORY_STRIP_TRACK_WRAPPER_CLASS = 'relative sm:px-1';

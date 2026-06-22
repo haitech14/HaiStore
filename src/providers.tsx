@@ -11,7 +11,7 @@ import { ProductCompareProvider } from '@/context/product-compare-context';
 import { WishlistProvider } from '@/context/wishlist-context';
 import { SupabaseRealtimeSync } from '@/components/supabase-realtime-sync';
 
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,

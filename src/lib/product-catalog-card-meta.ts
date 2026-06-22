@@ -135,16 +135,19 @@ function resolveCatalogFormato(product: Product): string {
 }
 
 function resolveCatalogProductCode(product: Product): string | null {
-  const direct = formatProductDisplayCode(product.code, { brand: product.brand });
+  const displayOptions = {
+    brand: product.brand,
+    category: product.category,
+    name: product.name,
+  };
+  const direct = formatProductDisplayCode(product.code, displayOptions);
   if (direct) return direct;
 
   const fromAttr = findAttributeValueByName(product, /c[oó]digo|^sku$/i);
-  if (fromAttr) return formatProductDisplayCode(fromAttr, { brand: product.brand }) ?? fromAttr;
+  if (fromAttr) return formatProductDisplayCode(fromAttr, displayOptions) ?? fromAttr;
 
   if (product.id && !/^[0-9a-f-]{36}$/i.test(product.id)) {
-    return formatProductDisplayCode(product.id.toUpperCase().replace(/-/g, ''), {
-      brand: product.brand,
-    });
+    return formatProductDisplayCode(product.id.toUpperCase().replace(/-/g, ''), displayOptions);
   }
 
   return null;

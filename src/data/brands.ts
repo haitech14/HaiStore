@@ -133,6 +133,24 @@ export const printerBrands: Brand[] = [
   },
 ];
 
+/** Marcas del carrusel «Trabajamos con las mejores marcas» (home). */
+const FOOTER_PARTNER_BRAND_NAMES = [
+  'Ricoh',
+  'Pantum',
+  'Colortrac',
+  'Ramko',
+  'Topjet',
+  'Densitone',
+  'Intercopy',
+  'Katun',
+  'Konica Minolta',
+] as const;
+
+export const footerPartnerBrands: Brand[] = FOOTER_PARTNER_BRAND_NAMES.flatMap((name) => {
+  const brand = printerBrands.find((item) => item.name === name);
+  return brand ? [brand] : [];
+});
+
 export type BrandItem = string | Brand;
 
 export function getBrandName(brand: BrandItem): string {

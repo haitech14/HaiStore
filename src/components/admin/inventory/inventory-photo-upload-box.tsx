@@ -1,7 +1,8 @@
 import type { ChangeEvent, ReactNode, RefObject } from 'react';
 import { useId, useRef } from 'react';
-import { CloudUpload, X } from 'lucide-react';
+import { CloudUpload, Images, X } from 'lucide-react';
 
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
@@ -11,6 +12,7 @@ interface InventoryPhotoUploadBoxProps {
   hint: string;
   multiple?: boolean;
   onFiles: (files: FileList) => void;
+  onPickFromAlbum?: () => void;
   preview?: ReactNode;
   inputRef?: RefObject<HTMLInputElement | null>;
   className?: string;
@@ -22,6 +24,7 @@ export function InventoryPhotoUploadBox({
   hint,
   multiple = false,
   onFiles,
+  onPickFromAlbum,
   preview,
   inputRef,
   className,
@@ -40,15 +43,29 @@ export function InventoryPhotoUploadBox({
   return (
     <div className={cn('space-y-2', className)}>
       <Label className="text-sm font-medium">{label}</Label>
-      <button
-        type="button"
-        className="flex min-h-[10.5rem] w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/15 px-4 py-8 text-center transition-colors hover:border-muted-foreground/40 hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        onClick={() => ref.current?.click()}
-      >
-        <CloudUpload className="size-9 text-muted-foreground/80" aria-hidden="true" />
-        <span className="text-sm font-medium text-foreground">{uploadLabel}</span>
-        <span className="max-w-[12rem] text-xs leading-snug text-muted-foreground">{hint}</span>
-      </button>
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          className="flex min-h-[10.5rem] w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/15 px-4 py-8 text-center transition-colors hover:border-muted-foreground/40 hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          onClick={() => ref.current?.click()}
+        >
+          <CloudUpload className="size-9 text-muted-foreground/80" aria-hidden="true" />
+          <span className="text-sm font-medium text-foreground">{uploadLabel}</span>
+          <span className="max-w-[12rem] text-xs leading-snug text-muted-foreground">{hint}</span>
+        </button>
+        {onPickFromAlbum ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full gap-1.5"
+            onClick={onPickFromAlbum}
+          >
+            <Images className="size-4" aria-hidden="true" />
+            Elegir del álbum
+          </Button>
+        ) : null}
+      </div>
       <input
         ref={ref}
         id={fallbackId}

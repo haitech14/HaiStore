@@ -59,7 +59,24 @@ function isColorPrinter(product: ProductBadgeSource): boolean {
   );
 }
 
-/** Título en vitrina «Lo más destacado»: minúsculas con primera mayúscula; RICOH, IM y modelo en mayúsculas. */
+/** Palabras descriptivas de equipos con mayúscula inicial fija en títulos de catálogo. */
+function capitalizeEquipmentDescriptorWords(text: string): string {
+  return text
+    .replace(/\bmultifuncional\b/gi, 'Multifuncional')
+    .replace(/\bseminueva\b/gi, 'Seminueva')
+    .replace(/\bnueva\b/gi, 'Nueva')
+    .replace(/\bimpresora\b/gi, 'Impresora')
+    .replace(/\bl[aá]ser\b/gi, 'Láser')
+    .replace(/\bmonocrom[aá]tica\b/gi, 'Monocromática');
+}
+
+function formatEquipmentTitlePrefix(prefix: string): string {
+  const trimmed = prefix.trim();
+  if (!trimmed) return trimmed;
+  return capitalizeEquipmentDescriptorWords(trimmed.toLowerCase());
+}
+
+/** Título en vitrina «Lo más destacado»: descriptor en título case; RICOH, IM y modelo en mayúsculas. */
 export function formatHighlightProductTitle(name: string): string {
   const trimmed = name
     .trim()
@@ -70,8 +87,7 @@ export function formatHighlightProductTitle(name: string): string {
 
   const ricohMatch = /\bRICOH\b/i.exec(trimmed);
   if (!ricohMatch || ricohMatch.index === undefined) {
-    const lower = trimmed.toLowerCase();
-    return lower.charAt(0).toUpperCase() + lower.slice(1);
+    return formatEquipmentTitlePrefix(trimmed);
   }
 
   const prefix = trimmed.slice(0, ricohMatch.index).trim();
@@ -79,17 +95,16 @@ export function formatHighlightProductTitle(name: string): string {
 
   if (!prefix) return suffix;
 
-  const lowerPrefix = prefix.toLowerCase();
-  const formattedPrefix = lowerPrefix.charAt(0).toUpperCase() + lowerPrefix.slice(1);
-
-  return `${formattedPrefix} ${suffix}`;
+  return `${formatEquipmentTitlePrefix(prefix)} ${suffix}`.replace(/\s{2,}/g, ' ').trim();
 }
 
 /** Añade «B/N» en equipos monocromáticos si el nombre aún no lo incluye. */
 export function formatProductCardTitle(
   product: ProductBadgeSource & { name: string; category?: string | null },
 ): string {
-  const title = formatInventoryProductName(product.name.trim());
+  const title = capitalizeEquipmentDescriptorWords(
+    formatInventoryProductName(product.name.trim()),
+  );
   if (!isPrinterProduct(product) || isColorPrinter(product) || /\bB\/N\b/i.test(title)) {
     return title;
   }
@@ -117,7 +132,11 @@ export function getProductCardTitleContent(
   },
 ): ProductCardTitleContent {
   const brand = product.brand?.trim() || null;
-  const code = formatProductDisplayCode(product.code, { brand: product.brand });
+  const code = formatProductDisplayCode(product.code, {
+    brand: product.brand,
+    category: product.category,
+    name: product.name,
+  });
 
   return {
     brand: brand ? brand.toUpperCase() : null,

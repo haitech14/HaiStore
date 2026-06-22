@@ -1,17 +1,18 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/context/auth-context';
 import { featuredToProduct, getFeaturedProductById } from '@/data/featured-products';
 import { useProducts } from '@/hooks/use-products';
 import { apiFetch } from '@/lib/api';
 import { getCatalogProductById } from '@/lib/catalog-featured';
+import { findProductInQueryCache } from '@/lib/find-cached-product';
 import { normalizeInventoryProduct } from '@/lib/inventory-product';
 import { toPublicProduct } from '@/lib/pricing';
 import { applyViewAsPriceToProduct } from '@/lib/view-as-role';
 import type { Product } from '@/types/product';
 
-async function fetchProductById(id: string): Promise<Product | null> {
+export async function fetchProductById(id: string): Promise<Product | null> {
   try {
     return await apiFetch<Product>(`/api/products/${encodeURIComponent(id)}`);
   } catch {
@@ -20,18 +21,26 @@ async function fetchProductById(id: string): Promise<Product | null> {
 }
 
 export function useProduct(id: string | undefined) {
+  const queryClient = useQueryClient();
   const { role, viewAsRole, effectiveRole } = useAuth();
   const featured = id ? getFeaturedProductById(id) : undefined;
-  const { data: products, isError: catalogError } = useProducts();
+
+  /** Solo reutiliza el listado si ya está en caché; no dispara /api/products en la ficha. */
+  const { data: products, isError: catalogError } = useProducts({ enabled: false });
 
   const fromList = useMemo(
     () => (id ? products?.find((product) => product.id === id) : undefined),
     [id, products],
   );
 
-  const shouldFetchOne = Boolean(id && !featured && !fromList);
+  const fromQueryCache = useMemo(
+    () => (id ? findProductInQueryCache(queryClient, id) : undefined),
+    [queryClient, id, fromList],
+  );
 
-  const { data: fetchedProduct, isLoading: fetchingOne } = useQuery({
+  const shouldFetchOne = Boolean(id);
+
+  const { data: fetchedProduct, isFetching: fetchingOne } = useQuery({
     queryKey: ['product', id, role, viewAsRole],
     queryFn: () => (id ? fetchProductById(id) : Promise.resolve(null)),
     enabled: shouldFetchOne,
@@ -42,22 +51,31 @@ export function useProduct(id: string | undefined) {
   });
 
   const fromCatalogJson = useMemo(() => {
-    if (!id || featured || fromList || fetchedProduct) return undefined;
+    if (!id || featured || fetchedProduct) return undefined;
     if (!catalogError) return undefined;
     const row = getCatalogProductById(id);
     if (!row) return undefined;
     return viewAsRole
-      ? applyViewAsPriceToProduct(toPublicProduct(normalizeInventoryProduct(row), effectiveRole), effectiveRole)
+      ? applyViewAsPriceToProduct(
+          toPublicProduct(normalizeInventoryProduct(row), effectiveRole),
+          effectiveRole,
+        )
       : toPublicProduct(normalizeInventoryProduct(row), role);
-  }, [id, featured, fromList, fetchedProduct, catalogError, role, viewAsRole, effectiveRole]);
+  }, [id, featured, fetchedProduct, catalogError, role, viewAsRole, effectiveRole]);
+
+  const applyViewAs = (candidate: Product | undefined): Product | undefined => {
+    if (!candidate) return undefined;
+    return viewAsRole ? applyViewAsPriceToProduct(candidate, effectiveRole) : candidate;
+  };
 
   const product: Product | undefined =
-    fromList ??
     fetchedProduct ??
+    applyViewAs(fromList) ??
+    applyViewAs(fromQueryCache) ??
     (featured ? featuredToProduct(featured) : undefined) ??
     fromCatalogJson;
 
-  const isLoading = Boolean(id && !featured && !product && shouldFetchOne && fetchingOne);
+  const isLoading = Boolean(id && !product && fetchingOne);
   const notFound = Boolean(id && !featured && !isLoading && !product);
 
   return {

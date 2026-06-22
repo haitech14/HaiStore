@@ -1,4 +1,4 @@
-import { catalogRowToFeatured, getCatalogRows } from '@/lib/catalog-featured';
+import { catalogRowToFeatured, getCatalogProductById, getCatalogRows } from '@/lib/catalog-featured';
 import type { Product, ProductAttribute } from '@/types/product';
 
 export interface FeaturedProduct {
@@ -14,7 +14,7 @@ export interface FeaturedProduct {
   isNew?: boolean;
   rating: number;
   reviews: number;
-  image: string;
+  image: string | null;
 }
 
 /** Orden del carrusel en inicio (debe existir en inventory-catalog.json). */
@@ -59,6 +59,7 @@ export function getFeaturedProductById(id: string): FeaturedProduct | undefined 
 }
 
 export function featuredToProduct(featured: FeaturedProduct): Product {
+  const catalogRow = getCatalogProductById(featured.id);
   return {
     id: featured.id,
     name: featured.name,
@@ -66,6 +67,7 @@ export function featuredToProduct(featured: FeaturedProduct): Product {
     price: featured.price,
     currency: 'USD',
     image_url: featured.image,
+    gallery: catalogRow?.gallery ?? [],
     stock: 10,
     category: featured.category,
     created_at: new Date().toISOString(),

@@ -1,9 +1,12 @@
 import { readInventory, toPublicProductList } from './inventory-store.js';
+import { getHomeApiCache } from './home-api-cache.js';
 import { withResolvedMedia } from './product-catalog.js';
 import { resolveProductImageUrl } from './product-image-url.js';
 import {
   filterStoreProductsForHomeSection,
   getConditionsForCatalogFamily,
+  productMatchesCatalogFamily,
+  productMatchesCategoryFilter,
   toFeaturedProduct,
 } from '../../shared/home-catalog-filter.js';
 
@@ -26,10 +29,12 @@ const SECTION_INVENTORY_LABELS = {
     'Impresoras, Impresoras Láser Nuevas',
   ],
   'toner-suministros': [
+    'Toner y Suministros',
     'Toner',
     'Toner Original',
     'Toner, Toner Original',
     'Toner Compatible',
+    'Toner y Suministros, Toner Compatible',
     'Toner, Toner Compatible',
     'Toner Remanufacturado',
     'Toner, Toner Remanufacturado',
@@ -50,6 +55,20 @@ const VALID_SECTION_IDS = new Set(Object.keys(SECTION_INVENTORY_LABELS));
 
 function resolveSectionLabels(sectionId) {
   return SECTION_INVENTORY_LABELS[sectionId] ?? [];
+}
+
+function inventoryProductRelevantForSection(product, sectionId) {
+  const categoryLabels = resolveSectionLabels(sectionId);
+  return (
+    productMatchesCatalogFamily(product, sectionId) ||
+    categoryLabels.some((label) => productMatchesCategoryFilter(product, label))
+  );
+}
+
+function filterInventoryForHomeSections(products, sectionIds) {
+  return products.filter((product) =>
+    sectionIds.some((sectionId) => inventoryProductRelevantForSection(product, sectionId)),
+  );
 }
 
 function sectionHasProducts(productsByCondition, sectionId) {
@@ -79,10 +98,31 @@ function buildSectionPayload(sectionId, publicProducts, limit) {
   return { id: sectionId, productsByCondition };
 }
 
-/**
- * Productos por sección y condición para la home (sin descargar todo el catálogo al cliente).
- */
-export async function listHomeCatalogSections({
+export function buildHomeCatalogSectionsFromProducts(
+  products,
+  role = 'public',
+  sectionIds = [],
+  limit = 10,
+) {
+  const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 24);
+  const requested = sectionIds.filter((id) => VALID_SECTION_IDS.has(id));
+  if (requested.length === 0) {
+    return { sections: [] };
+  }
+
+  const relevantProducts = filterInventoryForHomeSections(products, requested);
+  const publicProducts = relevantProducts.map((product) =>
+    toPublicProductList(withResolvedMedia(product), role),
+  );
+
+  const sections = requested
+    .map((sectionId) => buildSectionPayload(sectionId, publicProducts, safeLimit))
+    .filter(({ id, productsByCondition }) => sectionHasProducts(productsByCondition, id));
+
+  return { sections };
+}
+
+async function listHomeCatalogSectionsUncached({
   role = 'public',
   sectionIds = [],
   limit = 10,
@@ -94,13 +134,21 @@ export async function listHomeCatalogSections({
   }
 
   const { products } = await readInventory();
-  const publicProducts = products.map((product) =>
-    toPublicProductList(withResolvedMedia(product), role),
+  return buildHomeCatalogSectionsFromProducts(products, role, requested, safeLimit);
+}
+/**
+ * Productos por sección y condición para la home (sin descargar todo el catálogo al cliente).
+ */
+export async function listHomeCatalogSections(options = {}) {
+  const { role = 'public', sectionIds = [], limit = 10 } = options;
+  const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 24);
+  const requested = sectionIds.filter((id) => VALID_SECTION_IDS.has(id));
+  if (requested.length === 0) {
+    return { sections: [] };
+  }
+
+  const cacheKey = `sections:${role}:${requested.join(',')}:${safeLimit}`;
+  return getHomeApiCache(cacheKey, () =>
+    listHomeCatalogSectionsUncached({ role, sectionIds: requested, limit: safeLimit }),
   );
-
-  const sections = requested
-    .map((sectionId) => buildSectionPayload(sectionId, publicProducts, safeLimit))
-    .filter(({ id, productsByCondition }) => sectionHasProducts(productsByCondition, id));
-
-  return { sections };
 }

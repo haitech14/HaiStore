@@ -16,11 +16,22 @@ interface CatalogSectionWithTabsProps {
   conditionsOverride?: readonly ProductCondition[];
 }
 
+function productsForCondition(
+  map: Record<ProductCondition, FeaturedProduct[]>,
+  condition: ProductCondition,
+): FeaturedProduct[] {
+  return map[condition] ?? [];
+}
+
 function firstTabWithProducts(
   map: Record<ProductCondition, FeaturedProduct[]>,
   conditions: readonly ProductCondition[],
 ): ProductCondition {
-  return conditions.find((key) => map[key].length > 0) ?? conditions[0] ?? 'originales';
+  return (
+    conditions.find((key) => productsForCondition(map, key).length > 0) ??
+    conditions[0] ??
+    'originales'
+  );
 }
 
 const EMPTY_TAB_MESSAGES_BY_SECTION: Partial<
@@ -66,11 +77,11 @@ export function CatalogSectionWithTabs({
     firstTabWithProducts(productsByCondition, sectionConditions),
   );
 
-  const activeProducts = productsByCondition[activeCondition];
+  const activeProducts = productsForCondition(productsByCondition, activeCondition);
   const tabCounts = useMemo(
     () =>
       Object.fromEntries(
-        sectionConditions.map((key) => [key, productsByCondition[key].length]),
+        sectionConditions.map((key) => [key, productsForCondition(productsByCondition, key).length]),
       ) as Record<ProductCondition, number>,
     [productsByCondition, sectionConditions],
   );
@@ -82,13 +93,20 @@ export function CatalogSectionWithTabs({
 
   return (
     <section aria-labelledby={titleId}>
-      <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <h2
-          id={titleId}
-          className="text-balance text-xl font-bold tracking-tight text-neutral-900 sm:text-2xl"
-        >
-          {section.title}
-        </h2>
+      <div className="mb-5 flex flex-col gap-4 lg:mb-6 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+        <div className="min-w-0">
+          <h2
+            id={titleId}
+            className="text-balance text-xl font-bold tracking-tight text-[#0f1f3d] sm:text-2xl"
+          >
+            {section.title}
+          </h2>
+          {section.subtitle ? (
+            <p className="mt-1 text-sm text-muted-foreground sm:text-[0.9375rem]">
+              {section.subtitle}
+            </p>
+          ) : null}
+        </div>
 
         <ProductConditionTabList
           idPrefix={section.id}
@@ -98,13 +116,9 @@ export function CatalogSectionWithTabs({
           catalogFamily={section.id}
           conditions={sectionConditions}
           ariaLabel={`Filtrar ${section.title} por condición`}
-          className="w-full sm:w-auto"
+          className="w-full lg:w-auto lg:max-w-[58%] xl:max-w-none"
         />
       </div>
-
-      {section.subtitle ? (
-        <p className="mb-5 text-sm text-neutral-500 sm:mb-6 sm:text-[0.95rem]">{section.subtitle}</p>
-      ) : null}
 
       <div
         role="tabpanel"
@@ -117,9 +131,10 @@ export function CatalogSectionWithTabs({
             title=""
             products={activeProducts}
             hideHeader
+            showNavArrows
           />
         ) : (
-          <p className="py-12 text-center text-sm text-neutral-500" role="status">
+          <p className="py-12 text-center text-sm text-muted-foreground" role="status">
             {emptyMessage}
           </p>
         )}

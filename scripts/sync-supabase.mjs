@@ -225,6 +225,16 @@ async function main() {
   }
 
   console.log('\nSiguiente: npm run sync:deploy  (o sync:product-images && vercel deploy --prod)');
+
+  const { regenerateHomeBundleSnapshotQuiet } = await import(
+    '../server/lib/home-catalog-bundle-snapshot.js'
+  );
+  const snapshot = await regenerateHomeBundleSnapshotQuiet();
+  if (snapshot) {
+    console.log(
+      `\n✓ Snapshot home: ${snapshot.bundle.featured.length} destacados → ${snapshot.filePath}`,
+    );
+  }
 }
 
 main().catch((err) => {

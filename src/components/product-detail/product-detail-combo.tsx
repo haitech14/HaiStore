@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import useEmblaCarousel from 'embla-carousel-react';
-import { ChevronRight, ShoppingCart } from 'lucide-react';
+import { ChevronDown, ChevronRight, ShoppingCart } from 'lucide-react';
 
 import { DualPrice } from '@/components/product/product-dual-price';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,12 @@ interface ProductDetailComboProps {
   mini?: boolean;
   /** Tarjetas horizontales con botón + (complementos del equipo). */
   layout?: 'default' | 'complement';
+  /** Si es complement, inicia plegado hasta que el usuario lo expanda. */
+  defaultCollapsed?: boolean;
+  /** Si es false, muestra el contenido siempre expandido sin acordeón. */
+  collapsible?: boolean;
+  /** Oculta el título interno (cuando el padre ya lo muestra). */
+  hideTitle?: boolean;
 }
 
 function ComboCard({
@@ -155,36 +161,35 @@ function ComplementSelectableCard({
     <label
       htmlFor={inputId}
       className={cn(
-        'flex h-full w-full min-w-0 cursor-pointer flex-col rounded-lg border bg-white p-2 transition-colors sm:p-2.5',
+        'flex h-full w-full min-w-0 cursor-pointer flex-row items-center gap-2 rounded-lg border bg-white p-2 text-left transition-colors sm:gap-2.5 sm:p-2.5',
         selected ? 'border-red-600 ring-1 ring-red-600/25' : 'border-border/60 hover:border-border',
       )}
     >
-      <div className="mb-2 flex items-start justify-between gap-1">
-        <Checkbox
-          id={inputId}
-          checked={selected}
-          onCheckedChange={(checked) => onToggle(checked === true)}
-          className="size-3.5 border-border data-[state=checked]:border-red-600 data-[state=checked]:bg-red-600 sm:size-4"
-          aria-label={`Incluir ${item.name}`}
-        />
-      </div>
+      <Checkbox
+        id={inputId}
+        checked={selected}
+        onCheckedChange={(checked) => onToggle(checked === true)}
+        className="size-3.5 shrink-0 border-border data-[state=checked]:border-red-600 data-[state=checked]:bg-red-600 sm:size-4"
+        aria-label={`Incluir ${item.name}`}
+      />
 
-      <div className="flex flex-1 flex-col items-center justify-center rounded-md bg-muted/25 px-1.5 py-3 sm:py-4">
+      <span className="relative size-11 shrink-0 overflow-hidden rounded-md border border-border/40 bg-muted/25 sm:size-12">
         <img
           src={item.image}
           alt=""
-          className="max-h-20 w-full max-w-[5.5rem] object-contain sm:max-h-24 sm:max-w-[6.5rem]"
+          className="size-full object-contain p-0.5"
           loading="lazy"
         />
-      </div>
+      </span>
 
-      <p className="mt-2 line-clamp-2 min-h-[2.25rem] text-pretty text-[0.625rem] font-medium leading-snug text-[#0f1f3d] sm:min-h-[2.5rem] sm:text-[0.6875rem]">
-        {item.name}
-      </p>
-
-      <p className="mt-1 truncate text-[0.6875rem] font-bold tabular-nums text-red-600 sm:text-xs">
-        <DualPrice usd={unitUsd} className="text-[0.6875rem] font-bold sm:text-xs" />
-      </p>
+      <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
+        <span className="line-clamp-2 text-pretty text-[0.625rem] font-medium leading-snug text-[#0f1f3d] sm:text-[0.6875rem]">
+          {item.name}
+        </span>
+        <span className="truncate text-[0.6875rem] font-bold tabular-nums text-red-600 sm:text-xs">
+          <DualPrice usd={unitUsd} className="text-[0.6875rem] font-bold sm:text-xs" />
+        </span>
+      </span>
     </label>
   );
 }
@@ -200,8 +205,12 @@ export function ProductDetailCombo({
   compact = false,
   mini = false,
   layout = 'default',
+  defaultCollapsed = false,
+  collapsible = true,
+  hideTitle = false,
 }: ProductDetailComboProps) {
   const { addItem } = useCart();
+  const [open, setOpen] = useState(!defaultCollapsed);
   const [selected, setSelected] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(items.map((item) => [item.id, item.defaultSelected])),
   );
@@ -267,69 +276,125 @@ export function ProductDetailCombo({
   if (items.length === 0) return null;
 
   if (layout === 'complement') {
-    const columnCount = Math.max(1, items.length);
+    const panelId = 'complement-equipo-panel';
+    const isExpanded = collapsible ? open : true;
 
     return (
       <section
-        className={cn('@container/complement min-w-0', className)}
+        className={cn(
+          '@container/complement min-w-0 overflow-hidden rounded-xl border border-border/60 bg-white',
+          className,
+        )}
         aria-labelledby="combo-titulo"
       >
-        <h2 id="combo-titulo" className="text-left text-base font-bold text-[#0f1f3d] sm:text-lg">
-          {title}
-        </h2>
-        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-          Selecciona los complementos que deseas incluir (una opción por columna).
-        </p>
-
-        <ul
-          className="mt-3 grid list-none gap-2 p-0 sm:mt-4 sm:gap-2.5"
-          style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
-        >
-          {items.map((item) => (
-            <li key={item.id} className="min-w-0">
-              <ComplementSelectableCard
-                item={item}
-                selected={Boolean(selected[item.id])}
-                onToggle={(checked) =>
-                  setSelected((prev) => ({ ...prev, [item.id]: checked }))
-                }
-              />
-            </li>
-          ))}
-        </ul>
-
-        <div className="mt-3 flex flex-col gap-2 border-t border-border/40 pt-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-muted-foreground sm:text-sm">
-            <span>
-              {selectedCount} seleccionado{selectedCount !== 1 ? 's' : ''}
-            </span>
-            {selectedCount > 0 ? (
-              <>
-                <span className="mx-1 text-border" aria-hidden="true">
-                  |
-                </span>
-                <span>
-                  +{' '}
-                  <span className="font-semibold text-[#0f1f3d]">
-                    <DualPrice usd={totalUsd} className="inline font-semibold text-[#0f1f3d]" />
-                  </span>
-                </span>
-              </>
-            ) : null}
-          </p>
-
-          <Button
+        {collapsible ? (
+          <button
             type="button"
-            variant="outline"
-            size="sm"
-            className="h-10 shrink-0 gap-1.5 rounded-md border-red-600/30 px-3.5 text-xs font-bold text-red-600 hover:bg-red-50 focus-visible:ring-red-600 sm:text-sm"
-            onClick={handleAddCombo}
-            disabled={selectedCount === 0}
+            className="flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 sm:px-4"
+            aria-expanded={open}
+            aria-controls={panelId}
+            onClick={() => setOpen((value) => !value)}
           >
-            <ShoppingCart className="size-3.5" strokeWidth={1.5} aria-hidden="true" />
-            Agregar seleccionados
-          </Button>
-        </div>
+            <span className="min-w-0 flex-1">
+              <span id="combo-titulo" className="block text-left text-base font-bold text-[#0f1f3d] sm:text-lg">
+                {title}
+              </span>
+              <span className="mt-0.5 block text-xs text-muted-foreground sm:text-sm">
+                {open
+                  ? 'Selecciona los complementos que deseas incluir (una opción por columna).'
+                  : selectedCount > 0
+                    ? `${selectedCount} seleccionado${selectedCount !== 1 ? 's' : ''} · + `
+                    : 'Toca para ver complementos opcionales para tu equipo.'}
+                {!open && selectedCount > 0 ? (
+                  <DualPrice usd={totalUsd} className="inline font-semibold text-[#0f1f3d]" />
+                ) : null}
+              </span>
+            </span>
+            <ChevronDown
+              className={cn(
+                'mt-1 size-5 shrink-0 text-muted-foreground transition-transform',
+                open && 'rotate-180',
+              )}
+              aria-hidden="true"
+            />
+          </button>
+        ) : hideTitle ? (
+          <h2 id="combo-titulo" className="sr-only">
+            {title}
+          </h2>
+        ) : (
+          <div className="px-3 py-3 sm:px-4">
+            <h2 id="combo-titulo" className="text-base font-bold text-[#0f1f3d] sm:text-lg">
+              {title}
+            </h2>
+            {subtitle ? (
+              <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">{subtitle}</p>
+            ) : (
+              <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+                Selecciona los complementos que deseas incluir (una opción por columna).
+              </p>
+            )}
+          </div>
+        )}
+
+        {isExpanded ? (
+          <div
+            id={panelId}
+            className={cn(
+              'px-3 pb-3 sm:px-4 sm:pb-4',
+              collapsible && 'border-t border-border/40',
+            )}
+          >
+            <ul
+              className="mt-3 grid list-none gap-2 p-0 sm:mt-4 sm:gap-2.5 sm:grid-cols-2 lg:grid-cols-3"
+            >
+              {items.map((item) => (
+                <li key={item.id} className="min-w-0">
+                  <ComplementSelectableCard
+                    item={item}
+                    selected={Boolean(selected[item.id])}
+                    onToggle={(checked) =>
+                      setSelected((prev) => ({ ...prev, [item.id]: checked }))
+                    }
+                  />
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-3 flex flex-col gap-2 border-t border-border/40 pt-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-muted-foreground sm:text-sm">
+                <span>
+                  {selectedCount} seleccionado{selectedCount !== 1 ? 's' : ''}
+                </span>
+                {selectedCount > 0 ? (
+                  <>
+                    <span className="mx-1 text-border" aria-hidden="true">
+                      |
+                    </span>
+                    <span>
+                      +{' '}
+                      <span className="font-semibold text-[#0f1f3d]">
+                        <DualPrice usd={totalUsd} className="inline font-semibold text-[#0f1f3d]" />
+                      </span>
+                    </span>
+                  </>
+                ) : null}
+              </p>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-10 shrink-0 gap-1.5 rounded-md border-red-600/30 px-3.5 text-xs font-bold text-red-600 hover:bg-red-50 focus-visible:ring-red-600 sm:text-sm"
+                onClick={handleAddCombo}
+                disabled={selectedCount === 0}
+              >
+                <ShoppingCart className="size-3.5" strokeWidth={1.5} aria-hidden="true" />
+                Agregar seleccionados
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </section>
     );
   }

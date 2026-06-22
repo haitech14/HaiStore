@@ -128,7 +128,7 @@ export function ProductRentalQuoteDialog({
             })),
             company.quoteValidityDays,
           ),
-          notes: `Cotización de alquiler · Plazo ${breakdown.termMonths} meses · ${RENTAL_TERM_RENEWAL_NOTE} · Total contrato estimado S/ ${formatPen(breakdown.contractTotalPen)}`,
+          notes: `Cotización plan mantenimiento o suministros · Plazo ${breakdown.termMonths} meses · ${RENTAL_TERM_RENEWAL_NOTE} · Total plan estimado S/ ${formatPen(breakdown.contractTotalPen)}`,
         })
         .catch(() => {
           toast.warning(
@@ -147,9 +147,9 @@ export function ProductRentalQuoteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-md overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Generar cotización de alquiler</DialogTitle>
+          <DialogTitle>Generar cotización del plan</DialogTitle>
           <DialogDescription>
-            Complete los datos del cliente para generar el PDF. Plazo de alquiler:{' '}
+            Complete los datos del cliente para generar el PDF. Plazo del plan:{' '}
             {breakdown.termMonths} meses. {RENTAL_TERM_RENEWAL_NOTE} Total mensual estimado S/{' '}
             {formatPen(breakdown.monthlySubtotalPen)}.
           </DialogDescription>

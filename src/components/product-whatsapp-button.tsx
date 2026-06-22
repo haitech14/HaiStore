@@ -1,13 +1,22 @@
 import { useState, type MouseEvent } from 'react';
 import { mdiWhatsapp } from '@mdi/js';
 import { Icon } from '@mdi/react';
+import { toast } from 'sonner';
 
 import { WhatsAppContactDialog } from '@/components/whatsapp-contact-dialog';
+import type { QuotePdfPreview } from '@/components/product-detail/product-quote-pdf-viewer';
 import { Button } from '@/components/ui/button';
+import { useCompanySettings } from '@/hooks/use-company-settings';
+import { useProformaMutations } from '@/hooks/use-admin-proformas';
 import { useWhatsAppContact } from '@/hooks/use-whatsapp-contact';
+import {
+  generateProductQuoteFromContact,
+  type ProductQuoteContext,
+} from '@/lib/generate-product-quote-from-contact';
 import { openProductWhatsAppChat, type ProductWhatsAppLineItem } from '@/lib/product-whatsapp-message';
-import { isCompleteWhatsAppContact } from '@/lib/whatsapp-contact';
 import { productPath } from '@/lib/product-path';
+import { DEFAULT_COMPANY_SETTINGS } from '@/types/company-settings';
+import type { WhatsAppContact } from '@/lib/whatsapp-contact';
 import { cn } from '@/lib/utils';
 
 interface ProductWhatsAppButtonProps {
@@ -15,11 +24,15 @@ interface ProductWhatsAppButtonProps {
   className?: string;
   /** Evita activar el enlace padre de la tarjeta. */
   stopPropagation?: boolean;
-  /** Muestra texto junto al icono (p. ej. «Cotizar ahora»). */
+  /** Muestra texto junto al icono (p. ej. «Comprar por WhatsApp»). */
   label?: string;
   quantity?: number;
   /** Estilo del botón cuando hay etiqueta. */
   accent?: 'solid' | 'outline';
+  /** Contexto para generar cotización PDF (ficha de producto). */
+  quoteContext?: ProductQuoteContext;
+  /** Callback al generar cotización (p. ej. abrir visor PDF). */
+  onQuoteGenerated?: (preview: QuotePdfPreview) => void;
 }
 
 export function ProductWhatsAppButton({
@@ -29,9 +42,14 @@ export function ProductWhatsAppButton({
   label,
   quantity,
   accent = 'solid',
+  quoteContext,
+  onQuoteGenerated,
 }: ProductWhatsAppButtonProps) {
   const { contact, saveContact, isSaving } = useWhatsAppContact();
+  const { data: companySettings } = useCompanySettings();
+  const { registerProductQuote } = useProformaMutations();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const detailPath = product.id ? productPath(product.id) : null;
   const resolvedProductUrl =
@@ -45,11 +63,76 @@ export function ProductWhatsAppButton({
     ...(quantity != null && quantity > 0 ? { quantity } : {}),
   };
 
-  const launchWhatsApp = async (nextContact: Parameters<typeof saveContact>[0]) => {
-    await saveContact(nextContact);
-    const opened = openProductWhatsAppChat(lineItem, nextContact);
-    if (!opened) {
-      throw new Error('No se pudo abrir WhatsApp. Verifica el número de contacto.');
+  const handleSubmit = async (
+    nextContact: WhatsAppContact,
+    options: { generateQuote: boolean },
+  ) => {
+    setIsProcessing(true);
+    try {
+      await saveContact(nextContact);
+
+      let quoteNumber: string | undefined;
+
+      if (options.generateQuote) {
+        if (!quoteContext && !product.id) {
+          throw new Error('No se pudo generar la cotización para este producto.');
+        }
+
+        const context: ProductQuoteContext =
+          quoteContext ??
+          ({
+            product: {
+              id: product.id!,
+              name: product.name,
+              description: null,
+              price: product.priceUsd,
+              currency: 'USD',
+              image_url: null,
+              stock: 1,
+              category: product.category ?? null,
+              brand: product.brand ?? null,
+              created_at: new Date().toISOString(),
+            },
+            displayTitle: product.name,
+            sku: product.id!,
+            brandLabel: product.brand ?? '',
+            ...(lineItem.quantity != null && lineItem.quantity > 0
+              ? { quantity: lineItem.quantity }
+              : {}),
+          } satisfies ProductQuoteContext);
+
+        const preview = await generateProductQuoteFromContact(
+          nextContact,
+          context,
+          companySettings ?? DEFAULT_COMPANY_SETTINGS,
+          (payload) => registerProductQuote.mutateAsync(payload),
+        );
+
+        quoteNumber = preview.quoteNumber;
+        onQuoteGenerated?.(preview);
+      }
+
+      const opened = openProductWhatsAppChat(lineItem, nextContact, undefined, {
+        generateQuote: options.generateQuote,
+        ...(quoteNumber ? { quoteNumber } : {}),
+      });
+
+      if (!opened) {
+        throw new Error('No se pudo abrir WhatsApp. Verifica el número de contacto.');
+      }
+
+      if (options.generateQuote && quoteNumber) {
+        toast.success(`Cotización ${quoteNumber} generada.`);
+      }
+    } catch (error) {
+      if (options.generateQuote) {
+        toast.error(
+          error instanceof Error ? error.message : 'No se pudo generar la cotización.',
+        );
+      }
+      throw error;
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -58,14 +141,6 @@ export function ProductWhatsAppButton({
       event.preventDefault();
       event.stopPropagation();
     }
-
-    if (isCompleteWhatsAppContact(contact)) {
-      void launchWhatsApp(contact).catch(() => {
-        setDialogOpen(true);
-      });
-      return;
-    }
-
     setDialogOpen(true);
   };
 
@@ -98,8 +173,8 @@ export function ProductWhatsAppButton({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         initial={contact}
-        isSubmitting={isSaving}
-        onSubmit={launchWhatsApp}
+        isSubmitting={isSaving || isProcessing}
+        onSubmit={handleSubmit}
       />
     </>
   );

@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 
 import { isImageMediaUrl } from '../../shared/product-media.js';
+import { applyHaitechWatermark } from './image-watermark.js';
 
 const WEBP_QUALITY = 82;
 /** Por debajo de esto no reoptimizar (ya es liviano para web). */
@@ -38,9 +39,16 @@ export async function optimizeImageDataUrl(dataUrl, options = {}) {
       }
     }
 
-    const output = await sharp(input)
+    const resized = await sharp(input)
       .rotate()
       .resize(maxEdge, maxEdge, { fit: 'inside', withoutEnlargement: true })
+      .toBuffer();
+
+    const watermarked = await applyHaitechWatermark(resized, {
+      sourceUrl: 'data:image/upload',
+    });
+
+    const output = await sharp(watermarked)
       .webp({ quality: WEBP_QUALITY })
       .toBuffer();
 
@@ -64,22 +72,30 @@ export async function optimizeProductMedia(product) {
     ),
   );
   const optimizedImageUrl = product.image_url
-    ? await optimizeImageDataUrl(product.image_url)
+    ? typeof product.image_url === 'string' && product.image_url.startsWith('data:image/')
+      ? await optimizeImageDataUrl(product.image_url)
+      : product.image_url
     : null;
 
-  const deduped = [];
-  const seen = new Set();
-  for (const url of [optimizedImageUrl, ...optimizedGallery]) {
-    if (!url || seen.has(url)) continue;
-    seen.add(url);
-    deduped.push(url);
-  }
-
-  const image_url = deduped.find((url) => isImageMediaUrl(url)) ?? null;
+  const image_url = optimizedImageUrl ?? optimizedGallery.find((url) => isImageMediaUrl(url)) ?? null;
+  const additionalGallery = dedupeUrls([
+    ...optimizedGallery.filter((url) => url && url !== image_url),
+  ]);
 
   return {
     ...product,
     image_url,
-    gallery: deduped,
+    gallery: additionalGallery,
   };
+}
+
+function dedupeUrls(urls) {
+  const seen = new Set();
+  const result = [];
+  for (const url of urls) {
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    result.push(url);
+  }
+  return result;
 }

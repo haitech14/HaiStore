@@ -4,6 +4,7 @@ import {
   RENTAL_EXCESS_COPY_COST_PEN,
   RENTAL_OPERATOR_MONTHLY_PEN,
   RENTAL_PAPER_SURCHARGE_PEN,
+  RENTAL_TERM_RENEWAL_NOTE,
   type RentalCalculatorBreakdown,
 } from '@/lib/rental-calculator';
 import {
@@ -28,7 +29,7 @@ export function buildRentalQuoteLines(
   const term = breakdown.termMonths;
 
   lines.push({
-    name: `Alquiler — ${product.name} · cuota fija mensual (${term} meses · renovación automática del equipo nuevo)`,
+    name: `Plan de mantenimiento o suministros — ${product.name} · cuota fija mensual (${term} meses · ${RENTAL_TERM_RENEWAL_NOTE.replace(/\.$/, '')})`,
     sku: product.sku,
     brand: product.brand,
     pricePen: breakdown.baseMonthlyPen,
@@ -40,7 +41,7 @@ export function buildRentalQuoteLines(
     lines.push({
       name: `Excedente copia negro (${breakdown.extraPages.toLocaleString('es-PE')} × S/ ${RENTAL_EXCESS_COPY_COST_PEN.toFixed(2)})`,
       sku: 'EXC-NEG',
-      brand: 'Alquiler',
+      brand: 'Plan mantenimiento',
       pricePen: breakdown.excessChargesPen,
       quantity: 1,
     });
@@ -50,7 +51,7 @@ export function buildRentalQuoteLines(
     lines.push({
       name: `Papel (${breakdown.monthlyPages.toLocaleString('es-PE')} × S/ ${RENTAL_PAPER_SURCHARGE_PEN.toFixed(2)})`,
       sku: 'PAPEL',
-      brand: 'Alquiler',
+      brand: 'Plan mantenimiento',
       pricePen: breakdown.paperChargesPen,
       quantity: 1,
     });
@@ -60,7 +61,7 @@ export function buildRentalQuoteLines(
     lines.push({
       name: `Operador — cuota fija mensual (S/ ${RENTAL_OPERATOR_MONTHLY_PEN.toLocaleString('es-PE')})`,
       sku: 'OPER',
-      brand: 'Alquiler',
+      brand: 'Plan mantenimiento',
       pricePen: breakdown.operatorChargesPen,
       quantity: 1,
     });

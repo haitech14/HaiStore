@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Lightbulb } from 'lucide-react';
 
 import { SolutionsMegaMenuPanel } from '@/components/layout/solutions-mega-menu-panel';
 import {
@@ -12,7 +12,7 @@ import {
   solutionsMegaMenuSidebarIds,
   type SolutionsMegaMenuSectionId,
 } from '@/data/solutions-mega-menu';
-import { mainNavLinkClass } from '@/components/layout/main-nav-styles';
+import { mainNavLinkClass, MAIN_NAV_ICON_CLASS } from '@/components/layout/main-nav-styles';
 import { cn } from '@/lib/utils';
 
 const HOVER_CLOSE_DELAY_MS = 180;
@@ -81,6 +81,7 @@ export function SolutionsMegaMenu() {
           onFocus={openMenu}
           className={cn(mainNavLinkClass(open), 'gap-1')}
         >
+          <Lightbulb className={MAIN_NAV_ICON_CLASS} strokeWidth={1.75} aria-hidden="true" />
           Soluciones
           <ChevronDown
             aria-hidden="true"

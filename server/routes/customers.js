@@ -30,12 +30,38 @@ function cityFromBilling(billing) {
   return typeof raw === 'string' ? raw.trim() : '';
 }
 
+function companyOrRucFromRow(row) {
+  const tax = row?.tax_id?.trim() ?? '';
+  const company = row?.company_name?.trim() ?? '';
+  if (tax && company) return `${tax} · ${company}`;
+  return company || tax || '';
+}
+
 function contactFromCustomerRow(row, fallbackName = '') {
   return {
     name: row?.full_name?.trim() || fallbackName,
-    phone: row?.phone?.trim() || '',
-    city: cityFromBilling(row?.default_billing),
+    companyOrRuc: companyOrRucFromRow(row),
+    city: row?.ciudad?.trim() || cityFromBilling(row?.default_billing),
   };
+}
+
+function parseCompanyOrRucForStorage(companyOrRuc) {
+  const trimmed = String(companyOrRuc ?? '').trim();
+  if (!trimmed) return { companyName: null, taxId: null };
+  const digitsOnly = trimmed.replace(/\D/g, '');
+  const looksLikeRuc =
+    digitsOnly.length >= 8 && digitsOnly.length <= 11 && digitsOnly === trimmed.replace(/\s/g, '');
+  if (looksLikeRuc) {
+    return { companyName: null, taxId: digitsOnly };
+  }
+  const rucMatch = trimmed.match(/^(\d{8,11})\s*[·\-–]\s*(.+)$/);
+  if (rucMatch) {
+    return {
+      taxId: rucMatch[1] ?? null,
+      companyName: rucMatch[2]?.trim() || null,
+    };
+  }
+  return { companyName: trimmed, taxId: null };
 }
 
 function trimOrNull(value) {
@@ -53,7 +79,7 @@ customersRouter.get('/me', requireAuth, async (req, res, next) => {
       return res.json({
         contact: {
           name: fallbackName,
-          phone: '',
+          companyOrRuc: '',
           city: '',
           source: 'session',
         },
@@ -62,7 +88,7 @@ customersRouter.get('/me', requireAuth, async (req, res, next) => {
 
     const { data, error } = await supabase
       .from('store_customers')
-      .select('full_name, phone, default_billing')
+      .select('full_name, phone, company_name, tax_id, ciudad, default_billing')
       .eq('profile_id', req.user.id)
       .maybeSingle();
 
@@ -86,11 +112,12 @@ customersRouter.patch('/me', requireAuth, async (req, res, next) => {
     }
 
     const name = trimOrNull(req.body?.name);
-    const phone = trimOrNull(req.body?.phone);
+    const companyOrRuc = trimOrNull(req.body?.companyOrRuc);
     const city = trimOrNull(req.body?.city);
+    const { companyName, taxId } = parseCompanyOrRucForStorage(companyOrRuc ?? '');
 
-    if (!name || !phone || !city) {
-      return res.status(400).json({ error: 'Nombre, celular y ciudad son obligatorios' });
+    if (!name || !companyOrRuc || !city) {
+      return res.status(400).json({ error: 'Nombre, RUC/empresa y ciudad son obligatorios' });
     }
 
     const { data: existing, error: fetchError } = await supabase
@@ -114,7 +141,9 @@ customersRouter.patch('/me', requireAuth, async (req, res, next) => {
         .from('store_customers')
         .update({
           full_name: name,
-          phone,
+          company_name: companyName,
+          tax_id: taxId,
+          ciudad: city,
           default_billing: billing,
           updated_at: new Date().toISOString(),
         })
@@ -129,7 +158,9 @@ customersRouter.patch('/me', requireAuth, async (req, res, next) => {
         profile_id: req.user.id,
         email: req.user.email,
         full_name: name,
-        phone,
+        company_name: companyName,
+        tax_id: taxId,
+        ciudad: city,
         default_billing: billing,
       });
 
@@ -141,7 +172,7 @@ customersRouter.patch('/me', requireAuth, async (req, res, next) => {
 
     await supabase.from('profiles').update({ full_name: name }).eq('id', req.user.id);
 
-    res.json({ contact: { name, phone, city, source: 'account' } });
+    res.json({ contact: { name, companyOrRuc, city, source: 'account' } });
   } catch (error) {
     next(error);
   }

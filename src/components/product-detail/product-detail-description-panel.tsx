@@ -1,16 +1,11 @@
-import { ChevronRight } from 'lucide-react';
-
 import { ProductDetailSpecsTable } from '@/components/product-detail/product-detail-specs-table';
 import { cn } from '@/lib/utils';
 import type { ProductDescriptionContent, ProductSpecRow } from '@/types/product-detail';
-
-const KEY_SPECS_LIMIT = 8;
 
 interface ProductDetailDescriptionPanelProps {
   content: ProductDescriptionContent;
   specs: ProductSpecRow[];
   sku?: string | null;
-  onViewAllSpecs?: () => void;
   className?: string;
 }
 
@@ -18,7 +13,6 @@ export function ProductDetailDescriptionPanel({
   content,
   specs,
   sku,
-  onViewAllSpecs,
   className,
 }: ProductDetailDescriptionPanelProps) {
   const overviewTitle = content.overviewTitle ?? 'Productividad para tu oficina';
@@ -27,7 +21,6 @@ export function ProductDetailDescriptionPanel({
       ? content.overviewParagraphs
       : content.paragraphs.slice(0, 2);
   const highlights = content.highlights.slice(0, 4);
-  const keySpecs = specs.slice(0, KEY_SPECS_LIMIT);
 
   return (
     <div className={cn('grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-start', className)}>
@@ -71,25 +64,15 @@ export function ProductDetailDescriptionPanel({
 
       <aside className="lg:sticky lg:top-24">
         <h3 className="mb-3 text-base font-bold text-[#0f1f3d] sm:text-lg">
-          Especificaciones técnicas clave
+          Especificaciones técnicas
         </h3>
-        {keySpecs.length > 0 ? (
-          <ProductDetailSpecsTable specs={keySpecs} />
+        {specs.length > 0 ? (
+          <ProductDetailSpecsTable specs={specs} />
         ) : (
           <p className="text-sm text-muted-foreground">
-            Consulta la pestaña de especificaciones para ver el detalle completo.
+            No hay especificaciones técnicas registradas para este producto.
           </p>
         )}
-        {onViewAllSpecs && specs.length > keySpecs.length ? (
-          <button
-            type="button"
-            onClick={onViewAllSpecs}
-            className="mt-4 inline-flex items-center gap-0.5 text-sm font-bold text-red-600 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
-          >
-            Ver todas las especificaciones técnicas
-            <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
-          </button>
-        ) : null}
       </aside>
     </div>
   );

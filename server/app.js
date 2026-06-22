@@ -20,6 +20,7 @@ import { serviceRequestsRouter } from './routes/service-requests.js';
 import { integrationsRouter } from './routes/integrations.js';
 import { salesReportsRouter } from './routes/sales-reports.js';
 import { forumRouter } from './routes/forum.js';
+import { mediaAlbumRouter } from './routes/media-album.js';
 
 const corsOrigins = getCorsOrigins();
 
@@ -116,6 +117,7 @@ app.use('/api/rental-requests', rentalRequestsRouter);
 app.use('/api/service-requests', serviceRequestsRouter);
 app.use('/api/sales-reports', salesReportsRouter);
 app.use('/api/forum', forumRouter);
+app.use('/api/media-album', mediaAlbumRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Recurso no encontrado' });

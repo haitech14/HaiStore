@@ -2,25 +2,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { isProductOutOfStock } from '@/components/cart/add-to-cart-button';
 
-import { ProductDetailBreadcrumbs } from '@/components/product-detail/product-detail-breadcrumbs';
+import { ProductDetailBreadcrumbsBar } from '@/components/product-detail/product-detail-breadcrumbs-bar';
 import { ProductQuoteDialog } from '@/components/product-detail/product-quote-dialog';
 import {
   ProductQuotePdfViewer,
   type QuotePdfPreview,
 } from '@/components/product-detail/product-quote-pdf-viewer';
 import { ProductDetailAdvisorBanner } from '@/components/product-detail/product-detail-advisor-banner';
-import { ProductDetailCombo } from '@/components/product-detail/product-detail-combo';
 import { ProductDetailComparison } from '@/components/product-detail/product-detail-comparison';
 import { ProductDetailConsumables } from '@/components/product-detail/product-detail-consumables';
 import { ProductDetailConsumablesStrip } from '@/components/product-detail/product-detail-consumables-strip';
 import { ProductDetailDescription } from '@/components/product-detail/product-detail-description';
 import { ProductDetailDescriptionPanel } from '@/components/product-detail/product-detail-description-panel';
 import { ProductDetailDescriptionVisual } from '@/components/product-detail/product-detail-description-visual';
-import { ProductDetailEquipmentConfig } from '@/components/product-detail/product-detail-equipment-config';
+import { ProductDetailOptionalProducts, type PurchaseMode } from '@/components/product-detail/product-detail-optional-products';
+import { ProductDetailConfigureEquipment } from '@/components/product-detail/product-detail-configure-equipment';
+import type { EquipmentRentalEstimate } from '@/components/product-detail/product-detail-rental-configurator';
 import { ProductDetailGallery } from '@/components/product-detail/product-detail-gallery';
 import { ProductDetailHeroInfo } from '@/components/product-detail/product-detail-hero-info';
 import { ProductDetailMobilePurchaseBar } from '@/components/product-detail/product-detail-mobile-purchase-bar';
-import { ProductDetailRentalBanner } from '@/components/product-detail/product-detail-rental-banner';
+import { ProductDetailPurchaseCard } from '@/components/product-detail/product-detail-purchase-card';
 import { ProductDetailRelated } from '@/components/product-detail/product-detail-related';
 import { ProductDetailResources } from '@/components/product-detail/product-detail-resources';
 import { ProductDetailSpecsTable } from '@/components/product-detail/product-detail-specs-table';
@@ -53,11 +54,11 @@ import type { Product } from '@/types/product';
 
 type DetailTab =
   | 'description'
-  | 'specs'
   | 'configuration'
   | 'consumables'
   | 'options'
   | 'resources'
+  | 'warranty'
   | 'reviews';
 
 interface ProductDetailViewProps {
@@ -89,17 +90,18 @@ const MOCK_REVIEWS = [
   },
 ];
 
+const MAINTENANCE_PLAN_FALLBACK = [{ pagesPerMonth: 5000, monthlyPricePen: 150 }] as const;
+
 export function ProductDetailView({ product, featuredMeta }: ProductDetailViewProps) {
   const { data: rentalPlansRaw = [] } = useRentalPlans({ activeOnly: true });
   const { data: companySettings } = useCompanySettings();
-  const rentalPlansFromApi = useMemo(
-    () =>
-      rentalPlansRaw.map((plan) => ({
-        pagesPerMonth: plan.pagesPerMonth,
-        monthlyPricePen: plan.monthlyPricePen,
-      })),
-    [rentalPlansRaw],
-  );
+  const rentalPlansFromApi = useMemo(() => {
+    const mapped = rentalPlansRaw.map((plan) => ({
+      pagesPerMonth: plan.pagesPerMonth,
+      monthlyPricePen: plan.monthlyPricePen,
+    }));
+    return mapped.length > 0 ? mapped : [...MAINTENANCE_PLAN_FALLBACK];
+  }, [rentalPlansRaw]);
   const bulkDiscountTiers = companySettings?.bulkDiscountTiers ?? DEFAULT_BULK_DISCOUNT_TIERS;
   const detail = useMemo(
     () => buildProductDetail(product, featuredMeta, rentalPlansFromApi, bulkDiscountTiers),
@@ -127,6 +129,7 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
   const [quotePdfPreview, setQuotePdfPreview] = useState<QuotePdfPreview | null>(null);
   const [quantity, setQuantity] = useState(1);
   const purchaseActionsRef = useRef<HTMLDivElement>(null);
+  const comparisonRef = useRef<HTMLDivElement>(null);
 
   const fullPrices = useMemo(
     () => ensureFullPrices(product.prices ? product.prices : { public: product.price }),
@@ -174,10 +177,12 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
 
   const consumableGroups = useMemo(
     () =>
-      consumableGroupsFromApi.length > 0
-        ? consumableGroupsFromApi
-        : resolveEquipmentConsumables(product, catalogProducts),
-    [consumableGroupsFromApi, product, catalogProducts],
+      catalogProducts.length > 0
+        ? resolveEquipmentConsumables(product, catalogProducts)
+        : consumableGroupsFromApi.length > 0
+          ? consumableGroupsFromApi
+          : resolveEquipmentConsumables(product, catalogProducts),
+    [catalogProducts, product, consumableGroupsFromApi],
   );
 
   const showConsumablesTab = detail.isPrinterEquipment;
@@ -187,23 +192,20 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
     if (useRicohTabs) {
       return [
         { id: 'description' as const, label: 'Descripción' },
-        { id: 'specs' as const, label: 'Especificaciones técnicas' },
-        { id: 'consumables' as const, label: 'Consumibles / Relacionados' },
-        { id: 'resources' as const, label: 'Documentación' },
+        { id: 'consumables' as const, label: 'Repuestos' },
+        { id: 'resources' as const, label: 'Descargas' },
+        { id: 'warranty' as const, label: 'Garantía y soporte' },
       ];
     }
 
-    const items: { id: DetailTab; label: string }[] = [
-      { id: 'description', label: 'Descripción' },
-      { id: 'specs', label: 'Especificaciones' },
-    ];
+    const items: { id: DetailTab; label: string }[] = [{ id: 'description', label: 'Descripción' }];
 
     if (equipmentSteps.length > 0) {
       items.push({ id: 'configuration', label: 'Configuración' });
     }
 
     if (showConsumablesTab) {
-      items.push({ id: 'consumables', label: 'Consumibles' });
+      items.push({ id: 'consumables', label: 'Repuestos' });
     }
 
     items.push({ id: 'reviews', label: `Opiniones (${detail.reviews})` });
@@ -217,6 +219,9 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
       setActiveTab('description');
     }
   }, [activeTab, tabIds]);
+
+  const [purchaseMode, setPurchaseMode] = useState<PurchaseMode>('buy');
+  const [rentalEstimate, setRentalEstimate] = useState<EquipmentRentalEstimate | null>(null);
 
   const [equipmentSelection, setEquipmentSelection] = useState(() =>
     buildInitialEquipmentSelection(equipmentSteps),
@@ -249,83 +254,121 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
     };
   }, [selectedEquipmentOptions]);
 
-  const showComboSection =
-    detail.isPrinterEquipment && (catalogLoading || frequentlyBought.length > 0);
+  const maintenancePlans =
+    detail.rentalPlans.length > 0 ? detail.rentalPlans : rentalPlansFromApi;
 
-  const comboSection = showComboSection ? (
-    catalogLoading ? (
-      <div
-        className="min-w-0"
-        role="status"
-        aria-live="polite"
-        aria-label="Cargando complementos"
-      >
-        <div className="h-5 w-44 animate-pulse rounded bg-muted sm:h-6" />
-        <div className="mt-3 grid grid-cols-3 gap-2 sm:mt-4 sm:gap-2.5">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div
-              key={index}
-              className="min-h-[7.5rem] min-w-0 animate-pulse rounded-lg border border-border/40 bg-muted/50 sm:min-h-[8.5rem]"
-            />
-          ))}
-        </div>
-      </div>
-    ) : frequentlyBought.length > 0 ? (
-      <ProductDetailCombo
-        items={frequentlyBought}
-        mainProduct={product}
-        catalogProducts={catalogProducts}
-        title="Complementa tu equipo"
-        layout="complement"
-      />
-    ) : null
-  ) : null;
+  const showConfigureSection =
+    detail.isPrinterEquipment &&
+    (maintenancePlans.length > 0 ||
+      equipmentSteps.some((step) => step.id === 'toner') ||
+      frequentlyBought.length > 0);
+
+  const handlePurchaseModeChange = useCallback((mode: PurchaseMode) => {
+    setPurchaseMode(mode);
+    if (mode === 'buy') {
+      setRentalEstimate(null);
+    }
+  }, []);
 
   const heroGridClass =
-    'grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-6 xl:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] xl:gap-7';
+    'grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(260px,320px)] lg:items-start lg:gap-5 xl:gap-6';
+
+  const scrollToComparison = () => {
+    if (comparison) {
+      comparisonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    setActiveTab('description');
+  };
+
+  const showOriginalBadge =
+    /ricoh/i.test(detail.brandLabel) &&
+    (/original/i.test(product.name) || /original/i.test(product.category ?? ''));
+
+  const configureEquipmentSection = showConfigureSection ? (
+    <ProductDetailConfigureEquipment
+      product={product}
+      detail={detail}
+      plans={maintenancePlans}
+      equipmentSteps={equipmentSteps}
+      equipmentSelection={equipmentSelection}
+      onEquipmentSelectionChange={setEquipmentSelection}
+      frequentlyBought={frequentlyBought}
+      catalogProducts={catalogProducts}
+      purchaseMode={purchaseMode}
+      onPurchaseModeChange={handlePurchaseModeChange}
+      onRentalEstimateChange={setRentalEstimate}
+      purchaseActionsRef={purchaseActionsRef}
+      layout="inline"
+      className="mt-4"
+    />
+  ) : null;
 
   return (
     <div className="bg-white pb-20 lg:pb-0">
       <div className="container py-3 sm:py-5">
         <div className="mb-4 sm:mb-5">
-          <ProductDetailBreadcrumbs items={breadcrumbs} className="mb-0" />
+          <ProductDetailBreadcrumbsBar items={breadcrumbs} productId={product.id} />
         </div>
 
         <div className={heroGridClass}>
-          <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
+          <div className="min-w-0">
             <ProductDetailGallery
               items={detail.gallery}
               productName={product.name}
+              showOriginalBadge={showOriginalBadge}
+              brandLabel={detail.brandLabel}
             />
-
-            {detail.isPrinterEquipment && detail.rentalPlans.length > 0 ? (
-              <ProductDetailRentalBanner
-                product={product}
-                plans={detail.rentalPlans}
-                displayTitle={detail.displayTitle}
-                sku={detail.sku}
-                brandLabel={detail.brandLabel}
-              />
-            ) : null}
           </div>
 
-          <div className="flex min-w-0 flex-col gap-5 sm:gap-6">
-            <ProductDetailHeroInfo
+          <ProductDetailHeroInfo
+            product={product}
+            detail={detail}
+            showCompareAction={comparison != null}
+            onCompareClick={scrollToComparison}
+            onQuoteClick={() => setQuoteOpen(true)}
+            afterPurchaseMode={configureEquipmentSection}
+          />
+
+          <div className="hidden lg:block">
+            <ProductDetailPurchaseCard
               product={product}
               detail={detail}
-              onQuoteClick={() => setQuoteOpen(true)}
-              comboSlot={showComboSection ? comboSection : null}
               quantity={quantity}
               onQuantityChange={setQuantity}
+              volumePricing={volumePricing}
               purchaseActionsRef={purchaseActionsRef}
+              purchaseMode={purchaseMode}
+              onPurchaseModeChange={handlePurchaseModeChange}
+              rentalEstimate={rentalEstimate}
+              {...(equipmentConfiguration ? { equipmentConfiguration } : {})}
+              onQuoteGenerated={setQuotePdfPreview}
             />
           </div>
+
+        </div>
+
+        <div className="mt-4 lg:hidden">
+          <ProductDetailPurchaseCard
+            product={product}
+            detail={detail}
+            quantity={quantity}
+            onQuantityChange={setQuantity}
+            volumePricing={volumePricing}
+            purchaseActionsRef={purchaseActionsRef}
+            purchaseMode={purchaseMode}
+            onPurchaseModeChange={handlePurchaseModeChange}
+            rentalEstimate={rentalEstimate}
+            {...(equipmentConfiguration ? { equipmentConfiguration } : {})}
+            onQuoteGenerated={setQuotePdfPreview}
+          />
         </div>
 
         <section
-          className="mt-10 border-t border-border/60 pt-6 sm:mt-12"
+          className="mt-8 border-t border-border/60 pt-6 sm:mt-10"
           aria-label="Información del producto"
         >
+          <div className="min-w-0">
           <div className="border-b border-border/60">
             <div
               role="tablist"
@@ -367,51 +410,22 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
                     content={detail.descriptionContent}
                     specs={detail.specs}
                     sku={detail.sku}
-                    onViewAllSpecs={() => setActiveTab('specs')}
                   />
 
                   <ProductDetailDescription
                     content={detail.descriptionContent}
                     omitPanelSummary
+                    afterBody={
+                      detail.descriptionVisual ? (
+                        <ProductDetailDescriptionVisual
+                          visual={detail.descriptionVisual}
+                          variant="bar"
+                          className="mt-2"
+                        />
+                      ) : null
+                    }
                   />
 
-                  {detail.descriptionVisual ? (
-                    <ProductDetailDescriptionVisual
-                      visual={detail.descriptionVisual}
-                      variant="bar"
-                    />
-                  ) : null}
-
-                  {equipmentSteps.length > 0 ? (
-                    <div>
-                      <h3 className="mb-4 text-base font-bold text-[#0f1f3d]">
-                        Configuración del equipo
-                      </h3>
-                      {catalogLoading ? (
-                        <div
-                          className="space-y-2"
-                          role="status"
-                          aria-live="polite"
-                          aria-label="Cargando configuración"
-                        >
-                          <div className="h-6 w-52 animate-pulse rounded bg-muted" />
-                          {Array.from({ length: 5 }).map((_, index) => (
-                            <div
-                              key={index}
-                              className="h-11 animate-pulse rounded-md bg-[#0f1f3d]/80"
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <ProductDetailEquipmentConfig
-                          hideTitle
-                          steps={equipmentSteps}
-                          selection={equipmentSelection}
-                          onSelectionChange={setEquipmentSelection}
-                        />
-                      )}
-                    </div>
-                  ) : null}
 
                   {!catalogLoading &&
                   consumableGroups.some(
@@ -440,7 +454,12 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
                         </button>
                       ) : null}
                     </div>
-                    <ProductDetailSpecsTable specs={detail.specs} />
+                    <aside className="space-y-3">
+                      <h3 className="text-base font-bold text-[#0f1f3d] sm:text-lg">
+                        Especificaciones técnicas
+                      </h3>
+                      <ProductDetailSpecsTable specs={detail.specs} />
+                    </aside>
                   </div>
                   <ProductDetailAdvisorBanner />
                 </div>
@@ -458,17 +477,14 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
                       </button>
                     ) : null}
                   </div>
-                  <ProductDetailSpecsTable specs={detail.specs} />
+                  <aside className="space-y-3">
+                    <h3 className="text-base font-bold text-[#0f1f3d] sm:text-lg">
+                      Especificaciones técnicas
+                    </h3>
+                    <ProductDetailSpecsTable specs={detail.specs} />
+                  </aside>
                 </div>
               )
-            ) : null}
-
-            {activeTab === 'specs' ? (
-              <div className="max-w-3xl space-y-4">
-                <h3 className="text-lg font-bold text-[#0f1f3d]">Especificaciones técnicas</h3>
-                <ProductDetailSpecsTable specs={detail.specs} />
-                <ProductDetailAdvisorBanner />
-              </div>
             ) : null}
 
             {activeTab === 'resources' ? (
@@ -491,25 +507,24 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
                 {catalogLoading && equipmentSteps.length === 0 ? (
                   <div className="space-y-2" role="status" aria-live="polite" aria-label="Cargando configuración">
                     <div className="h-6 w-52 animate-pulse rounded bg-muted" />
-                    {Array.from({ length: 5 }).map((_, index) => (
-                      <div key={index} className="h-11 animate-pulse rounded-md bg-[#0f1f3d]/80" />
+                    {Array.from({ length: 4 }).map((_, index) => (
+                      <div key={index} className="h-11 animate-pulse rounded-md bg-muted/60" />
                     ))}
                   </div>
-                ) : (
-                  <ProductDetailEquipmentConfig
-                    hideTitle
+                ) : equipmentSteps.length > 0 ? (
+                  <ProductDetailOptionalProducts
                     steps={equipmentSteps}
                     selection={equipmentSelection}
                     onSelectionChange={setEquipmentSelection}
                   />
-                )}
+                ) : null}
               </div>
             ) : null}
 
             {activeTab === 'consumables' ? (
               <div className="max-w-5xl space-y-6">
                 {catalogLoading ? (
-                  <div className="space-y-6" role="status" aria-live="polite" aria-label="Cargando consumibles">
+                  <div className="space-y-6" role="status" aria-live="polite" aria-label="Cargando repuestos">
                     {Array.from({ length: 3 }).map((_, index) => (
                       <div key={index} className="space-y-3">
                         <div className="h-6 w-40 animate-pulse rounded bg-muted" />
@@ -523,6 +538,24 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
                   </div>
                 ) : (
                   <ProductDetailConsumables groups={consumableGroups} />
+                )}
+                <ProductDetailAdvisorBanner />
+              </div>
+            ) : null}
+
+            {activeTab === 'warranty' ? (
+              <div className="max-w-3xl space-y-4">
+                <h3 className="text-lg font-bold text-[#0f1f3d]">Garantía y soporte</h3>
+                {detail.warrantyBullets.length > 0 ? (
+                  <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
+                    {detail.warrantyBullets.map((bullet) => (
+                      <li key={bullet}>{bullet}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    Garantía oficial de 12 meses con soporte técnico especializado pre y postventa.
+                  </p>
                 )}
                 <ProductDetailAdvisorBanner />
               </div>
@@ -551,9 +584,14 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
               </ul>
             ) : null}
           </div>
+          </div>
         </section>
 
-        {comparison ? <ProductDetailComparison data={comparison} /> : null}
+        {comparison ? (
+          <div ref={comparisonRef}>
+            <ProductDetailComparison data={comparison} />
+          </div>
+        ) : null}
 
         <ProductDetailRelated product={product} />
       </div>
@@ -587,6 +625,7 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
         floorPriceUsd={fullPrices.tecnico}
         outOfStock={outOfStock}
         purchaseActionsRef={purchaseActionsRef}
+        {...(equipmentConfiguration ? { equipmentConfiguration } : {})}
       />
     </div>
   );

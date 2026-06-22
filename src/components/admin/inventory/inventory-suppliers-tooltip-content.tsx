@@ -1,4 +1,4 @@
-import { formatPenInteger, usdToPenCharm } from '@/lib/pen-pricing';
+import { formatPenInteger, usdToPenPrecise } from '@/lib/pen-pricing';
 import { cn, formatUsd } from '@/lib/utils';
 import type { InventorySupplier } from '@/types/product';
 
@@ -58,7 +58,7 @@ export function InventorySuppliersTooltipContent({
               </p>
               <p className="tabular-nums text-foreground">{formatUsd(usd)}</p>
               <p className="tabular-nums text-muted-foreground">
-                {usd > 0 ? formatPenInteger(usdToPenCharm(usd, exchangeRate)) : 'S/ —'}
+                {usd > 0 ? formatPenInteger(usdToPenPrecise(usd, exchangeRate)) : 'S/ —'}
               </p>
             </li>
           );

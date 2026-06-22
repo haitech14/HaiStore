@@ -3,6 +3,7 @@ import { ChevronRight } from 'lucide-react';
 
 import { megaMenuPartnerBrands } from '@/data/mega-menu';
 import {
+  filterRedundantMegaMenuLinks,
   type LandingCatalogMenuSidebarItem,
   type MegaMenuColumnGroup,
 } from '@/lib/mega-menu-from-store-categories';
@@ -36,6 +37,10 @@ function MegaMenuColumn({
   group: MegaMenuColumnGroup;
   onNavigate: () => void;
 }) {
+  const links = filterRedundantMegaMenuLinks(group.title, group.links);
+  const titleClassName =
+    'mt-3 text-xs font-bold uppercase tracking-[0.12em] text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
   return (
     <div className="flex min-w-0 flex-col">
       <MegaMenuLink
@@ -53,23 +58,29 @@ function MegaMenuColumn({
         </span>
       </MegaMenuLink>
 
-      <h4 className="mt-3 text-xs font-bold uppercase tracking-[0.12em] text-foreground">
-        {group.title}
-      </h4>
+      {links.length > 0 ? (
+        <h4 className={titleClassName}>{group.title}</h4>
+      ) : (
+        <MegaMenuLink to={group.href} onNavigate={onNavigate} className={titleClassName}>
+          {group.title}
+        </MegaMenuLink>
+      )}
 
-      <ul className="mt-2 space-y-1.5" role="list">
-        {group.links.map((link) => (
-          <li key={`${group.slug}-${link.href}-${link.name}`}>
-            <MegaMenuLink
-              to={link.href}
-              onNavigate={onNavigate}
-              className="text-sm text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {link.name}
-            </MegaMenuLink>
-          </li>
-        ))}
-      </ul>
+      {links.length > 0 ? (
+        <ul className="mt-2 space-y-1.5" role="list">
+          {links.map((link) => (
+            <li key={`${group.slug}-${link.href}-${link.name}`}>
+              <MegaMenuLink
+                to={link.href}
+                onNavigate={onNavigate}
+                className="text-sm text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {link.name}
+              </MegaMenuLink>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

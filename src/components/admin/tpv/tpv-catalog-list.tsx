@@ -64,7 +64,11 @@ function CatalogProductRow({
   onAdd: () => void;
 }) {
   const [imageError, setImageError] = useState(false);
-  const displayCode = formatProductDisplayCode(product.code, { brand: product.brand });
+  const displayCode = formatProductDisplayCode(product.code, {
+    brand: product.brand,
+    category: product.category,
+    name: product.name,
+  });
   const showImage = Boolean(product.image_url) && !imageError;
 
   return (

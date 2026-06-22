@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { ProductImageWatermarkOverlay } from '@/components/product/product-image-watermark-overlay';
 import {
   productCardImageSources,
   supportsResponsiveProductImage,
@@ -39,28 +40,32 @@ export function ProductCardImage({
 
   if (sources) {
     return (
-      <picture>
-        <source type="image/webp" srcSet={sources.webpSrcSet} sizes={sources.sizes} />
-        <img
-          src={sources.fallbackSrc}
-          alt={alt}
-          className={cn(className)}
-          loading={loading}
-          decoding="async"
-          onError={handleError}
-        />
-      </picture>
+      <ProductImageWatermarkOverlay src={src} className="size-full">
+        <picture className="block size-full">
+          <source type="image/webp" srcSet={sources.webpSrcSet} sizes={sources.sizes} />
+          <img
+            src={sources.fallbackSrc}
+            alt={alt}
+            className={cn(className)}
+            loading={loading}
+            decoding="async"
+            onError={handleError}
+          />
+        </picture>
+      </ProductImageWatermarkOverlay>
     );
   }
 
   return (
-    <img
-      src={src}
-      alt={alt}
-      className={cn(className)}
-      loading={loading}
-      decoding="async"
-      onError={onError}
-    />
+    <ProductImageWatermarkOverlay src={src} className="size-full">
+      <img
+        src={src}
+        alt={alt}
+        className={cn(className)}
+        loading={loading}
+        decoding="async"
+        onError={onError}
+      />
+    </ProductImageWatermarkOverlay>
   );
 }

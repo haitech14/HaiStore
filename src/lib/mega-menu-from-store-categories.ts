@@ -18,6 +18,19 @@ export interface MegaMenuColumnGroup {
   links: MegaMenuLinkItem[];
 }
 
+function normalizeMegaMenuLabel(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+/** Omite enlaces que repiten el título de la columna (p. ej. «Multifuncionales Nuevas» ×2). */
+export function filterRedundantMegaMenuLinks(
+  title: string,
+  links: MegaMenuLinkItem[],
+): MegaMenuLinkItem[] {
+  const normalizedTitle = normalizeMegaMenuLabel(title);
+  return links.filter((link) => normalizeMegaMenuLabel(link.name) !== normalizedTitle);
+}
+
 export interface LandingCatalogMenuSidebarItem {
   slug: string;
   label: string;
@@ -111,7 +124,7 @@ function collectColumnGroupsForCategory(node: StoreCategoryTreeNode): MegaMenuCo
       title: child.name,
       image: imageForNode(child, node.slug),
       href: categoryPath(node.slug, child.slug),
-      links: [{ name: child.name, href: categoryPath(node.slug, child.slug) }],
+      links: [],
     });
   }
 

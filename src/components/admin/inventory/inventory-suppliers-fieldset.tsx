@@ -9,7 +9,7 @@ import { useCompanySettings } from '@/hooks/use-company-settings';
 import { useSupplierCatalog } from '@/hooks/use-supplier-catalog';
 import { createEmptySupplier } from '@/lib/inventory-suppliers';
 import { getUsdToPenPurchaseRate, normalizeUsdToPenRate } from '@/lib/exchange-rate';
-import { formatPenInteger, usdToPenCharm } from '@/lib/pen-pricing';
+import { formatPenInteger, usdToPenPrecise } from '@/lib/pen-pricing';
 import type { InventorySupplier } from '@/types/product';
 
 interface InventorySuppliersFieldsetProps {
@@ -101,7 +101,7 @@ export function InventorySuppliersFieldset({
                       }
                     />
                     <p className="text-[0.65rem] text-muted-foreground tabular-nums">
-                      {usd > 0 ? formatPenInteger(usdToPenCharm(usd, exchangeRate)) : 'S/ —'}
+                      {usd > 0 ? formatPenInteger(usdToPenPrecise(usd, exchangeRate)) : 'S/ —'}
                     </p>
                   </div>
                   <div className="flex items-end sm:justify-end">

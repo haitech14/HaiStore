@@ -1,3 +1,8 @@
+import {
+  isSeminuevaProductName,
+  productQualifiesAsNuevaEquipment,
+  productQualifiesAsSeminuevaEquipment,
+} from '@/lib/inventory-product-name';
 import type { Product } from '@/types/product';
 
 export type ProductCondition = 'originales' | 'compatibles' | 'remanufacturados' | 'partes';
@@ -16,11 +21,12 @@ export const PRODUCT_CONDITION_LABELS: Record<ProductCondition, string> = {
   partes: 'Partes',
 };
 
-/** Pestañas en inicio/catálogo para multifuncionales e impresoras (sin «Partes»). */
+/** Pestañas en inicio/catálogo para multifuncionales e impresoras. */
 export const EQUIPMENT_PRODUCT_CONDITIONS: readonly ProductCondition[] = [
   'originales',
   'compatibles',
   'remanufacturados',
+  'partes',
 ];
 
 export const EQUIPMENT_CONDITION_LABELS: Record<ProductCondition, string> = {
@@ -329,6 +335,13 @@ function productMatchesEquipmentCondition(
     return isPartsProduct(product);
   }
 
+  const name = String(product.name ?? '');
+
+  // El nombre manda sobre una categoría de inventario mal asignada.
+  if (isSeminuevaProductName(name)) {
+    return condition === 'compatibles';
+  }
+
   const categoryHint =
     product.category != null ? inferProductConditionFromText(product.category) : null;
   if (categoryHint !== null) {
@@ -342,14 +355,14 @@ function productMatchesEquipmentCondition(
   }
 
   if (condition === 'compatibles') {
-    return hasCompatible(haystack) && !hasRemanufactured(haystack);
+    return (
+      productQualifiesAsSeminuevaEquipment(product) ||
+      (hasCompatible(haystack) && !hasRemanufactured(haystack))
+    );
   }
 
   if (condition === 'originales') {
-    if (hasRemanufactured(haystack) || hasCompatible(haystack)) {
-      return false;
-    }
-    return hasOriginal(haystack) || (!hasRemanufactured(haystack) && !hasCompatible(haystack));
+    return productQualifiesAsNuevaEquipment(product);
   }
 
   return false;

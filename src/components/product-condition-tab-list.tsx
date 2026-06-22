@@ -1,19 +1,47 @@
-import { BadgeCheck, Cog, Package, Recycle, type LucideIcon } from 'lucide-react';
+import { BadgeCheck, Cog, Globe, Package, Recycle, Star, type LucideIcon } from 'lucide-react';
 
 import {
   getProductConditionLabel,
+  isEquipmentCatalogFamily,
   PRODUCT_CONDITIONS,
   type CatalogFamilySlug,
   type ProductCondition,
 } from '@/lib/product-condition';
 import { cn } from '@/lib/utils';
 
-const CONDITION_ICONS: Record<ProductCondition, LucideIcon> = {
+const DEFAULT_CONDITION_ICONS: Record<ProductCondition, LucideIcon> = {
   originales: BadgeCheck,
   compatibles: Package,
   remanufacturados: Recycle,
   partes: Cog,
 };
+
+const EQUIPMENT_CONDITION_ICONS: Record<ProductCondition, LucideIcon> = {
+  originales: Star,
+  compatibles: Globe,
+  remanufacturados: Recycle,
+  partes: Cog,
+};
+
+const SUPPLIES_CONDITION_ICONS: Record<ProductCondition, LucideIcon> = {
+  originales: BadgeCheck,
+  compatibles: Package,
+  remanufacturados: Recycle,
+  partes: Cog,
+};
+
+function resolveConditionIcon(
+  condition: ProductCondition,
+  catalogFamily: CatalogFamilySlug | null,
+): LucideIcon {
+  if (catalogFamily && isEquipmentCatalogFamily(catalogFamily)) {
+    return EQUIPMENT_CONDITION_ICONS[condition];
+  }
+  if (catalogFamily === 'toner-suministros' || catalogFamily === 'repuestos') {
+    return SUPPLIES_CONDITION_ICONS[condition];
+  }
+  return DEFAULT_CONDITION_ICONS[condition];
+}
 
 interface ProductConditionTabListProps {
   idPrefix: string;
@@ -22,7 +50,6 @@ interface ProductConditionTabListProps {
   counts?: Partial<Record<ProductCondition, number>>;
   ariaLabel: string;
   className?: string;
-  /** Si se indica multifuncionales/impresoras: Nuevos, Seminuevos, Remanufacturados (3 tabs). */
   catalogFamily?: CatalogFamilySlug | null;
   conditions?: readonly ProductCondition[];
 }
@@ -40,7 +67,7 @@ export function ProductConditionTabList({
   return (
     <div
       className={cn(
-        'flex max-w-full flex-nowrap items-center justify-end gap-2 overflow-x-auto',
+        'flex max-w-full flex-nowrap items-center justify-start gap-1.5 overflow-x-auto lg:justify-end',
         '[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         className,
       )}
@@ -50,7 +77,7 @@ export function ProductConditionTabList({
       {conditions.map((condition) => {
         const count = counts?.[condition];
         const isActive = activeCondition === condition;
-        const Icon = CONDITION_ICONS[condition];
+        const Icon = resolveConditionIcon(condition, catalogFamily);
         const label = getProductConditionLabel(condition, catalogFamily);
 
         return (
@@ -63,14 +90,14 @@ export function ProductConditionTabList({
             aria-controls={`${idPrefix}-panel-${condition}`}
             onClick={() => onSelect(condition)}
             className={cn(
-              'inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm font-semibold shadow-sm transition-colors',
+              'inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors sm:min-h-10 sm:px-3.5 sm:text-sm',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
               isActive
-                ? 'border-red-600 bg-red-600 text-white shadow-[0_2px_8px_rgba(220,38,38,0.35)]'
-                : 'border-neutral-200/90 bg-white text-neutral-800 hover:border-neutral-300 hover:bg-neutral-50',
+                ? 'border-red-600 bg-red-600 text-white shadow-[0_2px_8px_rgba(204,20,39,0.28)]'
+                : 'border-border/80 bg-white text-foreground hover:border-border hover:bg-muted/40',
             )}
           >
-            <Icon className="size-4 shrink-0" aria-hidden="true" strokeWidth={2} />
+            <Icon className="size-3.5 shrink-0 sm:size-4" aria-hidden="true" strokeWidth={2} />
             {label}
             {count != null ? (
               <span className="sr-only">

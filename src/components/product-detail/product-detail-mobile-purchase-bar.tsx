@@ -3,13 +3,13 @@ import { ShoppingCart } from 'lucide-react';
 
 import { AddToCartButton } from '@/components/cart/add-to-cart-button';
 import { DualPrice } from '@/components/product/product-dual-price';
-import { useDisplayCurrency } from '@/context/display-currency-context';
+import { formatOfferQuantitySavingsMessageFromUsd } from '@/lib/display-price';
 import {
   resolveBulkDiscountSavingsHint,
   type BulkDiscountPricing,
 } from '@/lib/bulk-discount-tiers';
-import { formatDisplayPriceFromUsd } from '@/lib/display-price';
 import { cn } from '@/lib/utils';
+import type { CartConfigurationLine } from '@/types/product';
 import type { BulkDiscountTier } from '@/types/product-detail';
 import type { Product } from '@/types/product';
 
@@ -22,6 +22,7 @@ interface ProductDetailMobilePurchaseBarProps {
   floorPriceUsd?: number;
   outOfStock: boolean;
   purchaseActionsRef: RefObject<HTMLDivElement | null>;
+  equipmentConfiguration?: CartConfigurationLine;
 }
 
 export function ProductDetailMobilePurchaseBar({
@@ -33,8 +34,8 @@ export function ProductDetailMobilePurchaseBar({
   floorPriceUsd = 0,
   outOfStock,
   purchaseActionsRef,
+  equipmentConfiguration,
 }: ProductDetailMobilePurchaseBarProps) {
-  const { displayCurrency } = useDisplayCurrency();
   const [heroActionsVisible, setHeroActionsVisible] = useState(true);
 
   useEffect(() => {
@@ -57,6 +58,7 @@ export function ProductDetailMobilePurchaseBar({
   const cartAddOptions = {
     quantity,
     ...(hasVolumeDiscount ? { volumeUnitPriceUsd: volumePricing.unitUsd } : {}),
+    ...(equipmentConfiguration != null ? { configuration: equipmentConfiguration } : {}),
   };
 
   const savingsMessage = useMemo(() => {
@@ -67,11 +69,8 @@ export function ProductDetailMobilePurchaseBar({
       floorPriceUsd,
     });
     if (!hint) return quantity > 1 ? `Total ${quantity} ud.` : null;
-    const amount = formatDisplayPriceFromUsd(hint.savingsUsd, displayCurrency);
-    return hint.isActive
-      ? `Ahorro: ahorras ${amount} con ${hint.targetQuantity} ud.`
-      : `Ahorro: si llevas ${hint.targetQuantity} ud. puedes ahorrar ${amount}`;
-  }, [bulkDiscountTiers, quantity, basePriceUsd, floorPriceUsd, displayCurrency]);
+    return formatOfferQuantitySavingsMessageFromUsd(hint.targetQuantity, hint.savingsUsd);
+  }, [bulkDiscountTiers, quantity, basePriceUsd, floorPriceUsd]);
 
   const totalUsd =
     quantity > 1 || hasVolumeDiscount ? volumePricing.totalUsd : volumePricing.unitUsd;

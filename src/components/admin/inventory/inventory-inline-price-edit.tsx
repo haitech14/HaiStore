@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type FocusEvent, type FormEvent } from 'react';
 
 import { Input } from '@/components/ui/input';
-import { penCharmToUsd, roundPenCharm99, usdToPenCharm } from '@/lib/pen-pricing';
+import { penCharmToUsd, roundPenCharm99, usdToPenCharm, usdToPenPrecise } from '@/lib/pen-pricing';
 import { cn } from '@/lib/utils';
 
 const SAVE_DEBOUNCE_MS = 350;
@@ -13,6 +13,8 @@ interface InventoryInlinePriceEditProps {
   onSave: (usd: number) => void | Promise<void>;
   onClose?: () => void;
   className?: string;
+  /** Precio de compra: sin redondeo comercial en soles. */
+  useCharm?: boolean;
 }
 
 export function InventoryInlinePriceEdit({
@@ -22,10 +24,13 @@ export function InventoryInlinePriceEdit({
   onSave,
   onClose,
   className,
+  useCharm = true,
 }: InventoryInlinePriceEditProps) {
   const usdId = useId();
   const penId = useId();
-  const penFromUsd = usdToPenCharm(usd, exchangeRate);
+  const penFromUsd = useCharm
+    ? usdToPenCharm(usd, exchangeRate)
+    : usdToPenPrecise(usd, exchangeRate);
   const [usdDraft, setUsdDraft] = useState(usd > 0 ? String(usd) : '');
   const [penDraft, setPenDraft] = useState(penFromUsd > 0 ? String(penFromUsd) : '');
   const [isSaving, setIsSaving] = useState(false);
@@ -47,9 +52,11 @@ export function InventoryInlinePriceEdit({
       lastCommittedUsdRef.current = usd;
     }
     setUsdDraft(usd > 0 ? String(usd) : '');
-    const pen = usdToPenCharm(usd, exchangeRate);
+    const pen = useCharm
+      ? usdToPenCharm(usd, exchangeRate)
+      : usdToPenPrecise(usd, exchangeRate);
     setPenDraft(pen > 0 ? String(pen) : '');
-  }, [usd, exchangeRate]);
+  }, [usd, exchangeRate, useCharm]);
 
   useEffect(
     () => () => {
@@ -115,7 +122,9 @@ export function InventoryInlinePriceEdit({
       scheduleSave();
       return;
     }
-    const pen = usdToPenCharm(parsed, exchangeRate);
+    const pen = useCharm
+      ? usdToPenCharm(parsed, exchangeRate)
+      : usdToPenPrecise(parsed, exchangeRate);
     setPenDraft(pen > 0 ? String(pen) : '');
     scheduleSave();
   };
@@ -123,17 +132,33 @@ export function InventoryInlinePriceEdit({
   const handlePenChange = (raw: string) => {
     isDirtyRef.current = true;
     setPenDraft(raw);
-    const parsed = Number(raw);
-    if (!raw.trim() || !Number.isFinite(parsed) || parsed < 0) {
-      if (!raw.trim()) setUsdDraft('');
+    if (!raw.trim()) {
+      setUsdDraft('');
       scheduleSave();
       return;
     }
-    const charm = roundPenCharm99(parsed);
-    setPenDraft(String(charm));
-    const nextUsd = penCharmToUsd(charm, exchangeRate);
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      scheduleSave();
+      return;
+    }
+    const nextUsd = penCharmToUsd(parsed, exchangeRate);
     setUsdDraft(nextUsd > 0 ? String(nextUsd) : '');
     scheduleSave();
+  };
+
+  const handlePenBlur = () => {
+    if (!penDraft.trim()) return;
+    const parsed = Number(penDraft);
+    if (!Number.isFinite(parsed) || parsed < 0) return;
+
+    const pen = useCharm ? roundPenCharm99(parsed) : Math.round(parsed * 100) / 100;
+    const nextUsd = penCharmToUsd(pen, exchangeRate);
+    isDirtyRef.current = true;
+    setPenDraft(String(pen));
+    setUsdDraft(nextUsd > 0 ? String(nextUsd) : '');
+    usdDraftRef.current = nextUsd > 0 ? String(nextUsd) : '';
+    void persist(true);
   };
 
   const handleBlur = (event: FocusEvent<HTMLFormElement>) => {
@@ -186,10 +211,11 @@ export function InventoryInlinePriceEdit({
           id={penId}
           type="number"
           min={0}
-          step={1}
-          inputMode="numeric"
+          step={0.01}
+          inputMode="decimal"
           value={penDraft}
           onChange={(event) => handlePenChange(event.target.value)}
+          onBlur={handlePenBlur}
           className="h-8 w-full pl-6 pr-1 text-right text-xs tabular-nums"
           aria-label={`${ariaLabel} en soles`}
           aria-busy={isSaving}

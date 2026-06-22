@@ -10,7 +10,9 @@ export { PRODUCT_ATTACHMENT_KINDS };
 
 export const PRODUCT_ATTACHMENT_LABELS: Record<ProductAttachmentKind, string> = {
   technical_sheet: 'Ficha técnica',
-  manual: 'Manual',
+  manual: 'Manual de usuario',
+  printer_driver: 'Driver impresora',
+  firmware: 'Firmware',
   brochure: 'Brochure',
   other: 'Otro',
 };
@@ -64,8 +66,17 @@ export function normalizeAttachments(value: unknown): ProductAttachment[] {
 const PUBLIC_ATTACHMENT_KINDS: ProductAttachmentKind[] = [
   'technical_sheet',
   'manual',
+  'printer_driver',
+  'firmware',
   'brochure',
 ];
+
+export function findAttachmentByKind(
+  product: { attachments?: ProductAttachment[] | null },
+  kind: ProductAttachmentKind,
+): ProductAttachment | undefined {
+  return normalizeAttachments(product.attachments).find((attachment) => attachment.kind === kind);
+}
 
 export function findTechnicalSheetAttachment(
   product: { attachments?: ProductAttachment[] | null },
@@ -87,6 +98,8 @@ export function guessAttachmentKind(fileName: string): ProductAttachmentKind {
     return 'technical_sheet';
   }
   if (lower.includes('manual')) return 'manual';
+  if (lower.includes('driver') || lower.includes('controlador')) return 'printer_driver';
+  if (lower.includes('firmware') || lower.includes('fw')) return 'firmware';
   if (lower.includes('brochure') || lower.includes('folleto')) return 'brochure';
   return 'other';
 }
@@ -122,6 +135,14 @@ export function readAttachmentFile(
     reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
     reader.readAsDataURL(file);
   });
+}
+
+export function upsertProductAttachment(
+  attachments: ProductAttachment[] | null | undefined,
+  attachment: ProductAttachment,
+): ProductAttachment[] {
+  const normalized = normalizeAttachments(attachments);
+  return [...normalized.filter((row) => row.kind !== attachment.kind), attachment];
 }
 
 export function withAttachments(product: InventoryProduct): InventoryProduct {

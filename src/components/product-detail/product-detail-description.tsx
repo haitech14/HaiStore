@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import type { ProductDescriptionContent } from '@/types/product-detail';
 import { cn } from '@/lib/utils';
 
@@ -5,11 +7,14 @@ interface ProductDetailDescriptionProps {
   content: ProductDescriptionContent;
   /** Evita repetir el resumen ya mostrado en ProductDetailDescriptionPanel. */
   omitPanelSummary?: boolean;
+  /** Contenido insertado tras los párrafos y el video (p. ej. barra de iconos). */
+  afterBody?: ReactNode;
 }
 
 export function ProductDetailDescription({
   content,
   omitPanelSummary = false,
+  afterBody,
 }: ProductDetailDescriptionProps) {
   const overviewParagraphs =
     content.overviewParagraphs && content.overviewParagraphs.length > 0
@@ -56,6 +61,8 @@ export function ProductDetailDescription({
           )}
         </div>
       )}
+
+      {afterBody}
 
       {highlights.length > 0 && (
         <div className="space-y-3">

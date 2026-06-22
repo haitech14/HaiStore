@@ -2,15 +2,19 @@
   "products": [
     {
       "id": "ricoh-im-430f",
-      "code": "RICOHIM430F",
+      "code": "9900129",
       "name": "Impresora Multifuncional RICOH IM 430F",
       "description": "Multifuncional monocromática A4, 40 ppm, panel táctil 10.1\".",
       "currency": "USD",
       "stock": 12,
       "category": "Multifuncionales",
       "brand": "Ricoh",
-      "image_url": "/products/ricoh-im-430f.png",
-      "gallery": ["/products/ricoh-im-430f.png"],
+      "image_url": "/products/ricoh-im-430f.webp",
+      "gallery": [
+        "/products/ricoh-im-430f.webp",
+        "/products/ricoh-im-430f-2.webp",
+        "/products/ricoh-im-430f-3.webp"
+      ],
       "compare_at_price_usd": 891,
       "purchase_price_usd": 505.44,
       "created_at": "2026-05-15T00:00:00.000Z",

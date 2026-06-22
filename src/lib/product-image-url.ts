@@ -1,4 +1,5 @@
 import { isImageMediaUrl } from '@/lib/product-media';
+import { isSyntheticProductMediaUrl } from '../../shared/product-media-sanitize.js';
 import {
   publicProductMediaPath,
   resolveProductCategoryStockImage,
@@ -8,7 +9,7 @@ import {
 export type ResolveProductImageOptions = {
   /** Vista admin: permite previsualizar data: URL antes de persistir en disco. */
   allowDataUrl?: boolean;
-  /** Si es false, no añade imágenes genéricas al resolver en cliente. */
+  /** Solo con true se añaden imágenes genéricas por categoría/modelo. */
   stockFallback?: boolean;
 };
 
@@ -23,22 +24,7 @@ type ResolveProductImageInput = {
 };
 
 function shouldUseStockFallback(options?: ResolveProductImageOptions): boolean {
-  return options?.stockFallback !== false;
-}
-
-function isCategoryStockImageUrl(url: string): boolean {
-  return (
-    url.startsWith('/categories/') ||
-    url.startsWith('/promotions/') ||
-    url.startsWith('/promo-cards/')
-  );
-}
-
-function isSyntheticStockImageUrl(product: ResolveProductImageInput, url: string): boolean {
-  if (url === resolveProductModelStockImage(product)) return true;
-  if (url === resolveProductCategoryStockImage(product)) return true;
-  if (url === publicProductMediaPath(product.id ?? '')) return true;
-  return isCategoryStockImageUrl(url);
+  return options?.stockFallback === true;
 }
 
 function isUsableExplicitImageUrl(url: string, options?: ResolveProductImageOptions): boolean {
@@ -48,13 +34,13 @@ function isUsableExplicitImageUrl(url: string, options?: ResolveProductImageOpti
   return true;
 }
 
-function isUsableFallbackImageUrl(
+function isUsableStoredImageUrl(
   product: ResolveProductImageInput,
   url: string,
   options?: ResolveProductImageOptions,
 ): boolean {
   if (!isUsableExplicitImageUrl(url, options)) return false;
-  if (!shouldUseStockFallback(options) && isSyntheticStockImageUrl(product, url)) return false;
+  if (isSyntheticProductMediaUrl(product, url)) return false;
   return true;
 }
 
@@ -63,16 +49,9 @@ export function resolveProductStockImagePath(product: {
   name?: string;
   category?: string | null;
   brand?: string | null;
-}): string {
-  const modelImage = resolveProductModelStockImage(product);
-  if (modelImage) return modelImage;
-
-  const id = String(product.id ?? '').trim();
-  if (id) {
-    return publicProductMediaPath(id);
-  }
-
-  return resolveProductCategoryStockImage(product);
+  code?: string | null;
+}): string | null {
+  return resolveProductImageUrl(product);
 }
 
 /** Candidatos en orden de prioridad para `<img>` con reintento en error. */
@@ -83,23 +62,24 @@ export function buildProductImageCandidates(
   const candidates: string[] = [];
   const seen = new Set<string>();
 
-  const pushExplicit = (url: string | null | undefined) => {
+  const pushStored = (url: string | null | undefined) => {
     if (!url || seen.has(url)) return;
-    if (!isUsableExplicitImageUrl(url, options)) return;
+    if (!isUsableStoredImageUrl(product, url, options)) return;
     seen.add(url);
     candidates.push(url);
   };
 
   const pushFallback = (url: string | null | undefined) => {
     if (!url || seen.has(url)) return;
-    if (!isUsableFallbackImageUrl(product, url, options)) return;
+    if (!shouldUseStockFallback(options)) return;
+    if (!isUsableExplicitImageUrl(url, options)) return;
     seen.add(url);
     candidates.push(url);
   };
 
-  pushExplicit(product.image_url);
+  pushStored(product.image_url);
   for (const url of product.gallery ?? []) {
-    pushExplicit(url);
+    pushStored(url);
   }
 
   if (shouldUseStockFallback(options)) {
@@ -127,13 +107,18 @@ export function resolveProductGallery(
   product: ResolveProductImageInput,
   options?: ResolveProductImageOptions,
 ): string[] {
-  const gallery = (product.gallery ?? []).filter(
-    (url): url is string => typeof url === 'string' && url.length > 0,
+  const authentic = (product.gallery ?? []).filter(
+    (url): url is string =>
+      typeof url === 'string' &&
+      url.length > 0 &&
+      isUsableStoredImageUrl(product, url, options),
   );
-  if (gallery.length > 0) {
-    return [...new Set(gallery)];
+  if (authentic.length > 0) {
+    return [...new Set(authentic)];
   }
 
   const image = resolveProductImageUrl(product, options);
   return image ? [image] : [];
 }
+
+export { publicProductMediaPath } from '@/lib/product-stock-images';

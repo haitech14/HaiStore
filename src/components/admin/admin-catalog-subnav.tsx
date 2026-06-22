@@ -1,4 +1,4 @@
-import { FolderTree, ListOrdered, Package } from 'lucide-react';
+import { FolderTree, Images, ListOrdered, Package } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 import { ADMIN_CATALOG_NAV, ADMIN_ROUTES } from '@/lib/admin-routes';
@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 
 const TAB_ICONS = {
   [ADMIN_ROUTES.INVENTORY]: Package,
+  [ADMIN_ROUTES.ALBUM]: Images,
   [ADMIN_ROUTES.CATEGORIES]: FolderTree,
   [ADMIN_ROUTES.PRICE_LISTS]: ListOrdered,
 } as const;
@@ -13,7 +14,7 @@ const TAB_ICONS = {
 export function AdminCatalogSubNav() {
   return (
     <nav
-      aria-label="Secciones de inventario, categorías y precios"
+      aria-label="Secciones de inventario, álbum, categorías y precios"
       className="border-b bg-background px-4 sm:px-6"
     >
       <ul className="flex gap-1 overflow-x-auto py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

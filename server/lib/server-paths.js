@@ -33,3 +33,15 @@ export function getStoreCategoriesPath() {
 export function getSupportTicketsPath() {
   return path.join(getServerDataDir(), 'support-tickets.json');
 }
+
+export function getMediaAlbumPath() {
+  return path.join(getServerDataDir(), 'media-album.json');
+}
+
+/** Directorio público de assets del álbum (servidos por Vite / CDN). */
+export function getPublicAlbumDir() {
+  if (process.env.HAISTORE_PUBLIC_ALBUM_DIR) {
+    return process.env.HAISTORE_PUBLIC_ALBUM_DIR;
+  }
+  return path.join(__dirname, '../../public/album');
+}

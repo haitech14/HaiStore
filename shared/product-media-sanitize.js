@@ -25,6 +25,43 @@ function storedMediaUrls(product) {
   ]);
 }
 
+function productMediaFilenameStem(url) {
+  const match = String(url).match(/^\/products\/(.+)\.webp$/i);
+  return match ? match[1].toLowerCase() : null;
+}
+
+function ownedProductMediaStems(product) {
+  const stems = new Set();
+  const id = sanitizeProductId(product?.id);
+  if (id) stems.add(id);
+
+  const code = String(product?.code ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (code) stems.add(`toner-${code}`);
+
+  return stems;
+}
+
+/** Imagen en /products/ que pertenece a este producto (no tomada de otro ítem). */
+export function isOwnedProductMediaPath(product, url) {
+  if (!String(url).startsWith('/products/')) return true;
+
+  const stem = productMediaFilenameStem(url);
+  if (!stem) return false;
+
+  const owned = ownedProductMediaStems(product);
+  if (owned.has(stem)) return true;
+
+  for (const own of owned) {
+    if (stem.startsWith(`${own}-`)) return true;
+  }
+
+  return false;
+}
+
 /** URL de stock / placeholder, no subida por el usuario. */
 export function isSyntheticProductMediaUrl(product, url) {
   if (typeof url !== 'string' || url.length === 0) return true;
@@ -36,7 +73,7 @@ export function isSyntheticProductMediaUrl(product, url) {
   if (stored.includes(url)) {
     if (isCategoryStockImageUrl(url)) return true;
     if (isYoutubeMediaUrl(url) || isVideoMediaUrl(url)) return false;
-    if (url.startsWith('/products/')) return false;
+    if (url.startsWith('/products/')) return !isOwnedProductMediaPath(product, url);
     if (url.startsWith('http://') || url.startsWith('https://')) return false;
     return false;
   }
@@ -44,6 +81,8 @@ export function isSyntheticProductMediaUrl(product, url) {
   if (url === resolveProductModelStockImage(product)) return true;
   if (url === resolveProductCategoryStockImage(product)) return true;
   if (isCategoryStockImageUrl(url)) return true;
+
+  if (url.startsWith('/products/') && !isOwnedProductMediaPath(product, url)) return true;
 
   const id = sanitizeProductId(product?.id);
   const mainPath = id ? publicProductMediaPath(product.id) : null;

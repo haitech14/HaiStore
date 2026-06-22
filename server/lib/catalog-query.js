@@ -6,35 +6,18 @@ import {
   productMatchesCategoryFilter,
   productMatchesCondition,
 } from '../../shared/home-catalog-filter.js';
-import { catalogFamilyForSlug } from '../../shared/category-inventory-labels.js';
+import {
+  applyEquipmentSubcategorySlugFilter,
+  catalogFamilyForSlug,
+} from '../../shared/category-inventory-labels.js';
+import {
+  productMatchesSearchQuery,
+  sortProductsBySearchRelevance,
+} from '../../shared/catalog-search.js';
+import { normalizeCatalogSearchText } from '../../shared/catalog-search-normalize.js';
 
 function normalizeSearchText(value) {
-  return String(value ?? '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '');
-}
-
-function productSearchHaystack(product) {
-  const attributes = Array.isArray(product.attributes) ? product.attributes : [];
-  return [
-    product.name,
-    product.code,
-    product.description,
-    product.brand,
-    product.category,
-    ...attributes.map((attr) => `${attr.name ?? ''} ${attr.value ?? ''}`),
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
-
-function productMatchesSearchQuery(product, query) {
-  const terms = normalizeSearchText(query).split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return false;
-  const haystack = normalizeSearchText(productSearchHaystack(product));
-  return terms.every((term) => haystack.includes(term));
+  return normalizeCatalogSearchText(value);
 }
 
 function resolveAttributeKeys(product) {
@@ -117,6 +100,7 @@ function filterByCategoryLabels(products, labels, slug) {
 export async function queryProductsByCategory({
   role = 'public',
   slug = '',
+  subSlug = null,
   labels = [],
   condition = null,
   inStockOnly = false,
@@ -137,6 +121,10 @@ export async function queryProductsByCategory({
     safeLabels.length > 0
       ? filterByCategoryLabels(allProducts, safeLabels, slug)
       : allProducts;
+
+  if (subSlug) {
+    matched = applyEquipmentSubcategorySlugFilter(matched, subSlug);
+  }
 
   const facetBase = [...matched];
 
@@ -169,9 +157,10 @@ export async function queryProductsByCategory({
   const trimmedSearch = String(search ?? '').trim();
   if (trimmedSearch.length >= 3) {
     matched = matched.filter((product) => productMatchesSearchQuery(product, trimmedSearch));
+    matched = sortProductsBySearchRelevance(matched, trimmedSearch);
+  } else {
+    matched.sort((a, b) => compareProducts(sortBy, a, b));
   }
-
-  matched.sort((a, b) => compareProducts(sortBy, a, b));
 
   const safeLimit = Math.min(Math.max(Number(limit) || 30, 1), 100);
   const safePage = Math.max(Number(page) || 1, 1);

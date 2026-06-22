@@ -1,6 +1,6 @@
 import { mdiWhatsapp } from '@mdi/js';
 import { Icon } from '@mdi/react';
-import { Building2, Gauge, Printer, ShieldCheck } from 'lucide-react';
+import { Building2, Gauge, MapPin, Printer } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { buildHaitechWhatsAppUrl } from '@/lib/whatsapp-sales';
@@ -41,15 +41,15 @@ export function HomeEquipmentAdvisorSection() {
   return (
     <section
       aria-labelledby="equipo-asesor-titulo"
-      className="relative overflow-hidden border-y border-border/60 bg-background py-10 sm:py-12 lg:py-14"
+      className="relative overflow-hidden pb-10 pt-4 sm:pb-12 sm:pt-6 lg:pb-14"
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_0%_0%,rgba(220,38,38,0.06),transparent_55%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_0%_0%,rgba(220,38,38,0.05),transparent_55%)]"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_100%_100%,rgba(220,38,38,0.05),transparent_50%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_100%_100%,rgba(220,38,38,0.04),transparent_50%)]"
       />
 
       <div className="container relative flex flex-col items-center gap-8 text-center sm:gap-10">
@@ -65,7 +65,7 @@ export function HomeEquipmentAdvisorSection() {
           </p>
         </div>
 
-        <ul className="grid w-full max-w-4xl gap-4 sm:grid-cols-3 sm:gap-4">
+        <ul className="grid w-full max-w-4xl gap-4 sm:grid-cols-3 sm:gap-5">
           {ADVISOR_OPTIONS.map((option) => {
             const OptionIcon = option.icon;
             return (
@@ -75,13 +75,13 @@ export function HomeEquipmentAdvisorSection() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className={cn(
-                    'flex h-full flex-col items-center gap-3 rounded-xl border border-border bg-background px-4 py-5 text-center shadow-sm',
-                    'transition-colors hover:border-red-600/30 hover:bg-red-50/40',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                    'flex h-full flex-col items-center gap-3 rounded-xl border border-border/60 bg-white px-4 py-5 text-center shadow-[0_2px_14px_rgba(15,31,61,0.07)]',
+                    'transition-colors hover:border-red-600/25 hover:shadow-[0_4px_20px_rgba(15,31,61,0.1)]',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
                   )}
                 >
                   <span
-                    className="flex size-11 shrink-0 items-center justify-center rounded-full border border-red-600/20 bg-red-50 text-red-600"
+                    className="flex size-11 shrink-0 items-center justify-center rounded-full border border-red-600/15 bg-red-50 text-red-600"
                     aria-hidden="true"
                   >
                     <OptionIcon className="size-5" strokeWidth={2} />
@@ -100,7 +100,7 @@ export function HomeEquipmentAdvisorSection() {
           <Button
             asChild
             size="lg"
-            className="min-h-12 gap-2.5 rounded-full bg-[#25D366] px-8 text-base font-bold text-white shadow-[0_4px_20px_rgba(37,211,102,0.25)] hover:bg-[#20bd5a] focus-visible:ring-[#25D366]"
+            className="min-h-12 gap-2.5 rounded-full bg-[#25D366] px-8 text-base font-bold text-white shadow-[0_4px_20px_rgba(37,211,102,0.28)] hover:bg-[#20bd5a] focus-visible:ring-[#25D366]"
           >
             <a href={defaultAdvisorUrl} target="_blank" rel="noopener noreferrer">
               <Icon path={mdiWhatsapp} size={1} aria-hidden="true" />
@@ -108,8 +108,8 @@ export function HomeEquipmentAdvisorSection() {
             </a>
           </Button>
 
-          <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
-            <ShieldCheck className="size-4 shrink-0 text-red-600/70" aria-hidden="true" />
+          <p className="inline-flex items-center gap-1.5 text-xs text-red-600/80 sm:text-sm">
+            <MapPin className="size-4 shrink-0 text-red-600" aria-hidden="true" />
             Asesoría 100% gratuita y personalizada
           </p>
         </div>

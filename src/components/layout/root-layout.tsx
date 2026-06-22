@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Outlet, ScrollRestoration } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 
 import { Header } from '@/components/layout/header';
+import { ScrollToTop } from '@/components/layout/scroll-to-top';
 import { SiteFooter } from '@/components/layout/site-footer';
 import { ShoppingCartDrawer } from '@/components/cart/shopping-cart-drawer';
 import { ProductCompareTray } from '@/components/product/product-compare-tray';
@@ -48,7 +49,7 @@ export function RootLayout() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
-      <ScrollRestoration />
+      <ScrollToTop />
       <a href="#contenido" className="skip-link">
         Saltar al contenido
       </a>

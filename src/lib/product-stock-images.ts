@@ -2,8 +2,9 @@
 export const PRODUCT_MODEL_STOCK_IMAGES = [
   { pattern: /\bim\s*430\s*f\b/i, image: '/products/ricoh-im-430f.webp' },
   { pattern: /\bim\s*460\s*f\b/i, image: '/products/ricoh-im-430f.webp' },
+  { pattern: /\bim\s*550\s*f\b/i, image: '/products/328f41ef-d935-4807-85d0-e1db5bdf73fb.webp' },
   { pattern: /\bim\s*5000\b/i, image: '/categories/multifuncionales.png' },
-  { pattern: /\bim\s*600\s*f\b/i, image: '/categories/multifuncionales.png' },
+  { pattern: /\bim\s*600\s*f\b/i, image: '/products/b32a43a1-09e4-49f6-8950-3639c9534700.webp' },
   { pattern: /\bim\s*c320\s*f\b/i, image: '/categories/multifuncionales.png' },
   { pattern: /\bm\s*c320\s*fw\b/i, image: '/categories/multifuncionales.png' },
   { pattern: /\bm\s*320\s*f\b/i, image: '/categories/multifuncionales.png' },

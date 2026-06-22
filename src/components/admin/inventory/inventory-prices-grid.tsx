@@ -1,17 +1,11 @@
-import { useEffect, useState } from 'react';
-
 import { Input } from '@/components/ui/input';
 import { useCompanySettings } from '@/hooks/use-company-settings';
+import { useLinkedPenUsdPrice } from '@/hooks/use-linked-pen-usd-price';
 import {
   getUsdToPenPurchaseRate,
   getUsdToPenSaleRate,
   normalizeUsdToPenRate,
 } from '@/lib/exchange-rate';
-import {
-  penCharmToUsd,
-  roundPenCharm99,
-  usdToPenCharm,
-} from '@/lib/pen-pricing';
 import { cn } from '@/lib/utils';
 import {
   PRICE_ROLE_LABELS,
@@ -85,31 +79,22 @@ function PenPriceInput({
   onUsdChange,
   exchangeRate,
   readOnly = false,
+  useCharm = true,
 }: {
   id: string;
   usdValue: number;
   onUsdChange: (value: string) => void;
   exchangeRate: number;
   readOnly?: boolean;
+  /** Precio de compra: conversión exacta sin redondeo a centésima en 9. */
+  useCharm?: boolean;
 }) {
-  const penFromUsd = usdToPenCharm(usdValue, exchangeRate);
-  const [penInput, setPenInput] = useState(penFromUsd > 0 ? String(penFromUsd) : '');
-
-  useEffect(() => {
-    setPenInput(penFromUsd > 0 ? String(penFromUsd) : '');
-  }, [penFromUsd]);
-
-  const handlePenChange = (raw: string) => {
-    const parsed = Number(raw);
-    if (!raw.trim() || !Number.isFinite(parsed) || parsed < 0) {
-      setPenInput(raw);
-      if (!raw.trim()) onUsdChange('0');
-      return;
-    }
-    const charm = roundPenCharm99(parsed);
-    setPenInput(String(charm));
-    onUsdChange(String(penCharmToUsd(charm, exchangeRate)));
-  };
+  const { penInput, handlePenChange, handlePenFocus, handlePenBlur } = useLinkedPenUsdPrice({
+    usdValue,
+    onUsdChange,
+    exchangeRate,
+    useCharm,
+  });
 
   return (
     <div className="relative">
@@ -123,10 +108,12 @@ function PenPriceInput({
         id={id}
         type="number"
         min={0}
-        step={1}
-        inputMode="numeric"
+        step={0.01}
+        inputMode="decimal"
         value={penInput}
         onChange={(event) => handlePenChange(event.target.value)}
+        onFocus={handlePenFocus}
+        onBlur={handlePenBlur}
         readOnly={readOnly}
         aria-readonly={readOnly || undefined}
         className={cn(
@@ -209,17 +196,20 @@ export function InventoryPricesGrid({
                 onUsdChange={(value) => handleUsdChange(column.key, value)}
                 exchangeRate={column.key === 'purchase' ? purchaseRate : saleRate}
                 readOnly={column.key === 'purchase' && purchaseFromSuppliers}
+                useCharm={column.key !== 'purchase'}
               />
             ))}
           </div>
         </div>
       </div>
 
-      {purchaseFromSuppliers ? (
-        <p className="text-xs text-muted-foreground">
-          El precio de compra se calcula del menor valor entre proveedores.
-        </p>
-      ) : null}
+      <p className="text-xs text-muted-foreground">
+        Puedes ingresar el precio en dólares o en soles; al editar una moneda se actualiza la otra
+        según el tipo de cambio configurado. Los precios de venta en soles se redondean a la
+        centésima más cercana terminada en 9 (ej. 10.04 → 10.09) al salir del campo. El precio de
+        compra usa el tipo de cambio de compra sin ese redondeo.
+        {purchaseFromSuppliers ? ' El costo de compra se calcula del menor valor entre proveedores.' : ''}
+      </p>
     </div>
   );
 }

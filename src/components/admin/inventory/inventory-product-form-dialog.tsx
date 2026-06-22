@@ -10,6 +10,7 @@ import {
   Users,
 } from 'lucide-react';
 
+import { MediaAlbumPickerDialog } from '@/components/admin/media-album/media-album-picker-dialog';
 import { InventoryAttributesFieldset } from '@/components/admin/inventory/inventory-attributes-fieldset';
 import { InventoryFormSection } from '@/components/admin/inventory/inventory-form-section';
 import { InventoryInventorySection } from '@/components/admin/inventory/inventory-inventory-section';
@@ -18,7 +19,9 @@ import {
   InventoryPhotoUploadBox,
 } from '@/components/admin/inventory/inventory-photo-upload-box';
 import { InventoryPricesGrid } from '@/components/admin/inventory/inventory-prices-grid';
+import { InventoryVolumeRolePricesSection } from '@/components/admin/inventory/inventory-volume-role-prices-section';
 import { InventorySelectField } from '@/components/admin/inventory/inventory-select-field';
+import { InventoryStorefrontDetailSection } from '@/components/admin/inventory/inventory-storefront-detail-section';
 import { InventorySuppliersFieldset } from '@/components/admin/inventory/inventory-suppliers-fieldset';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,6 +36,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAdminInventory, useInventoryMutations } from '@/hooks/use-products';
+import { uploadFileToMediaAlbum } from '@/hooks/use-media-album';
 import { useStoreCategoriesTree } from '@/hooks/use-store-categories';
 import { useWarehouses } from '@/hooks/use-warehouses';
 import { buildBrandSelectOptions } from '@/lib/inventory-brand-options';
@@ -41,6 +45,7 @@ import {
   collectOrphanCategoryLabels,
 } from '@/lib/inventory-category-options';
 import { DEFAULT_WAREHOUSES } from '@/lib/inventory-stock';
+import { normalizeProductGalleryFields } from '@/lib/product-gallery';
 import { resolvePurchasePriceUsd } from '@/lib/inventory-suppliers';
 import {
   createEmptyInventoryProduct,
@@ -48,12 +53,15 @@ import {
   normalizeInventoryProduct,
   prepareInventoryPayloadForApi,
   readImageFile,
+  removeProductMediaUrl,
 } from '@/lib/inventory-product';
+import { isImageMediaUrl } from '@/lib/product-media';
 import type {
   InventoryProduct,
   InventorySupplier,
   ProductAttribute,
   ProductRolePrices,
+  ProductVolumeRolePriceTier,
 } from '@/types/product';
 
 export type InventoryProductFormFocusSection =
@@ -96,6 +104,7 @@ export function InventoryProductFormDialog({
   const { data: inventoryProducts = [] } = useAdminInventory();
   const [form, setForm] = useState<InventoryProduct>(initial ?? createEmptyInventoryProduct());
   const [error, setError] = useState<string | null>(null);
+  const [albumPicker, setAlbumPicker] = useState<'main' | 'gallery' | null>(null);
 
   const categoryGroups = useMemo(() => {
     const orphans = collectOrphanCategoryLabels(categoryTree, [form.category ?? '']);
@@ -157,33 +166,47 @@ export function InventoryProductFormDialog({
     }));
   };
 
+  const updateVolumeRolePrices = (tiers: ProductVolumeRolePriceTier[]) => {
+    updateField('volume_role_prices', tiers);
+  };
+
   const setMainImage = (url: string | null) => {
+    setForm((prev) => ({
+      ...prev,
+      ...normalizeProductGalleryFields(url, prev.gallery),
+    }));
+  };
+
+  const appendGalleryUrls = (urls: string[]) => {
+    if (urls.length === 0) return;
     setForm((prev) => {
-      const gallery = url ? [url, ...prev.gallery.filter((item) => item !== url)] : prev.gallery;
-      return { ...prev, image_url: url, gallery };
+      const current = normalizeProductGalleryFields(prev.image_url, prev.gallery);
+      const newUrls = urls.filter((url) => url !== current.image_url && !current.gallery.includes(url));
+      return {
+        ...prev,
+        ...normalizeProductGalleryFields(current.image_url, [...current.gallery, ...newUrls]),
+      };
     });
+  };
+
+  const uploadFilesToAlbum = async (files: File[]) => {
+    const items = await Promise.all(
+      files.map((file) => uploadFileToMediaAlbum(file, readImageFile)),
+    );
+    return items.map((item) => item.url);
   };
 
   const appendImages = async (files: File[]) => {
     if (files.length === 0) return;
-    const urls = await Promise.all(files.map((file) => readImageFile(file)));
-    setForm((prev) => {
-      const newUrls = urls.filter((url) => !prev.gallery.includes(url));
-      const image_url = prev.image_url ?? newUrls[0] ?? null;
-      const gallery = [
-        ...(image_url ? [image_url] : []),
-        ...prev.gallery.filter((item) => item !== image_url),
-        ...newUrls.filter((url) => url !== image_url),
-      ];
-      return { ...prev, image_url, gallery };
-    });
+    appendGalleryUrls(await uploadFilesToAlbum(files));
   };
 
   const handleMainImageFiles = async (files: FileList) => {
     const file = files[0];
     if (!file) return;
     try {
-      setMainImage(await readImageFile(file));
+      const urls = await uploadFilesToAlbum([file]);
+      setMainImage(urls[0] ?? null);
       setError(null);
     } catch {
       setError('No se pudo cargar la imagen principal.');
@@ -213,11 +236,7 @@ export function InventoryProductFormDialog({
   };
 
   const removeGalleryUrl = (url: string) => {
-    setForm((prev) => {
-      const gallery = prev.gallery.filter((item) => item !== url);
-      const image_url = prev.image_url === url ? (gallery[0] ?? null) : prev.image_url;
-      return { ...prev, gallery, image_url };
-    });
+    setForm((prev) => ({ ...prev, ...removeProductMediaUrl(prev, url) }));
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -249,6 +268,7 @@ export function InventoryProductFormDialog({
   const isSaving = createProduct.isPending || updateProduct.isPending;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[72rem]">
         <DialogHeader className="shrink-0 space-y-1 border-b border-border/60 bg-card px-6 py-5 pr-14 text-left">
@@ -337,8 +357,9 @@ export function InventoryProductFormDialog({
                   <InventoryPhotoUploadBox
                     label="Foto principal"
                     uploadLabel="Subir imagen"
-                    hint="JPG, PNG o WebP. Máx. 5MB"
+                    hint="JPG, PNG o WebP. Se optimiza y guarda en el álbum."
                     onFiles={(files) => void handleMainImageFiles(files)}
+                    onPickFromAlbum={() => setAlbumPicker('main')}
                     preview={
                       form.image_url ? (
                         <InventoryPhotoPreview
@@ -352,9 +373,10 @@ export function InventoryProductFormDialog({
                   <InventoryPhotoUploadBox
                     label="Galería"
                     uploadLabel="Subir imágenes"
-                    hint="Múltiples archivos. Máx. 20MB"
+                    hint="Múltiples archivos. No repite la foto principal."
                     multiple
                     onFiles={(files) => void handleGalleryFiles(files)}
+                    onPickFromAlbum={() => setAlbumPicker('gallery')}
                     preview={
                       form.gallery.length > 0 ? (
                         <ul className="mt-2 flex flex-wrap gap-2">
@@ -413,10 +435,15 @@ export function InventoryProductFormDialog({
                 />
               </InventoryFormSection>
 
+              <InventoryStorefrontDetailSection
+                form={form}
+                onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+              />
+
               <InventoryFormSection
                 title="Precios"
                 icon={CircleDollarSign}
-                description="Los valores se redondean a enteros terminados en 9 (ej. 2.188 → 2.199)."
+                description="Los precios de venta en soles se redondean a la centésima más cercana terminada en 9 (ej. 10.04 → 10.09). El precio de compra usa el tipo de cambio exacto."
               >
                 <InventoryPricesGrid
                   purchasePriceUsd={form.purchase_price_usd}
@@ -426,6 +453,11 @@ export function InventoryProductFormDialog({
                   prices={form.prices}
                   onPriceChange={updatePrice}
                   purchaseFromSuppliers={supplierCount > 0}
+                />
+                <InventoryVolumeRolePricesSection
+                  tiers={form.volume_role_prices ?? []}
+                  basePrices={form.prices}
+                  onChange={updateVolumeRolePrices}
                 />
               </InventoryFormSection>
             </div>
@@ -453,5 +485,35 @@ export function InventoryProductFormDialog({
         </form>
       </DialogContent>
     </Dialog>
+
+    <MediaAlbumPickerDialog
+      open={albumPicker !== null}
+      onOpenChange={(next) => {
+        if (!next) setAlbumPicker(null);
+      }}
+      mode={albumPicker === 'main' ? 'single' : 'multiple'}
+      excludeUrls={
+        albumPicker === 'gallery' && form.image_url ? [form.image_url] : []
+      }
+      title={albumPicker === 'main' ? 'Foto principal desde el álbum' : 'Galería desde el álbum'}
+      description={
+        albumPicker === 'gallery'
+          ? 'Las imágenes elegidas se añaden a la galería sin repetir la foto principal.'
+          : 'Elige una imagen optimizada del álbum interno.'
+      }
+      onConfirm={(items) => {
+        if (albumPicker === 'main') {
+          const url = items[0]?.url;
+          if (url && isImageMediaUrl(url)) {
+            setMainImage(url);
+          }
+        } else {
+          appendGalleryUrls(items.map((item) => item.url));
+        }
+        setAlbumPicker(null);
+        setError(null);
+      }}
+    />
+    </>
   );
 }

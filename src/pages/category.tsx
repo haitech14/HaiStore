@@ -51,6 +51,7 @@ import {
 } from '@/lib/store-category-display';
 import type { ActiveFilterChip } from '@/components/category/category-active-filter-chips';
 import { productMatchesCategoryFilter } from '@/lib/inventory-categories';
+import { applyEquipmentSubcategorySlugFilter } from '@/lib/equipment-subcategory-filter';
 import {
   filterProductsBySearch,
   MIN_PRODUCT_SEARCH_LENGTH,
@@ -193,16 +194,17 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
 
   const productLabels = useMemo(() => {
     if (!category) return EMPTY_LABEL_LIST;
-    return resolveCategoryPageProductLabels(category, storeCategory, subSlug);
-  }, [category, storeCategory, subSlug]);
+    return resolveCategoryPageProductLabels(category, storeCategory, subSlug, categoryTree);
+  }, [category, storeCategory, subSlug, categoryTree]);
 
   const catalogPageSize = getResponsiveCatalogPageSize(isMobile, gridColumns);
   const showFormatSectionsEarly =
-    shouldShowCatalogSpecFilterTabs(slug) && viewMode === 'grid' && !catalogSidebarLayout;
+    shouldShowCatalogSpecFilterTabs(slug) && viewMode === 'grid';
 
   const { data: catalogData, isLoading: catalogLoading, isError: catalogError } = useCategoryCatalog({
     enabled: Boolean(slug) && !isRentalCategory && !isInventorySearch && productLabels.length > 0,
     slug: slug ?? '',
+    subSlug,
     labels: productLabels,
     condition: estadoFilter,
     inStockOnly,
@@ -225,37 +227,53 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
       }),
     enabled: isInventorySearch,
     staleTime: 30_000,
+    placeholderData: (previous) => previous,
   });
 
   const useServerCatalog = !isInventorySearch && !isRentalCategory && productLabels.length > 0;
-  const products = isInventorySearch ? searchData?.products : catalogData?.products;
+  const products = isInventorySearch
+    ? (searchData?.products ?? EMPTY_PRODUCT_LIST)
+    : (catalogData?.products ?? EMPTY_PRODUCT_LIST);
   const isLoading = isInventorySearch ? searchLoading : catalogLoading;
   const isError = isInventorySearch ? searchError : catalogError;
 
   const baseProducts = useMemo(() => {
-    if (!products?.length) return EMPTY_PRODUCT_LIST;
+    if (!products.length) return EMPTY_PRODUCT_LIST;
 
     if (isInventorySearch) {
+      // El servidor ya filtró y ordenó; solo re-filtrar categoría si el árbol aporta reglas extra.
+      if (searchCategoryFilter === 'all' || !categoryTree.length) {
+        return products;
+      }
       return filterProductsBySearch(products, searchQuery, {
         categoryFilter: searchCategoryFilter,
         categoryTree,
       });
     }
 
-    return products.filter((product) => {
-      if (slug === 'repuestos' && isPrinterEquipmentProduct(product)) {
-        return false;
-      }
-      return productLabels.some((label) => productMatchesCategoryFilter(product, label));
-    });
+    if (useServerCatalog) {
+      return products;
+    }
+
+    return applyEquipmentSubcategorySlugFilter(
+      products.filter((product) => {
+        if (slug === 'repuestos' && isPrinterEquipmentProduct(product)) {
+          return false;
+        }
+        return productLabels.some((label) => productMatchesCategoryFilter(product, label));
+      }),
+      subSlug,
+    );
   }, [
     products,
     productLabels,
     isInventorySearch,
+    useServerCatalog,
     searchQuery,
     searchCategoryFilter,
     categoryTree,
     slug,
+    subSlug,
   ]);
 
   const availableAttributes = useMemo(() => {
@@ -408,7 +426,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
   }, [slug, location.hash, location.pathname, isLoading]);
 
   const hasSubcategoryHeroes =
-    Boolean(storeCategory?.children.length) && !isInventorySearch;
+    Boolean(storeCategory?.children?.length) && !isInventorySearch;
   const showProductCatalog = !isRentalCategory || hasSubcategoryHeroes;
 
   const parentHeroFallback = useMemo(() => {
@@ -431,7 +449,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
       return null;
     }
 
-    return storeCategory.children.map((sub) => {
+    return (storeCategory.children ?? []).map((sub) => {
       const content = getSubcategoryHeroContent(
         category.slug,
         {
@@ -940,7 +958,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
   }
 
   const heroSubcategoriesTabs =
-    storeCategory && storeCategory.children.length > 0 && activeSubcategory ? (
+    storeCategory && (storeCategory.children?.length ?? 0) > 0 && activeSubcategory ? (
       <SubcategoryTabs
         heading="Subcategorías"
         align="start"
@@ -1153,13 +1171,13 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
                     gridColumns={gridColumns}
                     sidebarOpen={catalogSidebarOpen}
                     renderProduct={(product) => (
-                      <ProductHighlightCard product={product} layout="card" />
+                      <ProductHighlightCard product={product} />
                     )}
                   />
                 ) : (
                   <div className={catalogGridClassName(gridColumns, catalogSidebarOpen)}>
                     {pagedCatalogProducts.map((product) => (
-                      <ProductHighlightCard key={product.id} product={product} layout="card" />
+                      <ProductHighlightCard key={product.id} product={product} />
                     ))}
                   </div>
                 )}

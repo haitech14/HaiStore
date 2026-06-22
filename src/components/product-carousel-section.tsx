@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import useEmblaCarousel from 'embla-carousel-react';
 
 import { ProductShowcaseCard } from '@/components/product-showcase-card';
@@ -16,7 +17,12 @@ export interface ProductCarouselSectionProps {
   viewAllLabel?: string;
   /** Oculta cabecera y enlace (p. ej. cuando la envuelve una sección con tabs). */
   hideHeader?: boolean;
+  /** Flechas laterales (secciones de inicio). */
+  showNavArrows?: boolean;
 }
+
+const carouselArrowClass =
+  'absolute top-1/2 z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/80 bg-white text-foreground shadow-md transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-35 sm:size-10';
 
 export function ProductCarouselSection({
   sectionId,
@@ -26,10 +32,13 @@ export function ProductCarouselSection({
   viewAllHref = '/tienda',
   viewAllLabel = 'Ver todos',
   hideHeader = false,
+  showNavArrows = false,
 }: ProductCarouselSectionProps) {
   const titleId = `${sectionId}-titulo`;
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: 'start',
@@ -39,12 +48,18 @@ export function ProductCarouselSection({
   });
 
   const scrollTo = useCallback((index: number) => emblaApi?.scrollTo(index), [emblaApi]);
+  const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
+  const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
 
   useEffect(() => {
     if (!emblaApi) return;
 
     const updateSnaps = () => setScrollSnaps(emblaApi.scrollSnapList());
-    const onSelect = () => setSelectedIndex(emblaApi.selectedScrollSnap());
+    const onSelect = () => {
+      setSelectedIndex(emblaApi.selectedScrollSnap());
+      setCanScrollPrev(emblaApi.canScrollPrev());
+      setCanScrollNext(emblaApi.canScrollNext());
+    };
 
     updateSnaps();
     onSelect();
@@ -66,6 +81,7 @@ export function ProductCarouselSection({
   }, [emblaApi, products]);
 
   const showDots = scrollSnaps.length > 1;
+  const showArrows = showNavArrows && products.length > 0;
 
   const sectionLabel = hideHeader ? undefined : titleId;
 
@@ -76,12 +92,12 @@ export function ProductCarouselSection({
           <div className="max-w-2xl">
             <h2
               id={titleId}
-              className="text-2xl font-bold tracking-tight text-neutral-900 sm:text-[1.75rem]"
+              className="text-2xl font-bold tracking-tight text-[#0f1f3d] sm:text-[1.75rem]"
             >
               {title}
             </h2>
             {subtitle ? (
-              <p className="mt-2 text-sm text-neutral-500 sm:text-[0.95rem]">{subtitle}</p>
+              <p className="mt-2 text-sm text-muted-foreground sm:text-[0.95rem]">{subtitle}</p>
             ) : null}
           </div>
           <Link
@@ -95,30 +111,55 @@ export function ProductCarouselSection({
       ) : null}
 
       <div className="flex flex-col gap-4">
-        <div className="overflow-hidden" ref={emblaRef}>
-          {products.length > 0 ? (
-            <ul className="flex flex-nowrap gap-4">
-              {products.map((product) => (
-                <li
-                  key={product.id}
-                  className="min-w-0 shrink-0 flex-[0_0_85%] sm:flex-[0_0_calc((100%-1rem)/2)] md:flex-[0_0_calc((100%-2rem)/3)] lg:flex-[0_0_calc((100%-4rem)/5)]"
-                >
-                  <ProductShowcaseCard product={product} variant="featured" />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="py-12 text-center text-sm text-neutral-500" role="status">
-              No hay productos en esta categoría por ahora.
-            </p>
-          )}
+        <div className={cn('relative', showArrows && 'px-10 sm:px-12')}>
+          {showArrows ? (
+            <>
+              <button
+                type="button"
+                className={cn(carouselArrowClass, 'left-0')}
+                aria-label="Productos anteriores"
+                disabled={!canScrollPrev}
+                onClick={scrollPrev}
+              >
+                <ChevronLeft className="size-5" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className={cn(carouselArrowClass, 'right-0')}
+                aria-label="Productos siguientes"
+                disabled={!canScrollNext}
+                onClick={scrollNext}
+              >
+                <ChevronRight className="size-5" aria-hidden="true" />
+              </button>
+            </>
+          ) : null}
+
+          <div className="overflow-hidden" ref={emblaRef}>
+            {products.length > 0 ? (
+              <ul className="flex flex-nowrap gap-3 sm:gap-4">
+                {products.map((product) => (
+                  <li
+                    key={product.id}
+                    className="min-w-0 shrink-0 flex-[0_0_78%] sm:flex-[0_0_calc((100%-1rem)/2)] md:flex-[0_0_calc((100%-2rem)/3)] lg:flex-[0_0_calc((100%-3rem)/4)] xl:flex-[0_0_calc((100%-4rem)/5)]"
+                  >
+                    <ProductShowcaseCard product={product} variant="featured" brandTone="accent" />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="py-12 text-center text-sm text-muted-foreground" role="status">
+                No hay productos en esta categoría por ahora.
+              </p>
+            )}
+          </div>
         </div>
 
         {showDots && products.length > 0 && (
           <div
             className="flex items-center justify-center gap-1.5"
             role="tablist"
-            aria-label={`Páginas del carrusel: ${title}`}
+            aria-label={`Páginas del carrusel: ${title || sectionId}`}
           >
             {scrollSnaps.map((_, index) => (
               <button
@@ -129,7 +170,7 @@ export function ProductCarouselSection({
                 aria-label={`Ir a la página ${index + 1} de ${scrollSnaps.length}`}
                 onClick={() => scrollTo(index)}
                 className={cn(
-                  'size-2.5 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
+                  'size-2 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
                   selectedIndex === index
                     ? 'bg-red-600'
                     : 'bg-neutral-300 hover:bg-neutral-400',

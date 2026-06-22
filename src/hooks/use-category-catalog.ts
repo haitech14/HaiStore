@@ -26,6 +26,7 @@ export interface CategoryCatalogResponse {
 export interface UseCategoryCatalogParams {
   enabled?: boolean;
   slug: string;
+  subSlug?: string | null;
   labels: string[];
   condition?: ProductCondition | null;
   inStockOnly?: boolean;
@@ -42,6 +43,7 @@ export interface UseCategoryCatalogParams {
 async function fetchCategoryCatalog(params: UseCategoryCatalogParams): Promise<CategoryCatalogResponse> {
   const query = new URLSearchParams();
   query.set('slug', params.slug);
+  if (params.subSlug) query.set('sub', params.subSlug);
   if (params.labels.length > 0) {
     query.set('labels', params.labels.join(','));
   }
@@ -67,6 +69,7 @@ export function useCategoryCatalog(params: UseCategoryCatalogParams) {
     queryKey: [
       CATEGORY_CATALOG_QUERY_KEY,
       params.slug,
+      params.subSlug,
       params.labels.join(','),
       params.condition,
       params.inStockOnly,

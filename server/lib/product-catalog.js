@@ -12,6 +12,13 @@ import { shouldPreferSupabaseCatalog } from './catalog-source.js';
 import { getSupabaseAdmin } from './supabase-auth.js';
 import { normalizeWarehouses } from './inventory-warehouses.js';
 import { resolveProductGallery, resolveProductImageUrl } from './product-image-url.js';
+import {
+  clearProductSearchHaystackCache,
+  normalizeCatalogSearchText,
+  productMatchesSearchQuery,
+  takeTopProductsBySearchRelevance,
+} from '../../shared/catalog-search.js';
+import { productMatchesCategoryFilter } from '../../shared/home-catalog-filter.js';
 
 export { shouldPreferSupabaseCatalog };
 
@@ -99,6 +106,52 @@ let bootstrapPromise = null;
 
 const SUPABASE_PRODUCTS_PAGE_SIZE = 1000;
 
+/** Columnas ligeras para listados/búsqueda (evita cargar inventory_snapshot completo). */
+const SUPABASE_CATALOG_LIST_COLUMNS = [
+  'id',
+  'name',
+  'description',
+  'price',
+  'prices',
+  'currency',
+  'image_url',
+  'gallery',
+  'stock',
+  'category',
+  'brand',
+  'attributes',
+  'sort_order',
+  'is_featured',
+  'view_count',
+  'created_at',
+].join(',');
+
+const PUBLIC_CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
+const SEARCH_RESULT_CACHE_TTL_MS = 30 * 1000;
+const SEARCH_RESULT_CACHE_MAX = 256;
+
+/** @type {Map<string, { products: unknown[]; cachedAt: number }>} */
+const publicCatalogCache = new Map();
+/** @type {Map<string, Promise<unknown[]>>} */
+const publicCatalogInFlight = new Map();
+/** @type {Map<string, { result: { products: unknown[]; total: number }; cachedAt: number }>} */
+const searchResultCache = new Map();
+
+/** @type {Map<string, Map<string, unknown>>} */
+const publicCatalogById = new Map();
+
+export function invalidatePublicCatalogCache() {
+  publicCatalogCache.clear();
+  publicCatalogInFlight.clear();
+  searchResultCache.clear();
+  publicCatalogById.clear();
+  clearProductSearchHaystackCache();
+}
+
+function indexPublicCatalogById(role, products) {
+  publicCatalogById.set(role, new Map(products.map((product) => [product.id, product])));
+}
+
 function isSupabaseProductsTableMissing(error) {
   const message = String(error?.message ?? error ?? '');
   return /Could not find the table ['"]?public\.products['"]?/i.test(message);
@@ -122,8 +175,8 @@ function formatSupabaseCatalogError(error) {
   return message;
 }
 
-async function fetchProductPageFromSupabase(supabase, offset, { ordered }) {
-  let query = supabase.from('products').select('*');
+async function fetchProductPageFromSupabase(supabase, offset, { ordered, columns = '*' }) {
+  let query = supabase.from('products').select(columns);
   if (ordered) {
     query = query.order('sort_order', { ascending: true }).order('created_at', { ascending: true });
   } else {
@@ -132,14 +185,14 @@ async function fetchProductPageFromSupabase(supabase, offset, { ordered }) {
   return query.range(offset, offset + SUPABASE_PRODUCTS_PAGE_SIZE - 1);
 }
 
-async function fetchAllProductRowsFromSupabase(supabase) {
+async function fetchAllProductRowsFromSupabase(supabase, { columns = '*' } = {}) {
   /** @type {Record<string, unknown>[]} */
   const rows = [];
   let offset = 0;
   let ordered = true;
 
   while (true) {
-    let result = await fetchProductPageFromSupabase(supabase, offset, { ordered });
+    let result = await fetchProductPageFromSupabase(supabase, offset, { ordered, columns });
 
     if (result.error && ordered && isSupabaseSchemaColumnError(result.error)) {
       console.warn(
@@ -148,7 +201,7 @@ async function fetchAllProductRowsFromSupabase(supabase) {
       ordered = false;
       offset = 0;
       rows.length = 0;
-      result = await fetchProductPageFromSupabase(supabase, offset, { ordered });
+      result = await fetchProductPageFromSupabase(supabase, offset, { ordered, columns });
     }
 
     if (result.error) {
@@ -212,7 +265,19 @@ async function listFromSupabase(role, adminView) {
 
   let rows;
   try {
-    rows = await fetchAllProductRowsFromSupabase(supabase);
+    try {
+      rows = await fetchAllProductRowsFromSupabase(supabase, {
+        columns: SUPABASE_CATALOG_LIST_COLUMNS,
+      });
+    } catch (lightError) {
+      const lightMessage = lightError instanceof Error ? lightError.message : String(lightError);
+      if (/column|schema cache/i.test(lightMessage)) {
+        console.warn('[catalog] consulta ligera falló; reintento con select *:', lightMessage);
+        rows = await fetchAllProductRowsFromSupabase(supabase);
+      } else {
+        throw lightError;
+      }
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[catalog] list Supabase:', message);
@@ -246,12 +311,45 @@ async function listFromInventory(role, adminView) {
  * Lista productos desde inventario unificado (JSON local + Supabase cuando aplica).
  * No usar solo Supabase: importaciones CLI (repuestos, tóner) viven en inventory.json.
  */
-export async function listProducts({ role = 'public', adminView = false } = {}) {
+async function listProductsUncached({ role = 'public', adminView = false } = {}) {
   if (shouldPreferSupabaseCatalog()) {
     const fromDb = await listFromSupabase(role, adminView);
     if (fromDb != null) return fromDb;
   }
   return listFromInventory(role, adminView);
+}
+
+export async function listProducts({ role = 'public', adminView = false } = {}) {
+  if (adminView) {
+    return listProductsUncached({ role, adminView: true });
+  }
+
+  const cacheKey = role;
+  const now = Date.now();
+  const cached = publicCatalogCache.get(cacheKey);
+  if (cached && now - cached.cachedAt < PUBLIC_CATALOG_CACHE_TTL_MS) {
+    return cached.products;
+  }
+
+  const inFlight = publicCatalogInFlight.get(cacheKey);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const promise = listProductsUncached({ role, adminView: false })
+    .then((products) => {
+      publicCatalogCache.set(cacheKey, { products, cachedAt: Date.now() });
+      indexPublicCatalogById(role, products);
+      publicCatalogInFlight.delete(cacheKey);
+      return products;
+    })
+    .catch((error) => {
+      publicCatalogInFlight.delete(cacheKey);
+      throw error;
+    });
+
+  publicCatalogInFlight.set(cacheKey, promise);
+  return promise;
 }
 
 async function getFromSupabase(id, role) {
@@ -260,7 +358,11 @@ async function getFromSupabase(id, role) {
 
   await ensureSupabaseCatalogSeeded();
 
-  const { data, error } = await supabase.from('products').select('*').eq('id', id).maybeSingle();
+  const { data, error } = await supabase
+    .from('products')
+    .select(SUPABASE_CATALOG_LIST_COLUMNS)
+    .eq('id', id)
+    .maybeSingle();
 
   if (error) {
     console.error('[catalog] get Supabase:', id, error.message);
@@ -272,8 +374,24 @@ async function getFromSupabase(id, role) {
 }
 
 export async function getPublicProductById(id, role = 'public') {
+  const normalizedId = String(id ?? '').trim();
+  if (!normalizedId) return undefined;
+
+  const byId = publicCatalogById.get(role);
+  const catalogCached = publicCatalogCache.get(role);
+  const catalogFresh =
+    catalogCached && Date.now() - catalogCached.cachedAt < PUBLIC_CATALOG_CACHE_TTL_MS;
+
+  if (catalogFresh && byId?.has(normalizedId)) {
+    return byId.get(normalizedId);
+  }
+
+  if (catalogFresh && byId) {
+    return undefined;
+  }
+
   if (shouldPreferSupabaseCatalog()) {
-    const fromDb = await getFromSupabase(id, role);
+    const fromDb = await getFromSupabase(normalizedId, role);
     if (fromDb !== null) {
       if (fromDb === undefined) return undefined;
       return fromDb;
@@ -281,46 +399,13 @@ export async function getPublicProductById(id, role = 'public') {
   }
 
   const { products } = await readInventory();
-  const product = products.find((entry) => entry.id === id);
+  const product = products.find((entry) => entry.id === normalizedId);
   if (!product) return undefined;
   return toPublicProduct(withResolvedMedia(product), role);
 }
 
 function normalizeSearchText(value) {
-  return String(value ?? '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '');
-}
-
-function productSearchHaystack(product) {
-  const attributes = Array.isArray(product.attributes) ? product.attributes : [];
-  return [
-    product.name,
-    product.code,
-    product.description,
-    product.brand,
-    product.category,
-    ...attributes.map((attr) => `${attr.name ?? ''} ${attr.value ?? ''}`),
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
-
-function productMatchesSearchQuery(product, query) {
-  const terms = normalizeSearchText(query).split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return false;
-  const haystack = normalizeSearchText(productSearchHaystack(product));
-  return terms.every((term) => haystack.includes(term));
-}
-
-function productMatchesCategoryFilter(product, filterValue) {
-  if (!filterValue || filterValue === 'all') return true;
-  const target = normalizeSearchText(filterValue);
-  const category = normalizeSearchText(product.category ?? '');
-  if (!category) return false;
-  return category.split(',').some((part) => part.trim() === target || part.includes(target));
+  return normalizeCatalogSearchText(value);
 }
 
 /**
@@ -337,23 +422,34 @@ export async function searchPublicProducts({
     return { products: [], total: 0 };
   }
 
-  const safeLimit = Math.min(Math.max(Number(limit) || 8, 1), 50);
-  const { products } = await readInventory();
-
-  let matched = products
-    .filter((product) => productMatchesSearchQuery(product, trimmed))
-    .map((product) => toPublicProductList(withResolvedMedia(product), role));
-
-  if (categoryFilter && categoryFilter !== 'all') {
-    matched = matched.filter((product) => productMatchesCategoryFilter(product, categoryFilter));
+  const safeLimit = Math.min(Math.max(Number(limit) || 8, 1), 100);
+  const normalizedCategory = categoryFilter && categoryFilter !== 'all' ? categoryFilter : 'all';
+  const cacheKey = `${role}|${trimmed.toLowerCase()}|${normalizedCategory}|${safeLimit}`;
+  const now = Date.now();
+  const cachedSearch = searchResultCache.get(cacheKey);
+  if (cachedSearch && now - cachedSearch.cachedAt < SEARCH_RESULT_CACHE_TTL_MS) {
+    return cachedSearch.result;
   }
 
-  matched.sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  const allProducts = await listProducts({ role });
 
-  return {
-    products: matched.slice(0, safeLimit),
-    total: matched.length,
-  };
+  let matched = allProducts.filter((product) => productMatchesSearchQuery(product, trimmed));
+
+  if (normalizedCategory !== 'all') {
+    matched = matched.filter((product) => productMatchesCategoryFilter(product, normalizedCategory));
+  }
+
+  const total = matched.length;
+  const products = takeTopProductsBySearchRelevance(matched, trimmed, safeLimit);
+  const result = { products, total };
+
+  if (searchResultCache.size >= SEARCH_RESULT_CACHE_MAX) {
+    const oldestKey = searchResultCache.keys().next().value;
+    if (oldestKey) searchResultCache.delete(oldestKey);
+  }
+  searchResultCache.set(cacheKey, { result, cachedAt: now });
+
+  return result;
 }
 
 function toMinimalSupabaseRow(row) {

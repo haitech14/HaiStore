@@ -43,7 +43,11 @@ function ConsumableStripCard({
 }) {
   const yieldLabel = extractYieldLabel(item.name);
   const displaySku =
-    formatProductDisplayCode(item.sku) ?? item.sku?.trim() ?? null;
+    formatProductDisplayCode(item.sku, {
+      name: item.name,
+      category: product?.category,
+      isToner: /toner|tóner/i.test(item.name),
+    }) ?? item.sku?.trim() ?? null;
 
   return (
     <article className="flex min-h-[7.5rem] gap-3 rounded-lg border border-border/70 bg-white p-3 shadow-sm">
@@ -122,7 +126,7 @@ export function ProductDetailConsumablesStrip({
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h3 id="consumibles-relacionados-titulo" className="text-base font-bold text-[#0f1f3d] sm:text-lg">
-          Consumibles / Productos relacionados
+          Tóner y repuestos relacionados
         </h3>
         {onViewAll ? (
           <button

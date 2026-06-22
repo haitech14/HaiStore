@@ -105,7 +105,11 @@ function formatProductResult(
   focus: HaibotSearchFocus,
   index: number,
 ): string {
-  const displayCode = formatProductDisplayCode(product.code, { brand: product.brand });
+  const displayCode = formatProductDisplayCode(product.code, {
+    brand: product.brand,
+    category: product.category,
+    name: product.name,
+  });
   const lines = [`${index}. ${product.name}`];
 
   if (displayCode) {
@@ -136,7 +140,7 @@ export function formatHaibotInventorySearchReply(
   }
 
   const grouped = limitSearchProductCategoryGroups(
-    groupSearchProductsByCategory(allMatches),
+    groupSearchProductsByCategory(allMatches, query),
     HAIBOT_INVENTORY_SEARCH_LIMIT,
   );
   const shownCount = grouped.reduce((sum, group) => sum + group.products.length, 0);

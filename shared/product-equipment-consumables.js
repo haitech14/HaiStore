@@ -7,6 +7,11 @@ const CATEGORY_RULES = [
     keywords: ['toner', 'tóner', 'cartucho', 'cartridge', 'botella toner', 'waste toner', 'residual'],
   },
   {
+    id: 'accesorios',
+    label: 'Accesorios',
+    keywords: ['accesorio'],
+  },
+  {
     id: 'imaging-unit',
     label: 'Unidad de imagen',
     keywords: [
@@ -119,11 +124,28 @@ function extractSearchKeys(equipment) {
   return [...keys].filter((key) => key.replace(/\s+/g, '').length >= 3);
 }
 
+function isAccesoriosCategory(product) {
+  const category = normalizeText(product.category ?? '');
+  return category.includes('accesorio');
+}
+
+function isRepuestosCategory(product) {
+  const category = normalizeText(product.category ?? '');
+  return (
+    category.includes('repuesto') ||
+    category.includes('accesorio') ||
+    category.includes('suministro') ||
+    category.includes('toner') ||
+    category.includes('tóner')
+  );
+}
+
 function isEquipmentConsumable(product) {
   const haystack = productHaystack(product);
   if (haystack.includes('impresora') || haystack.includes('multifuncional')) {
     return false;
   }
+  if (isRepuestosCategory(product)) return true;
   return CATEGORY_RULES.some((rule) =>
     rule.keywords.some((keyword) => haystack.includes(normalizeText(keyword))),
   );
@@ -142,6 +164,26 @@ function consumableMatchesEquipment(consumable, keys) {
 
 function classifyConsumable(product) {
   const haystack = productHaystack(product);
+
+  if (isAccesoriosCategory(product)) {
+    return 'accesorios';
+  }
+
+  for (const rule of CATEGORY_RULES) {
+    if (rule.id === 'toner' && rule.keywords.some((keyword) => haystack.includes(normalizeText(keyword)))) {
+      return 'toner';
+    }
+  }
+
+  if (isRepuestosCategory(product) && !haystack.includes('toner') && !haystack.includes('tóner')) {
+    for (const rule of CATEGORY_RULES) {
+      if (rule.id !== 'toner' && rule.keywords.some((keyword) => haystack.includes(normalizeText(keyword)))) {
+        return rule.id;
+      }
+    }
+    return 'repuestos';
+  }
+
   for (const rule of CATEGORY_RULES) {
     if (rule.keywords.some((keyword) => haystack.includes(normalizeText(keyword)))) {
       return rule.id;
@@ -203,18 +245,25 @@ export function resolveEquipmentConsumables(equipment, catalog) {
     byCategory.set(categoryId, list);
   }
 
-  return CATEGORY_RULES.filter((rule) => byCategory.has(rule.id)).map((rule) => {
-    const allItems = (byCategory.get(rule.id) ?? []).sort((a, b) =>
-      a.name.localeCompare(b.name, 'es'),
-    );
-    const items = allItems.filter((item) => !item.componentLabel);
-    const subgroups = buildSubgroups(allItems);
+  const groupOrder = [
+    ...CATEGORY_RULES.map((rule) => ({ id: rule.id, label: rule.label })),
+    { id: 'repuestos', label: 'Repuestos' },
+  ];
 
-    return {
-      id: rule.id,
-      label: rule.label,
-      items,
-      subgroups,
-    };
-  });
+  return groupOrder
+    .filter((entry) => byCategory.has(entry.id))
+    .map((entry) => {
+      const allItems = (byCategory.get(entry.id) ?? []).sort((a, b) =>
+        a.name.localeCompare(b.name, 'es'),
+      );
+      const items = allItems.filter((item) => !item.componentLabel);
+      const subgroups = buildSubgroups(allItems);
+
+      return {
+        id: entry.id,
+        label: entry.label,
+        items,
+        subgroups,
+      };
+    });
 }

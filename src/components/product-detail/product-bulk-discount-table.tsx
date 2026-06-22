@@ -20,6 +20,8 @@ interface ProductBulkDiscountTableProps {
   quantity?: number;
   /** Sin borde/radio exterior; cabecera suave para incrustar en el bloque de compra. */
   embedded?: boolean;
+  /** Estilo neutro (texto negro) para la fila bajo el precio en ficha de producto. */
+  purchaseEmbedded?: boolean;
 }
 
 export function ProductBulkDiscountTable({
@@ -29,6 +31,7 @@ export function ProductBulkDiscountTable({
   defaultOpen = false,
   quantity = 1,
   embedded = false,
+  purchaseEmbedded = false,
 }: ProductBulkDiscountTableProps) {
   const [open, setOpen] = useState(defaultOpen);
   const panelId = useId();
@@ -41,14 +44,25 @@ export function ProductBulkDiscountTable({
   const basePriceUsd = fullPrices.public;
   const floorPriceUsd = fullPrices.tecnico;
   const activeTier = resolveBulkDiscountTierForQuantity(quantity, tiers);
+  const isNeutralHeader = embedded || purchaseEmbedded;
+  const tierForTwo = resolveBulkDiscountTierForQuantity(2, tiers);
+  const tierForThree = resolveBulkDiscountTierForQuantity(3, tiers);
+  const summaryTiers = [
+    tierForTwo ? { quantity: 2, tier: tierForTwo } : null,
+    tierForThree ? { quantity: 3, tier: tierForThree } : null,
+  ].filter(
+    (item): item is { quantity: number; tier: BulkDiscountTier } => item != null,
+  );
 
   return (
     <div
       className={cn(
         'overflow-hidden text-xs sm:text-[0.8125rem]',
-        embedded
-          ? 'border-b border-border/60'
-          : 'rounded-md border border-red-600/25',
+        purchaseEmbedded
+          ? 'rounded-lg border border-border/60'
+          : embedded
+            ? 'border-b border-border/60'
+            : 'rounded-md border border-red-600/25',
         className,
       )}
     >
@@ -59,23 +73,27 @@ export function ProductBulkDiscountTable({
         aria-controls={panelId}
         className={cn(
           'flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2',
-          embedded
-            ? 'bg-red-50 text-red-600 hover:bg-red-100/80'
+          isNeutralHeader
+            ? 'bg-muted/25 text-foreground hover:bg-muted/40'
             : 'bg-red-600 text-white hover:bg-red-500',
         )}
       >
         <span className="flex min-w-0 items-center gap-2">
-          {embedded ? (
-            <Tag className="size-3.5 shrink-0 sm:size-4" aria-hidden="true" />
+          {isNeutralHeader ? (
+            <Tag className="size-3.5 shrink-0 text-foreground sm:size-4" aria-hidden="true" />
           ) : null}
-          <span className="text-[0.6875rem] font-bold tracking-wide sm:text-xs">
+          <span
+            className={cn(
+              'text-[0.6875rem] font-bold tracking-wide sm:text-xs',
+              isNeutralHeader ? 'text-foreground' : 'text-white',
+            )}
+          >
             Descuentos por volumen
           </span>
         </span>
         <ChevronDown
           className={cn(
-            'size-4 shrink-0 transition-transform',
-            embedded ? 'text-red-600' : 'text-white',
+            'size-4 shrink-0 text-muted-foreground transition-transform',
             open && 'rotate-180',
           )}
           aria-hidden="true"
@@ -83,6 +101,27 @@ export function ProductBulkDiscountTable({
       </button>
 
       <div id={panelId} hidden={!open} className={cn(!open && 'hidden')}>
+        {summaryTiers.length > 0 ? (
+          <div className="border-t border-border/50 bg-muted/15 px-3 py-2 text-[0.6875rem] text-foreground sm:text-xs">
+            <p className="font-semibold">Precio final por cantidad:</p>
+            <p className="mt-0.5">
+              {summaryTiers.map(({ quantity: qty, tier }) => {
+                const effective = resolveEffectiveBulkDiscountTier(
+                  tier,
+                  basePriceUsd,
+                  floorPriceUsd,
+                );
+                return (
+                  <span key={qty} className="mr-3 inline-flex items-center gap-1">
+                    <span className="font-medium">{qty} unid.:</span>
+                    <DualPrice usd={effective.unitUsd} className="font-bold text-foreground" />
+                    <span className="text-muted-foreground">({effective.discount})</span>
+                  </span>
+                );
+              })}
+            </p>
+          </div>
+        ) : null}
         <table className="w-full border-collapse text-left">
           <caption className="sr-only">Descuentos por volumen</caption>
           <thead className="bg-red-600 text-white">
@@ -110,15 +149,15 @@ export function ProductBulkDiscountTable({
                 <tr
                   key={tier.range}
                   className={cn(
-                    'bg-white text-red-600',
-                    index > 0 && 'border-t border-red-600/20',
-                    activeTier?.range === tier.range && 'bg-red-50',
+                    'bg-white text-foreground',
+                    index > 0 && 'border-t border-border/60',
+                    activeTier?.range === tier.range && 'bg-muted/20',
                   )}
                 >
                   <td className="px-3 py-2 font-semibold">{tier.range}</td>
                   <td className="px-3 py-2">
                     <span
-                      className="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-[0.6875rem] font-semibold text-red-600"
+                      className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[0.6875rem] font-semibold text-foreground"
                       title={
                         effective.cappedByTecnico
                           ? 'Descuento limitado al precio técnico'
@@ -131,7 +170,7 @@ export function ProductBulkDiscountTable({
                   <td className="px-3 py-2 font-bold">
                     <DualPrice
                       usd={effective.unitUsd}
-                      className="text-xs font-bold text-red-600 sm:text-[0.8125rem]"
+                      className="text-xs font-bold text-foreground sm:text-[0.8125rem]"
                     />
                     <span className="sr-only">{effective.unitUsd} dólares por unidad</span>
                   </td>

@@ -3,6 +3,18 @@ import type { RentalPlanOption } from '@/types/product-detail';
 /** Costo por copia negro sobre la cuota base del plan (PEN). */
 export const RENTAL_EXCESS_COPY_COST_PEN = 0.09;
 
+/** Cuota variable mensual — negro en equipos monocromáticos (PEN/pág.). */
+export const RENTAL_BW_VARIABLE_COPY_COST_PEN = 0.09;
+
+/** Cuota variable mensual — negro en equipos a color (PEN/pág.). */
+export const RENTAL_COLOR_BLACK_VARIABLE_COPY_COST_PEN = 0.15;
+
+/** Cuota variable mensual — color en equipos a color (PEN/pág.). */
+export const RENTAL_COLOR_VARIABLE_COPY_COST_PEN = 0.25;
+
+/** Bolsa mínima de páginas para el cálculo de cuota variable. */
+export const RENTAL_MIN_BILLABLE_PAGES = 5000;
+
 /** @deprecated Usar RENTAL_EXCESS_COPY_COST_PEN */
 export const RENTAL_BLACK_COPY_COST_PEN = RENTAL_EXCESS_COPY_COST_PEN;
 
@@ -12,14 +24,17 @@ export const RENTAL_PAPER_SURCHARGE_PEN = 0.02;
 /** Cuota fija mensual por operador (PEN). */
 export const RENTAL_OPERATOR_MONTHLY_PEN = 1500;
 
-/** Plazo fijo de contrato de alquiler (meses). */
+/** Plazo fijo de contrato de alquiler (meses) — valor por defecto al abrir el simulador. */
+export const RENTAL_DEFAULT_TERM_MONTHS = 6;
+
+/** @deprecated Usar RENTAL_DEFAULT_TERM_MONTHS o el plazo elegido en el simulador. */
 export const RENTAL_TERM_MONTHS = 36;
 
-/** Beneficio incluido en el plazo de 36 meses. */
+/** Beneficio incluido en el plan de mantenimiento. */
 export const RENTAL_TERM_RENEWAL_NOTE =
-  'Incluye renovación automática del equipo nuevo al finalizar el plazo.';
+  'Incluye Mantenimiento Preventivo Inicial y Final.';
 
-export const RENTAL_TERM_OPTIONS = [RENTAL_TERM_MONTHS] as const;
+export const RENTAL_TERM_OPTIONS = [6, 12, 36] as const;
 
 export type RentalTermMonths = (typeof RENTAL_TERM_OPTIONS)[number];
 
@@ -29,6 +44,9 @@ export const RENTAL_SETUP_FEE_PEN = 250;
 export const RENTAL_MIN_TERM_FOR_FREE_SETUP = 6;
 
 export const RENTAL_DEFAULT_MONTHLY_PAGES = 5000;
+
+/** Precio «desde» mensual mostrado en el banner del plan (PEN). */
+export const MAINTENANCE_PLAN_FROM_MONTHLY_PEN = 150;
 
 export interface RentalCalculatorInput {
   termMonths?: number;
@@ -68,7 +86,7 @@ export function resolveRentalPlanForPages(
 
 export function calculateRentalQuote(input: RentalCalculatorInput): RentalCalculatorBreakdown {
   const monthlyPages = Math.max(1, Math.floor(input.monthlyPages));
-  const termMonths = Math.max(1, Math.floor(input.termMonths ?? RENTAL_TERM_MONTHS));
+  const termMonths = Math.max(1, Math.floor(input.termMonths ?? RENTAL_DEFAULT_TERM_MONTHS));
   const plan = resolveRentalPlanForPages(monthlyPages, input.plans);
   const baseMonthlyPen = plan.monthlyPricePen;
   const includedPages = plan.pagesPerMonth;
