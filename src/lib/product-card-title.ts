@@ -134,7 +134,7 @@ export function getProductCardTitleContent(
   const brand = product.brand?.trim() || null;
   const code = formatProductDisplayCode(product.code, {
     brand: product.brand,
-    category: product.category,
+    category: product.category ?? null,
     name: product.name,
   });
 

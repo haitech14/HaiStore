@@ -1,24 +1,25 @@
+import type { ProductRolePrices } from '@/lib/roles';
 import { ensureFullPrices } from '@/lib/roles';
 import type { InventoryProduct } from '@/types/product';
 
 /** Precio público USD para ordenar listados. */
-export function getProductPublicPriceUsd(
-  product: Pick<InventoryProduct, 'prices'>,
-): number {
-  return Number(ensureFullPrices(product.prices).public) || 0;
+export function getProductPublicPriceUsd(product: {
+  prices?: ProductRolePrices;
+}): number {
+  return Number(ensureFullPrices(product.prices ?? { public: 0 }).public) || 0;
 }
 
 /** Menor precio público primero; desempate por nombre. */
 export function compareProductsByPublicPriceAsc(
-  a: Pick<InventoryProduct, 'prices' | 'name'>,
-  b: Pick<InventoryProduct, 'prices' | 'name'>,
+  a: { prices?: ProductRolePrices; name: string },
+  b: { prices?: ProductRolePrices; name: string },
 ): number {
   const diff = getProductPublicPriceUsd(a) - getProductPublicPriceUsd(b);
   if (diff !== 0) return diff;
   return a.name.localeCompare(b.name, 'es');
 }
 
-export function sortProductsByPublicPriceAsc<T extends Pick<InventoryProduct, 'prices' | 'name'>>(
+export function sortProductsByPublicPriceAsc<T extends { prices?: ProductRolePrices; name: string }>(
   products: T[],
 ): T[] {
   return [...products].sort(compareProductsByPublicPriceAsc);

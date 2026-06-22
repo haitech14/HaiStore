@@ -45,7 +45,7 @@ function ConsumableStripCard({
   const displaySku =
     formatProductDisplayCode(item.sku, {
       name: item.name,
-      category: product?.category,
+      category: product?.category ?? null,
       isToner: /toner|tóner/i.test(item.name),
     }) ?? item.sku?.trim() ?? null;
 
