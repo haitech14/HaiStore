@@ -394,7 +394,7 @@ function CategoryProductTableRow({
   const stockQty = catalogEntry?.product.stock ?? product.stock;
   const displayProduct: Product =
     catalogEntry != null ? { ...product, stock: catalogEntry.product.stock } : product;
-  const detailHref = productPath(product.id);
+  const detailHref = productPath(product);
   const imageProduct = catalogEntry?.product ?? product;
   const rolePrices = resolveTableRolePrices(product, catalogEntry);
   const canManage = isAdmin && catalogEntry != null;

@@ -25,6 +25,8 @@ export type { SelectedEquipmentOption, ProductVolumeRolePriceTier };
 
 export interface Product {
   id: string;
+  /** Slug legible para URL y SEO (opcional; se deriva del nombre o id). */
+  slug?: string | null;
   /** Código de inventario (EDP / SKU) cuando está disponible en catálogo público. */
   code?: string | null;
   name: string;
@@ -56,6 +58,10 @@ export interface Product {
   storefront_feature_bar?: StoredFeatureBarItem[] | null;
   /** Bullets del hero personalizados en ficha de tienda. */
   storefront_hero_bullets?: StoredHeroBullet[] | null;
+  /** Productos sugeridos en venta cruzada (selector de tóner / complementos). */
+  cross_sell_product_ids?: string[];
+  /** Productos sugeridos en upselling (carrusel «Configura tu equipo»). */
+  upsell_product_ids?: string[];
 }
 
 export interface InventorySupplier {
@@ -124,6 +130,10 @@ export interface InventoryProduct extends Omit<Product, 'price' | 'price_role' |
   attributes?: ProductAttribute[];
   /** Pack compuesto: stock y precios se derivan de los componentes al vender. */
   bundle_components?: ProductBundleComponent[];
+  /** Venta cruzada: IDs de productos relacionados (p. ej. tóner original). */
+  cross_sell_product_ids?: string[];
+  /** Upselling: IDs de productos en el carrusel «Configura tu equipo». */
+  upsell_product_ids?: string[];
   /** URLs de galería (la principal suele coincidir con image_url). */
   gallery: string[];
   prices: ProductRolePrices;

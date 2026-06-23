@@ -23,6 +23,7 @@ import {
 import { normalizeVolumeRolePrices } from '../../shared/product-volume-role-prices.js';
 import { normalizeCompatibleTonerProductFields } from '../../shared/compatible-toner.js';
 import { normalizeProductCode } from '../../shared/product-code-prefix.js';
+import { deriveProductSlug } from '../../shared/product-slug.js';
 import { isBundleProduct, normalizeBundleComponents, syncInventoryBundleProducts } from './product-bundle.js';
 import { ensureFullPrices, resolvePriceRole } from './roles.js';
 import { shouldPreferSupabaseCatalog } from './catalog-source.js';
@@ -189,6 +190,7 @@ export function migrateInventoryProduct(product, warehouses = normalizeWarehouse
     code:
       normalizeProductCode(normalizedToner.code) ||
       String(normalizedToner.id ?? '').toUpperCase().replace(/-/g, ''),
+    slug: String(normalizedToner.slug ?? '').trim() || undefined,
     suppliers,
     attachments,
     attributes,
@@ -533,6 +535,7 @@ export function toPublicProduct(product, role) {
 
   return {
     id: product.id,
+    slug: product.slug ?? deriveProductSlug(product),
     code: product.code ?? null,
     name: product.name,
     description: product.description ?? null,
@@ -559,6 +562,12 @@ export function toPublicProduct(product, role) {
         attachment.kind,
       ),
     ),
+    cross_sell_product_ids: Array.isArray(product.cross_sell_product_ids)
+      ? product.cross_sell_product_ids.filter((id) => typeof id === 'string' && id.trim())
+      : [],
+    upsell_product_ids: Array.isArray(product.upsell_product_ids)
+      ? product.upsell_product_ids.filter((id) => typeof id === 'string' && id.trim())
+      : [],
   };
 }
 
@@ -661,6 +670,8 @@ export function normalizeProductInput(body, existing, warehouses) {
           ? normalizeStorefrontHeroBullets(body.storefront_hero_bullets)
           : existing?.storefront_hero_bullets,
       bundle_components: body.bundle_components ?? existing?.bundle_components,
+      cross_sell_product_ids: body.cross_sell_product_ids ?? existing?.cross_sell_product_ids,
+      upsell_product_ids: body.upsell_product_ids ?? existing?.upsell_product_ids,
       volume_role_prices: body.volume_role_prices ?? existing?.volume_role_prices,
       created_at: existing?.created_at ?? new Date().toISOString(),
       sort_order:

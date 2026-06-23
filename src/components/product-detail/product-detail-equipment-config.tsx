@@ -4,6 +4,7 @@ import { ChevronDown } from 'lucide-react';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import type { EquipmentSelectionState } from '@/lib/equipment-config-selection';
+import { isMerchandisingEquipmentStepId } from '@/lib/product-merchandising';
 import { productPath } from '@/lib/product-path';
 import { cn } from '@/lib/utils';
 import type { EquipmentConfigStep } from '@/types/product-detail';
@@ -51,6 +52,9 @@ export function ProductDetailEquipmentConfig({
 
   if (steps.length === 0) return null;
 
+  const wizardSteps = steps.filter((step) => !isMerchandisingEquipmentStepId(step.id));
+  if (wizardSteps.length === 0) return null;
+
   return (
     <section
       className={cn('space-y-2.5 sm:space-y-3', className)}
@@ -68,7 +72,7 @@ export function ProductDetailEquipmentConfig({
 
       <EquipmentConfigStepList
         sectionId={sectionId}
-        steps={steps}
+        steps={wizardSteps}
         selection={selection}
         onToggleOption={toggleOption}
       />

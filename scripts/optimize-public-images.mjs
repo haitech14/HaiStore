@@ -51,26 +51,30 @@ async function generateVariants(inputPath, variants) {
 
 async function optimizeHero() {
   console.log('\n— Hero banner —');
-  const hero = path.join(PUBLIC, 'categories', 'fiestaspatriasbanner.png');
-  if (!fs.existsSync(hero)) {
-    console.warn('  ⚠ No encontrado: fiestaspatriasbanner.png');
-    return;
+  const heroFiles = ['fiestaspatriasbanner.png', 'promonuevas-1.png'];
+
+  for (const file of heroFiles) {
+    const hero = path.join(PUBLIC, 'categories', file);
+    if (!fs.existsSync(hero)) {
+      console.warn(`  ⚠ No encontrado: ${file}`);
+      continue;
+    }
+
+    const optimizedPng = `${hero}.optimized.tmp`;
+    await sharp(hero)
+      .rotate()
+      .png({ compressionLevel: 9, adaptiveFiltering: true })
+      .toFile(optimizedPng);
+    const before = kb(hero);
+    fs.renameSync(optimizedPng, hero);
+    console.log(`  ✓ ${file} optimizado (${before} KB → ${kb(hero)} KB)`);
+
+    await generateVariants(hero, [
+      { suffix: '-768', width: 768 },
+      { suffix: '-1280', width: 1280 },
+      { suffix: '-1920', width: 1920 },
+    ]);
   }
-
-  const optimizedPng = `${hero}.optimized.tmp`;
-  await sharp(hero)
-    .rotate()
-    .png({ compressionLevel: 9, adaptiveFiltering: true })
-    .toFile(optimizedPng);
-  const before = kb(hero);
-  fs.renameSync(optimizedPng, hero);
-  console.log(`  ✓ fiestaspatriasbanner.png optimizado (${before} KB → ${kb(hero)} KB)`);
-
-  await generateVariants(hero, [
-    { suffix: '-768', width: 768 },
-    { suffix: '-1280', width: 1280 },
-    { suffix: '-1920', width: 1920 },
-  ]);
 }
 
 async function optimizeCategories() {

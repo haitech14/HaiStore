@@ -3,11 +3,13 @@ import { GitCompare, X } from 'lucide-react';
 import { ProductCompareDialog } from '@/components/product/product-compare-dialog';
 import { Button } from '@/components/ui/button';
 import { useProductCompare } from '@/context/product-compare-context';
+import { mobileBottomOffsetStyle, useMobileBottomInset } from '@/context/mobile-bottom-inset-context';
 import { MAX_COMPARE_PRODUCTS } from '@/lib/compare-product';
 import { cn } from '@/lib/utils';
 
 export function ProductCompareTray() {
   const { items, remove, setCompareOpen } = useProductCompare();
+  const bottomInset = useMobileBottomInset();
 
   if (items.length === 0) {
     return <ProductCompareDialog />;
@@ -16,7 +18,8 @@ export function ProductCompareTray() {
   return (
     <>
       <div
-        className="fixed bottom-4 left-1/2 z-40 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 rounded-xl border bg-background p-3 shadow-lg"
+        className="fixed left-1/2 z-40 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 rounded-xl border bg-background p-3 shadow-lg"
+        style={mobileBottomOffsetStyle(bottomInset, 1)}
         role="region"
         aria-label="Productos seleccionados para comparar"
       >

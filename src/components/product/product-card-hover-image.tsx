@@ -1,11 +1,17 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ImageOff } from 'lucide-react';
 
 import { ProductCardImage } from '@/components/product/product-card-image';
 import { cn } from '@/lib/utils';
 
+/** Imagen de tarjeta: centrada, sin recorte y ligeramente ampliada para reducir márgenes blancos. */
+export const PRODUCT_CARD_IMAGE_CLASS =
+  'size-full object-contain object-center scale-[1.14] origin-center';
+
 interface ProductCardHoverImageProps {
   candidates: string[];
+  /** Segunda foto de galería al pasar el cursor sobre la imagen. */
+  hoverSrc?: string | null;
   alt?: string;
   className?: string;
   imageClassName?: string;
@@ -14,12 +20,28 @@ interface ProductCardHoverImageProps {
 
 export function ProductCardHoverImage({
   candidates,
+  hoverSrc = null,
   alt = '',
-  className,
-  imageClassName,
+  className = 'size-full',
+  imageClassName = PRODUCT_CARD_IMAGE_CLASS,
   placeholder,
 }: ProductCardHoverImageProps) {
   const [failedIndices, setFailedIndices] = useState<Set<number>>(() => new Set());
+  const [hoverFailed, setHoverFailed] = useState(false);
+  const [hoverCapable, setHoverCapable] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(hover: hover)');
+    const sync = () => setHoverCapable(mediaQuery.matches);
+    sync();
+    mediaQuery.addEventListener('change', sync);
+    return () => mediaQuery.removeEventListener('change', sync);
+  }, []);
+
+  useEffect(() => {
+    setFailedIndices(new Set());
+    setHoverFailed(false);
+  }, [candidates, hoverSrc]);
 
   const displayIndex = useMemo(() => {
     for (let index = 0; index < candidates.length; index += 1) {
@@ -28,7 +50,7 @@ export function ProductCardHoverImage({
     return -1;
   }, [candidates, failedIndices]);
 
-  const hoverIndex = useMemo(() => {
+  const fallbackHoverIndex = useMemo(() => {
     if (displayIndex < 0) return -1;
     for (let index = 0; index < candidates.length; index += 1) {
       if (index !== displayIndex && !failedIndices.has(index)) return index;
@@ -37,7 +59,13 @@ export function ProductCardHoverImage({
   }, [candidates, displayIndex, failedIndices]);
 
   const primarySrc = displayIndex >= 0 ? candidates[displayIndex] : null;
-  const hoverSrc = hoverIndex >= 0 ? candidates[hoverIndex] : null;
+  const resolvedHoverSrc: string | null = hoverCapable
+    ? !hoverFailed && hoverSrc && hoverSrc !== primarySrc
+      ? hoverSrc
+      : fallbackHoverIndex >= 0
+        ? candidates[fallbackHoverIndex] ?? null
+        : null
+    : null;
 
   const markFailed = (index: number) => {
     setFailedIndices((previous) => {
@@ -56,28 +84,41 @@ export function ProductCardHoverImage({
     );
   }
 
+  const hasHover = hoverCapable && Boolean(resolvedHoverSrc);
+
   return (
-    <div className={cn('relative flex size-full items-center justify-center', className)}>
+    <div
+      className={cn(
+        'group/image relative flex size-full items-center justify-center overflow-hidden',
+        className,
+      )}
+    >
       <ProductCardImage
         src={primarySrc}
         alt={alt}
         className={cn(
           imageClassName,
-          hoverSrc &&
-            'transition-opacity duration-300 ease-out group-hover:opacity-0 motion-reduce:transition-none motion-reduce:group-hover:opacity-100',
+          hasHover &&
+            'transition-opacity duration-300 ease-out group-hover/image:opacity-0 motion-reduce:transition-none motion-reduce:group-hover/image:opacity-100',
         )}
         onError={() => markFailed(displayIndex)}
       />
-      {hoverSrc ? (
+      {resolvedHoverSrc ? (
         <ProductCardImage
-          src={hoverSrc}
+          src={resolvedHoverSrc}
           alt=""
           aria-hidden="true"
           className={cn(
             imageClassName,
-            'pointer-events-none absolute inset-0 m-auto opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100 motion-reduce:opacity-100 motion-reduce:transition-none',
+            'pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 ease-out group-hover/image:opacity-100 motion-reduce:opacity-100 motion-reduce:transition-none',
           )}
-          onError={() => markFailed(hoverIndex)}
+          onError={() => {
+            if (hoverSrc && resolvedHoverSrc === hoverSrc) {
+              setHoverFailed(true);
+              return;
+            }
+            markFailed(fallbackHoverIndex);
+          }}
         />
       ) : null}
     </div>

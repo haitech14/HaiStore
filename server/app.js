@@ -22,6 +22,7 @@ import { salesReportsRouter } from './routes/sales-reports.js';
 import { forumRouter } from './routes/forum.js';
 import { mediaAlbumRouter } from './routes/media-album.js';
 import { couponsRouter } from './routes/coupons.js';
+import { checkoutRouter, webhooksRouter } from './routes/checkout.js';
 
 const corsOrigins = getCorsOrigins();
 
@@ -109,6 +110,8 @@ app.use('/api/auth', authRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/orders', ordersRouter);
+app.use('/api/checkout', checkoutRouter);
+app.use('/api/webhooks', webhooksRouter);
 app.use('/api/customers', customersRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/warehouses', warehousesRouter);

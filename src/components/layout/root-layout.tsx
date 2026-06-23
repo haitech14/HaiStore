@@ -6,6 +6,7 @@ import { ScrollToTop } from '@/components/layout/scroll-to-top';
 import { SiteFooter } from '@/components/layout/site-footer';
 import { ShoppingCartDrawer } from '@/components/cart/shopping-cart-drawer';
 import { ProductCompareTray } from '@/components/product/product-compare-tray';
+import { MobileBottomInsetProvider } from '@/context/mobile-bottom-inset-context';
 
 const HaibotFloatingMenu = lazy(() =>
   import('@/components/haibot/haibot-floating-menu').then((m) => ({
@@ -48,6 +49,7 @@ export function RootLayout() {
   const widgetsReady = useDeferredWidgetMount();
 
   return (
+    <MobileBottomInsetProvider>
     <div className="flex min-h-dvh flex-col bg-background">
       <ScrollToTop />
       <a href="#contenido" className="skip-link">
@@ -67,5 +69,6 @@ export function RootLayout() {
       <ShoppingCartDrawer />
       <ProductCompareTray />
     </div>
+    </MobileBottomInsetProvider>
   );
 }

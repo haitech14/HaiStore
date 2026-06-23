@@ -3,6 +3,8 @@ import {
   isVideoMediaUrl,
   isYoutubeMediaUrl,
 } from './product-media.js';
+import { mergeDuplicateProductMediaUrls } from './product-media-dedupe.js';
+import { getAdditionalGalleryUrls } from './product-gallery.js';
 import {
   publicProductMediaPath,
   resolveProductCategoryStockImage,
@@ -113,12 +115,14 @@ export function sanitizeStoredProductMedia(product) {
     ...(Array.isArray(product?.gallery) ? product.gallery : []),
   ]);
 
-  const authentic = candidates.filter((url) => !isSyntheticProductMediaUrl(product, url));
+  const authentic = mergeDuplicateProductMediaUrls(
+    candidates.filter((url) => !isSyntheticProductMediaUrl(product, url)),
+  );
   const images = authentic.filter(isImageMediaUrl);
   const image_url = images[0] ?? null;
 
   return {
     image_url,
-    gallery: authentic,
+    gallery: getAdditionalGalleryUrls(image_url, authentic),
   };
 }

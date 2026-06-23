@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
 
+import { deriveProductSlug, buildProductPath } from '../../shared/product-slug.js';
+import { resolveSiteOrigin, buildAbsoluteUrl } from '../../shared/site-origin.js';
+
 import { requireAdmin, resolveRequestRole } from '../lib/auth-store.js';
 import { notifyHaiSupportChange } from '../lib/haisupport-sync.js';
 import {
@@ -400,6 +403,15 @@ productsRouter.get('/:id', async (req, res, next) => {
     const role = await resolveRequestRole(req);
     const product = await getPublicProductById(req.params.id, role);
     if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
+
+    const canonicalSlug = deriveProductSlug(product);
+    const canonicalPath = buildProductPath(product);
+    const siteOrigin = resolveSiteOrigin(process.env);
+    res.set('Link', `<${buildAbsoluteUrl(canonicalPath, siteOrigin)}>; rel="canonical"`);
+    if (req.params.id !== canonicalSlug) {
+      res.set('X-Product-Canonical-Slug', canonicalSlug);
+    }
+
     res.set('Cache-Control', LIST_CACHE_CONTROL);
     res.json(product);
   } catch (error) {

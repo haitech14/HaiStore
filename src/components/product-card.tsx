@@ -5,9 +5,9 @@ import { AddToCartButton, getAddToCartLabel } from '@/components/cart/add-to-car
 import { CatalogPreviewPriceBlock } from '@/components/product/catalog-preview-price-block';
 import { ProductCardTitle } from '@/components/product/product-card-title';
 import { ProductWhatsAppButton } from '@/components/product-whatsapp-button';
-import { ProductCardHoverImage } from '@/components/product/product-card-hover-image';
+import { ProductCardHoverImage, PRODUCT_CARD_IMAGE_CLASS } from '@/components/product/product-card-hover-image';
 import { useCatalogDisplayPrice } from '@/hooks/use-catalog-display-price';
-import { buildProductImageCandidates } from '@/lib/product-image-url';
+import { buildProductImageCandidates, resolveProductCardHoverImage } from '@/lib/product-image-url';
 import { productPath } from '@/lib/product-path';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/types/product';
@@ -22,8 +22,9 @@ interface ProductCardProps {
 
 export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
   const outOfStock = product.stock <= 0;
-  const detailHref = productPath(product.id);
+  const detailHref = productPath(product);
   const imageCandidates = useMemo(() => buildProductImageCandidates(product), [product]);
+  const hoverImageSrc = useMemo(() => resolveProductCardHoverImage(product), [product]);
   const displayPrice = useCatalogDisplayPrice(product);
 
   const cartActions = (
@@ -65,8 +66,10 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
             >
               <ProductCardHoverImage
                 candidates={imageCandidates}
-                className="size-full p-1.5"
-                imageClassName="max-h-full max-w-full object-contain"
+                hoverSrc={hoverImageSrc}
+                alt={product.name}
+                className="size-full"
+                imageClassName={PRODUCT_CARD_IMAGE_CLASS}
                 placeholder={
                   <div className="flex flex-col items-center gap-1.5 text-center text-muted-foreground">
                     <ImageOff className="size-8 text-muted-foreground/70" aria-hidden="true" />
@@ -121,8 +124,10 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
             >
               <ProductCardHoverImage
                 candidates={imageCandidates}
-                className="size-full p-1.5 sm:p-2"
-                imageClassName="max-h-full max-w-full object-contain"
+                hoverSrc={hoverImageSrc}
+                alt={product.name}
+                className="size-full"
+                imageClassName={PRODUCT_CARD_IMAGE_CLASS}
                 placeholder={
                   <div className="flex flex-col items-center gap-2 text-center text-muted-foreground">
                     <ImageOff className="size-10 text-muted-foreground/70" aria-hidden="true" />

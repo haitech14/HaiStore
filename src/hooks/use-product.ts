@@ -26,10 +26,18 @@ export function useProduct(id: string | undefined) {
   const featured = id ? getFeaturedProductById(id) : undefined;
 
   /** Solo reutiliza el listado si ya está en caché; no dispara /api/products en la ficha. */
-  const { data: products, isError: catalogError } = useProducts({ enabled: false });
+  const { data: products } = useProducts({ enabled: false });
 
   const fromList = useMemo(
-    () => (id ? products?.find((product) => product.id === id) : undefined),
+    () =>
+      id
+        ? products?.find(
+            (product) =>
+              product.id === id ||
+              product.slug === id ||
+              (product.slug == null && product.id.toLowerCase() === id.toLowerCase()),
+          )
+        : undefined,
     [id, products],
   );
 
@@ -40,7 +48,7 @@ export function useProduct(id: string | undefined) {
 
   const shouldFetchOne = Boolean(id);
 
-  const { data: fetchedProduct, isFetching: fetchingOne } = useQuery({
+  const { data: fetchedProduct, isFetching: fetchingOne, isFetched } = useQuery({
     queryKey: ['product', id, role, viewAsRolesQueryKey(viewAsRoles)],
     queryFn: () => (id ? fetchProductById(id) : Promise.resolve(null)),
     enabled: shouldFetchOne,
@@ -54,14 +62,13 @@ export function useProduct(id: string | undefined) {
 
   const fromCatalogJson = useMemo(() => {
     if (!id || featured || fetchedProduct) return undefined;
-    if (!catalogError) return undefined;
     const row = getCatalogProductById(id);
     if (!row) return undefined;
     const base = toPublicProduct(normalizeInventoryProduct(row), role);
     return shouldApplyViewAsPriceTransform(viewAsRoles)
       ? applyViewAsPriceToProduct(base, effectiveRole)
       : base;
-  }, [id, featured, fetchedProduct, catalogError, role, viewAsRoles, effectiveRole]);
+  }, [id, featured, fetchedProduct, role, viewAsRoles, effectiveRole]);
 
   const applyViewAs = (candidate: Product | undefined): Product | undefined => {
     if (!candidate) return undefined;
@@ -77,8 +84,8 @@ export function useProduct(id: string | undefined) {
     (featured ? featuredToProduct(featured) : undefined) ??
     fromCatalogJson;
 
-  const isLoading = Boolean(id && !product && fetchingOne);
-  const notFound = Boolean(id && !featured && !isLoading && !product);
+  const isLoading = Boolean(id && !product && (fetchingOne || !isFetched));
+  const notFound = Boolean(id && !featured && isFetched && !fetchingOne && !product);
 
   return {
     product,

@@ -12,6 +12,11 @@ import {
 } from 'lucide-react';
 
 import { PRODUCT_ATTACHMENT_LABELS } from '@/lib/inventory-attachments';
+import {
+  formatUploadBytes,
+  MAX_PRODUCT_IMAGE_UPLOAD_BYTES,
+  PRODUCT_VIDEO_UPLOAD_HINT,
+} from '@/lib/product-media-upload-limits';
 import { getProductMediaUrls } from '@/lib/inventory-product';
 import { isImageMediaUrl, mediaPreviewUrl } from '@/lib/product-media';
 import { cn } from '@/lib/utils';
@@ -306,6 +311,11 @@ export function InventoryMediaCell({
       {attachmentInput}
       {mainSlot}
       {addButton}
+      {canAddMedia ? (
+        <p className="max-w-[7.5rem] text-center text-[0.625rem] leading-snug text-muted-foreground">
+          máx. {formatUploadBytes(MAX_PRODUCT_IMAGE_UPLOAD_BYTES)}/img
+        </p>
+      ) : null}
 
       <Dialog
         open={youtubeOpen}
@@ -322,6 +332,7 @@ export function InventoryMediaCell({
             <DialogTitle>Agregar vídeo de YouTube</DialogTitle>
             <DialogDescription>
               Pega la URL del vídeo (youtube.com o youtu.be). Se mostrará en la galería del producto.
+              {PRODUCT_VIDEO_UPLOAD_HINT ? ` ${PRODUCT_VIDEO_UPLOAD_HINT}.` : ''}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">

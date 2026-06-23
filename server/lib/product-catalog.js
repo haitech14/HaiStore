@@ -19,6 +19,11 @@ import {
   takeTopProductsBySearchRelevance,
 } from '../../shared/catalog-search.js';
 import { productMatchesCategoryFilter } from '../../shared/home-catalog-filter.js';
+import {
+  findInventoryProductByLookupKey,
+  resolveCanonicalProductId,
+} from '../../shared/product-lookup.js';
+import { deriveProductSlug } from '../../shared/product-slug.js';
 
 export { shouldPreferSupabaseCatalog };
 
@@ -36,6 +41,7 @@ export function buildSupabaseProductRow(product) {
 
   return {
     id: migrated.id,
+    slug: migrated.slug ?? deriveProductSlug(migrated),
     name: migrated.name,
     description: migrated.description ?? null,
     price: migrated.prices?.public ?? migrated.price ?? 0,
@@ -75,6 +81,7 @@ function rowToInventoryProduct(row) {
 
     product = migrateInventoryProduct({
       id: row.id,
+      slug: row.slug ?? null,
       name: row.name,
       description: row.description,
       prices,
@@ -109,6 +116,7 @@ const SUPABASE_PRODUCTS_PAGE_SIZE = 1000;
 /** Columnas ligeras para listados/búsqueda (evita cargar inventory_snapshot completo). */
 const SUPABASE_CATALOG_LIST_COLUMNS = [
   'id',
+  'slug',
   'name',
   'description',
   'price',
@@ -355,44 +363,63 @@ export async function listProducts({ role = 'public', adminView = false } = {}) 
   return promise;
 }
 
-async function getFromSupabase(id, role) {
+async function getFromSupabase(lookupKey, role) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
 
   await ensureSupabaseCatalogSeeded();
 
-  const { data, error } = await supabase
-    .from('products')
-    .select(SUPABASE_CATALOG_DETAIL_COLUMNS)
-    .eq('id', id)
-    .maybeSingle();
+  const normalized = String(lookupKey ?? '').trim();
+  if (!normalized) return undefined;
 
-  if (error) {
-    console.error('[catalog] get Supabase:', id, error.message);
-    return null;
+  async function queryBy(column, value) {
+    const { data, error } = await supabase
+      .from('products')
+      .select(SUPABASE_CATALOG_DETAIL_COLUMNS)
+      .eq(column, value)
+      .maybeSingle();
+    if (error) {
+      if (isMissingColumnError(error.message) && column === 'slug') {
+        return { data: null, error: null };
+      }
+      console.error('[catalog] get Supabase:', value, error.message);
+      return { data: null, error };
+    }
+    return { data, error: null };
+  }
+
+  let { data } = await queryBy('id', normalized);
+  if (!data) {
+    ({ data } = await queryBy('slug', normalized));
   }
 
   if (!data) return undefined;
   return rowToPublicProduct(data, role);
 }
 
+async function getPublicProductFromInventory(lookupKey, role) {
+  const { products } = await readInventory();
+  const product = findInventoryProductByLookupKey(products, lookupKey);
+  if (!product) return undefined;
+  return toPublicProduct(withResolvedMedia(product), role);
+}
+
 export async function getPublicProductById(id, role = 'public') {
   const normalizedId = String(id ?? '').trim();
   if (!normalizedId) return undefined;
 
+  const canonicalId = resolveCanonicalProductId(normalizedId) ?? normalizedId;
+
   // El detalle siempre usa DTO completo (adjuntos, galería, descripción); no el listado en caché.
   if (shouldPreferSupabaseCatalog()) {
-    const fromDb = await getFromSupabase(normalizedId, role);
-    if (fromDb !== null) {
-      if (fromDb === undefined) return undefined;
+    const fromDb = await getFromSupabase(canonicalId, role);
+    if (fromDb !== null && fromDb !== undefined) {
       return fromDb;
     }
+    // Si no está en Supabase, seguir con inventario local (importaciones CLI, adjuntos, etc.).
   }
 
-  const { products } = await readInventory();
-  const product = products.find((entry) => entry.id === normalizedId);
-  if (!product) return undefined;
-  return toPublicProduct(withResolvedMedia(product), role);
+  return getPublicProductFromInventory(normalizedId, role);
 }
 
 function normalizeSearchText(value) {

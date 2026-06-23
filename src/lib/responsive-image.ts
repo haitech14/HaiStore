@@ -60,6 +60,25 @@ export function productCardImageSources(imagePath: string) {
   };
 }
 
+/** Variantes WebP para ficha de producto (miniatura y vista principal). */
+export function productDetailThumbnailSources(imagePath: string) {
+  const base = imageBasePath(imagePath);
+  return {
+    webpSrcSet: `${base}-256.webp 256w, ${base}-512.webp 512w`,
+    fallbackSrc: imagePath,
+    sizes: '80px',
+  };
+}
+
+export function productDetailMainImageSources(imagePath: string) {
+  const base = imageBasePath(imagePath);
+  return {
+    webpSrcSet: `${base}-512.webp 512w, ${base}-1024.webp 1024w`,
+    fallbackSrc: imagePath,
+    sizes: '(max-width: 640px) 100vw, (max-width: 1024px) 60vw, 720px',
+  };
+}
+
 /** True si la ruta admite variantes responsive generadas en build. */
 export function supportsResponsiveProductImage(imagePath: string): boolean {
   if (!imagePath || imagePath.startsWith('data:')) return false;

@@ -1,4 +1,5 @@
 import { ProductCardHoverImage } from '@/components/product/product-card-hover-image';
+import { TonerCardRolePrices } from '@/components/product-detail/product-detail-role-prices';
 import { cn } from '@/lib/utils';
 import type { ConfigureTonerCard } from '@/lib/product-configure-toner';
 
@@ -9,8 +10,12 @@ interface ProductDetailHeroTonerSelectorProps {
   className?: string;
 }
 
-function formatPenAmount(value: number): string {
-  return value.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function resolveTonerSectionTitle(cards: ConfigureTonerCard[]): string {
+  const hasOriginal = cards.some((card) => card.supplyType === 'original');
+  const hasCompatible = cards.some((card) => card.supplyType === 'compatible');
+  if (hasOriginal && hasCompatible) return 'Tóner original y compatible RICOH';
+  if (hasOriginal) return 'Tóner original RICOH';
+  return 'Tóner compatible RICOH';
 }
 
 export function ProductDetailHeroTonerSelector({
@@ -23,10 +28,12 @@ export function ProductDetailHeroTonerSelector({
 
   return (
     <div className={cn('mt-3', className)}>
-      <p className="text-sm font-semibold leading-snug text-[#0f1f3d]">Toner del producto</p>
+      <p className="text-sm font-semibold leading-snug text-[#0f1f3d]">
+        {resolveTonerSectionTitle(cards)}
+      </p>
       <div
         role="group"
-        aria-label="Toner del producto"
+        aria-label={resolveTonerSectionTitle(cards)}
         className="mt-2 flex flex-col gap-2 sm:flex-row sm:gap-2"
       >
         {cards.map((card) => {
@@ -57,9 +64,7 @@ export function ProductDetailHeroTonerSelector({
                 <span className="mt-0.5 block truncate text-[0.6875rem] leading-snug text-[#0f1f3d]/90">
                   {card.name}
                 </span>
-                <span className="mt-0.5 block text-xs font-bold text-red-600 sm:text-sm">
-                  S/ {formatPenAmount(card.pricePen)}
-                </span>
+                <TonerCardRolePrices prices={card.prices} />
               </span>
               <span
                 className={cn(

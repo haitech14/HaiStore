@@ -6,7 +6,6 @@ export type InventoryColumnId =
   | 'product'
   | 'brand'
   | 'gramaje'
-  | 'description'
   | 'installation'
   | 'attributes'
   | 'category'
@@ -31,7 +30,6 @@ export const DEFAULT_INVENTORY_COLUMN_ORDER: InventoryReorderableColumnId[] = [
   'product',
   'brand',
   'gramaje',
-  'description',
   'installation',
   'media',
   'stock',
@@ -39,8 +37,8 @@ export const DEFAULT_INVENTORY_COLUMN_ORDER: InventoryReorderableColumnId[] = [
   ...INVENTORY_PRICE_COLUMN_ORDER,
 ];
 
-const STORAGE_KEY = 'haistore-inventory-column-order-v8';
-const LEGACY_STORAGE_KEY = 'haistore-inventory-column-order-v7';
+const STORAGE_KEY = 'haistore-inventory-column-order-v9';
+const LEGACY_STORAGE_KEY = 'haistore-inventory-column-order-v8';
 
 const COLUMN_LABELS: Record<InventoryReorderableColumnId, string> = {
   media: 'Medios',
@@ -48,7 +46,6 @@ const COLUMN_LABELS: Record<InventoryReorderableColumnId, string> = {
   product: 'Título',
   brand: 'Marca',
   gramaje: 'Gramaje',
-  description: 'Descripción',
   installation: 'Instalación',
   attributes: 'Atributos',
   category: 'Categoría',
@@ -76,7 +73,6 @@ const COLUMN_CELL_CLASS: Record<InventoryReorderableColumnId, string> = {
   product: 'min-w-[12rem] max-w-[16rem] w-[16rem]',
   brand: 'w-[6rem] min-w-[6rem] max-w-[8rem]',
   gramaje: 'w-[5.5rem] min-w-[5.5rem] max-w-[7rem]',
-  description: 'min-w-[14rem] max-w-[20rem] w-[18rem]',
   installation: 'min-w-[14rem] max-w-[22rem] w-[20rem]',
   attributes: 'w-[9.5rem] min-w-[9.5rem] max-w-[11rem]',
   category: 'w-[8rem] min-w-[8rem] max-w-[9.5rem]',
@@ -103,7 +99,7 @@ function isValidColumnId(value: string): value is InventoryReorderableColumnId {
 /** Convierte ids de columnas antiguas (foto/galería, subcategoría) al esquema fusionado. */
 function migrateLegacyColumnId(value: string): InventoryReorderableColumnId | null {
   if (value === 'photo' || value === 'gallery') return 'media';
-  if (value === 'subcategory') return null;
+  if (value === 'subcategory' || value === 'description') return null;
   return isValidColumnId(value) ? value : null;
 }
 

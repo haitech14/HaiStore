@@ -49,7 +49,7 @@ function loadLocalInventory() {
 }
 
 async function checkCatalogSchema() {
-  const schema = { has005: false, has006: false };
+  const schema = { has005: false, has006: false, has015: false };
 
   const r005 = await supabase.from('products').select('gallery,sort_order,inventory_snapshot').limit(1);
   if (!r005.error) {
@@ -75,6 +75,18 @@ async function checkCatalogSchema() {
     console.error('Error al comprobar migración 006:', r006.error.message);
   }
 
+  const r015 = await supabase.from('products').select('slug').limit(1);
+  if (!r015.error) {
+    schema.has015 = true;
+    console.log('✓ Esquema de catálogo (migración 015) presente');
+  } else if (/column|schema cache|Could not find/i.test(r015.error.message)) {
+    console.warn('⚠ Falta migración 015 (slug).');
+    console.warn('  En Supabase → SQL Editor, ejecuta:');
+    console.warn('  supabase/migrations/015_products_slug.sql');
+  } else {
+    console.error('Error al comprobar migración 015:', r015.error.message);
+  }
+
   return schema;
 }
 
@@ -93,6 +105,10 @@ function projectRowForSchema(row, schema) {
   }
   if (!schema.has006) {
     const { is_featured: _f, view_count: _v, ...rest } = payload;
+    payload = rest;
+  }
+  if (!schema.has015) {
+    const { slug: _slug, ...rest } = payload;
     payload = rest;
   }
   return payload;

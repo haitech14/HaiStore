@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 
+import { deriveProductSlug } from '@/lib/product-slug';
 import type { Product } from '@/types/product';
 
 function isProduct(value: unknown): value is Product {
@@ -12,14 +13,22 @@ function isProduct(value: unknown): value is Product {
   );
 }
 
+function matchesProductLookup(product: Product, lookup: string): boolean {
+  const normalized = lookup.trim().toLowerCase();
+  if (!normalized) return false;
+  if (product.id === lookup || product.id.toLowerCase() === normalized) return true;
+  if (product.slug?.toLowerCase() === normalized) return true;
+  return deriveProductSlug(product).toLowerCase() === normalized;
+}
+
 function findInProductList(list: Product[] | undefined, id: string): Product | undefined {
-  return list?.find((product) => product.id === id);
+  return list?.find((product) => matchesProductLookup(product, id));
 }
 
 /** Busca un producto ya cargado en caché de React Query (listado, búsqueda o ficha). */
 export function findProductInQueryCache(queryClient: QueryClient, id: string): Product | undefined {
   for (const [, data] of queryClient.getQueriesData<Product | null>({ queryKey: ['product'] })) {
-    if (isProduct(data) && data.id === id) return data;
+    if (isProduct(data) && matchesProductLookup(data, id)) return data;
   }
 
   for (const [, data] of queryClient.getQueriesData<Product[]>({ queryKey: ['products'] })) {

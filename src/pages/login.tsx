@@ -18,6 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { HeaderLogoImage } from '@/components/layout/site-logo';
 import { useAuth } from '@/context/auth-context';
+import { useSeo } from '@/hooks/use-seo';
 import { isAdminPanelEmail } from '@/lib/admin-access';
 
 const heroFeatures = [
@@ -38,6 +39,11 @@ function MicrosoftIcon({ className }: { className?: string }) {
 }
 
 export function LoginPage() {
+  useSeo({
+    title: 'Iniciar sesión | Haitech',
+    robots: 'noindex,nofollow',
+  });
+
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();

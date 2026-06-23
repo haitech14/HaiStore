@@ -122,6 +122,18 @@ export async function requireAuth(req, res, next) {
   next();
 }
 
+/** Asigna req.user si hay token válido; continúa sin error si no hay sesión. */
+export async function optionalAuth(req, _res, next) {
+  const header = req.headers.authorization ?? '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const user = await resolveUserFromToken(token);
+  if (user) {
+    req.user = user;
+    req.token = token;
+  }
+  next();
+}
+
 export async function requireAdmin(req, res, next) {
   await requireAuth(req, res, async () => {
     if (!hasAdminApiAccess(req.user)) {

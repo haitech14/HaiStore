@@ -5,6 +5,7 @@ import { CloudUpload, Images, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { PRODUCT_IMAGE_UPLOAD_HINT } from '@/lib/product-media-upload-limits';
 
 interface InventoryPhotoUploadBoxProps {
   label: string;
@@ -13,6 +14,8 @@ interface InventoryPhotoUploadBoxProps {
   multiple?: boolean;
   onFiles: (files: FileList) => void;
   onPickFromAlbum?: () => void;
+  /** Límite de tamaño y formatos (p. ej. máx. 10 MB). */
+  uploadLimitHint?: string;
   preview?: ReactNode;
   inputRef?: RefObject<HTMLInputElement | null>;
   className?: string;
@@ -22,6 +25,7 @@ export function InventoryPhotoUploadBox({
   label,
   uploadLabel,
   hint,
+  uploadLimitHint = PRODUCT_IMAGE_UPLOAD_HINT,
   multiple = false,
   onFiles,
   onPickFromAlbum,
@@ -51,7 +55,10 @@ export function InventoryPhotoUploadBox({
         >
           <CloudUpload className="size-9 text-muted-foreground/80" aria-hidden="true" />
           <span className="text-sm font-medium text-foreground">{uploadLabel}</span>
-          <span className="max-w-[12rem] text-xs leading-snug text-muted-foreground">{hint}</span>
+          <span className="max-w-[14rem] text-xs leading-snug text-muted-foreground">{hint}</span>
+          <span className="max-w-[14rem] text-[0.6875rem] leading-snug text-muted-foreground/90">
+            {uploadLimitHint}
+          </span>
         </button>
         {onPickFromAlbum ? (
           <Button

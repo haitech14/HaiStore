@@ -13,6 +13,7 @@ import {
 import { notifyHaiSupportChange } from '../lib/haisupport-sync.js';
 import { ensureStoreCustomerFromHaitechClient } from '../lib/haisupport-bridge.js';
 import { inboundPayloadToHaitechClient, storeCustomerRowToHaitechClient } from '../lib/haitech-mappers.js';
+import { resolvePriceRole } from '../lib/roles.js';
 import {
   importPersonaCustomerRows,
   parsePersonaWorkbook,
@@ -70,25 +71,95 @@ function trimOrNull(value) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function profileRoleFromCustomerRow(row) {
+  const profile = row?.profiles;
+  if (Array.isArray(profile)) return profile[0]?.role;
+  if (profile && typeof profile === 'object') return profile.role;
+  return null;
+}
+
+function checkoutClientFromSession(req, row) {
+  const profileRole = resolvePriceRole(profileRoleFromCustomerRow(row) ?? req.user?.role ?? 'public');
+  const sessionEmail = req.user?.email?.trim() ?? '';
+
+  if (row) {
+    const mapped = storeCustomerRowToHaitechClient({
+      ...row,
+      email: row.email ?? sessionEmail,
+    });
+    const tipoCliente =
+      mapped.tipoCliente && mapped.tipoCliente !== 'public'
+        ? mapped.tipoCliente
+        : profileRole;
+
+    return {
+      storeCustomerId: mapped.storeCustomerId,
+      haisupportClientId: mapped.haisupportClientId,
+      nombre: mapped.nombre,
+      nombreContacto: mapped.nombreContacto,
+      rucDni: mapped.rucDni,
+      telefono: mapped.telefono,
+      direccion: mapped.direccion,
+      ciudad: mapped.ciudad || 'Lima',
+      tipoCliente,
+      email: mapped.email ?? sessionEmail,
+      notas: mapped.notas ?? '',
+    };
+  }
+
+  const fallbackName = req.user?.name?.trim() ?? '';
+  return {
+    storeCustomerId: null,
+    haisupportClientId: null,
+    nombre: fallbackName,
+    nombreContacto: fallbackName,
+    rucDni: '',
+    telefono: '',
+    direccion: '',
+    ciudad: 'Lima',
+    tipoCliente: profileRole,
+    email: sessionEmail,
+    notas: '',
+  };
+}
+
 customersRouter.get('/me', requireAuth, async (req, res, next) => {
   try {
     const fallbackName = req.user?.name?.trim() ?? '';
     const supabase = getSupabaseAdmin();
 
     if (!supabase || !req.user?.id) {
+      const checkoutClient = checkoutClientFromSession(req, null);
       return res.json({
         contact: {
           name: fallbackName,
           companyOrRuc: '',
-          city: '',
+          city: checkoutClient.ciudad || '',
           source: 'session',
         },
+        checkoutClient,
       });
     }
 
     const { data, error } = await supabase
       .from('store_customers')
-      .select('full_name, phone, company_name, tax_id, ciudad, default_billing')
+      .select(
+        `
+        id,
+        email,
+        full_name,
+        phone,
+        company_name,
+        tax_id,
+        ciudad,
+        direccion,
+        nombre_contacto,
+        tipo_cliente,
+        default_billing,
+        haisupport_client_id,
+        profiles ( role )
+      `,
+      )
       .eq('profile_id', req.user.id)
       .maybeSingle();
 
@@ -98,7 +169,11 @@ customersRouter.get('/me', requireAuth, async (req, res, next) => {
     }
 
     const contact = contactFromCustomerRow(data, fallbackName);
-    res.json({ contact: { ...contact, source: 'account' } });
+    const checkoutClient = checkoutClientFromSession(req, data);
+    res.json({
+      contact: { ...contact, source: 'account' },
+      checkoutClient,
+    });
   } catch (error) {
     next(error);
   }

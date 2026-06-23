@@ -13,7 +13,12 @@ import { normalizeBundleComponents } from '@/lib/product-bundle';
 import { normalizeSuppliers, resolvePurchasePriceUsd } from '@/lib/inventory-suppliers';
 import { applyStockFields, DEFAULT_WAREHOUSES } from '@/lib/inventory-stock';
 import { normalizeVolumeRolePrices } from '@/lib/product-volume-role-prices';
-import { normalizeProductGalleryFields } from '@/lib/product-gallery';
+import { normalizeMerchandisingProductIds } from '@/lib/product-merchandising';
+import { normalizeProductGalleryFields, appendProductGalleryUrls, getAdditionalGalleryUrls } from '@/lib/product-gallery';
+import {
+  MAX_PRODUCT_IMAGE_UPLOAD_BYTES,
+  MAX_PRODUCT_VIDEO_UPLOAD_BYTES,
+} from '@/lib/product-media-upload-limits';
 import {
   heroBulletsToDescriptionText,
   normalizeStorefrontFeatureBar,
@@ -88,6 +93,7 @@ export function createEmptyInventoryProduct(): InventoryProduct {
   return {
     id: '',
     code: '',
+    slug: null,
     name: '',
     description: '',
     currency: 'USD',
@@ -125,6 +131,7 @@ export function normalizeInventoryProduct(
 
   const withStock: InventoryProduct = {
       id: raw.id,
+      slug: raw.slug?.trim() || null,
       code: raw.code?.trim() || raw.id.toUpperCase().replace(/-/g, ''),
       name: raw.name,
       description: raw.description ?? null,
@@ -139,6 +146,8 @@ export function normalizeInventoryProduct(
       attachments: normalizeAttachments(raw.attachments),
       attributes: normalizeAttributes(raw.attributes),
       bundle_components: normalizeBundleComponents(raw.bundle_components),
+      cross_sell_product_ids: normalizeMerchandisingProductIds(raw.cross_sell_product_ids),
+      upsell_product_ids: normalizeMerchandisingProductIds(raw.upsell_product_ids),
       purchase_price_usd: resolvePurchasePriceUsd(suppliers, fallbackPurchase),
       created_at: raw.created_at ?? new Date().toISOString(),
       sort_order: Number.isFinite(Number(raw.sort_order)) ? Number(raw.sort_order) : 0,
@@ -183,6 +192,12 @@ export function mergeInventoryProductPatch(
   if (patch.volume_role_prices !== undefined) {
     merged.volume_role_prices = patch.volume_role_prices;
   }
+  if (patch.cross_sell_product_ids !== undefined) {
+    merged.cross_sell_product_ids = patch.cross_sell_product_ids;
+  }
+  if (patch.upsell_product_ids !== undefined) {
+    merged.upsell_product_ids = patch.upsell_product_ids;
+  }
 
   return normalizeInventoryProduct(merged, warehouses);
 }
@@ -200,7 +215,21 @@ export async function appendGalleryImagesToProduct(
   return appendGalleryUrlsToProduct(product, urls);
 }
 
-const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
+const MAX_VIDEO_BYTES = MAX_PRODUCT_VIDEO_UPLOAD_BYTES;
+
+function assertImageUploadSize(file: File): void {
+  if (file.size > MAX_PRODUCT_IMAGE_UPLOAD_BYTES) {
+    throw new Error(
+      `La imagen supera el límite de ${Math.round(MAX_PRODUCT_IMAGE_UPLOAD_BYTES / (1024 * 1024))} MB`,
+    );
+  }
+}
+
+/** Lee y comprime una imagen para uso web en inventario (~1200px, WebP). */
+export function readImageFile(file: File): Promise<string> {
+  assertImageUploadSize(file);
+  return optimizeImageFile(file, 'product');
+}
 
 /** Añade vídeos MP4 a la galería. */
 export async function appendGalleryVideosToProduct(
@@ -231,10 +260,7 @@ function appendGalleryUrlsToProduct(
   product: InventoryProduct,
   urls: string[],
 ): Pick<InventoryProduct, 'image_url' | 'gallery'> {
-  const { image_url, gallery } = normalizeProductGalleryFields(product.image_url, product.gallery);
-  const newUrls = urls.filter((url) => url !== image_url && !gallery.includes(url));
-
-  return normalizeProductGalleryFields(image_url, [...gallery, ...newUrls]);
+  return appendProductGalleryUrls(product.image_url, product.gallery, urls);
 }
 
 /** Reemplaza una URL de la galería o la foto principal por otra. */
@@ -268,8 +294,18 @@ export function setProductMainMediaUrl(
     throw new Error('La foto principal debe ser una imagen');
   }
 
-  const { image_url, gallery } = normalizeProductGalleryFields(product.image_url, product.gallery);
-  return normalizeProductGalleryFields(url, [...gallery, image_url].filter(Boolean) as string[]);
+  const trimmed = url.trim();
+  const main = product.image_url?.trim() ?? null;
+  const gallery = getAdditionalGalleryUrls(main, product.gallery);
+  const nextGallery = gallery.filter((item) => item !== trimmed);
+  if (main && main !== trimmed) {
+    nextGallery.unshift(main);
+  }
+
+  return {
+    image_url: trimmed,
+    gallery: getAdditionalGalleryUrls(trimmed, nextGallery),
+  };
 }
 
 /** Quita una imagen de la galería (y la principal si aplica). */
@@ -286,9 +322,10 @@ export function removeProductMediaUrl(
 
 export function getProductMediaUrls(product: InventoryProduct): string[] {
   const { image_url, gallery } = sanitizeStoredProductMedia(product);
+  const normalized = normalizeProductGalleryFields(image_url, gallery);
   const urls: string[] = [];
   const seen = new Set<string>();
-  for (const url of [image_url, ...gallery]) {
+  for (const url of [normalized.image_url, ...normalized.gallery]) {
     if (!url || seen.has(url)) continue;
     seen.add(url);
     urls.push(url);
@@ -322,11 +359,6 @@ export function setProductVideoUrl(
     return cleared;
   }
   return appendGalleryUrlsToProduct({ ...product, ...cleared }, [videoUrl.trim()]);
-}
-
-/** Lee y comprime una imagen para uso web en inventario (~1200px, WebP). */
-export function readImageFile(file: File): Promise<string> {
-  return optimizeImageFile(file, 'product');
 }
 
 /** Lee un vídeo MP4 como data URL para persistir en el servidor. */

@@ -72,7 +72,7 @@ export function ProductCompareDialog() {
                           </div>
                         )}
                         <Link
-                          to={productPath(item.id)}
+                          to={productPath(item)}
                           className="text-xs font-semibold leading-snug text-foreground hover:text-red-600"
                           onClick={() => setCompareOpen(false)}
                         >

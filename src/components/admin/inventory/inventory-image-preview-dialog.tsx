@@ -28,6 +28,11 @@ import {
   replaceProductMediaUrl,
   setProductMainMediaUrl,
 } from '@/lib/inventory-product';
+import { normalizeProductGalleryFields } from '@/lib/product-gallery';
+import {
+  PRODUCT_IMAGE_UPLOAD_HINT,
+  PRODUCT_VIDEO_UPLOAD_HINT,
+} from '@/lib/product-media-upload-limits';
 import {
   isImageMediaUrl,
   isVideoMediaUrl,
@@ -132,7 +137,8 @@ export function InventoryImagePreviewDialog({
     setBusy(true);
     setError(null);
     try {
-      await onSaveMedia(media);
+      const normalized = normalizeProductGalleryFields(media.image_url, media.gallery);
+      await onSaveMedia(normalized);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar el medio.');
     } finally {
@@ -237,6 +243,11 @@ export function InventoryImagePreviewDialog({
                 ? 'Gestiona imágenes y vídeos del producto. Haz clic en una imagen para reemplazarla.'
                 : 'Vista ampliada de los medios del producto.'}
             </DialogDescription>
+            {canEdit ? (
+              <p className="text-xs text-muted-foreground">
+                Imágenes: {PRODUCT_IMAGE_UPLOAD_HINT}. Vídeos: {PRODUCT_VIDEO_UPLOAD_HINT}.
+              </p>
+            ) : null}
           </DialogHeader>
 
           <input

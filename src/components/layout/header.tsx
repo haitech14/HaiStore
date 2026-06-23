@@ -113,7 +113,7 @@ export function Header() {
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="min-h-11 min-w-11 lg:hidden"
             aria-label={mobileOpen ? 'Cerrar menú' : 'Abrir menú'}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((open) => !open)}
@@ -131,14 +131,14 @@ export function Header() {
             <img
               src="/ricohpartner.png"
               alt="Ricoh Alliance Partner"
-              className="h-9 w-auto rounded-sm sm:h-10 md:h-12"
+              className="hidden h-9 w-auto rounded-sm sm:block sm:h-10 md:h-12"
               loading="lazy"
             />
           </Link>
 
           {/* Buscador */}
           <div className="hidden flex-1 justify-center px-2 md:flex lg:px-4">
-            <SiteSearchForm className="max-w-2xl lg:max-w-3xl" variant="segmented" />
+            <SiteSearchForm className="max-w-3xl lg:max-w-4xl" variant="segmented" />
           </div>
         </div>
 
@@ -184,7 +184,6 @@ export function Header() {
         <div className="border-t lg:hidden">
           <div className="container flex flex-col gap-4 py-4">
             <HeaderCurrencyControl className="w-full md:hidden" />
-            <SiteSearchForm variant="simple" onNavigate={() => setMobileOpen(false)} />
             <CatalogMobileAccordion onNavigate={() => setMobileOpen(false)} />
             <SolutionsMobileAccordion onNavigate={() => setMobileOpen(false)} />
             <nav aria-label="Navegación móvil">

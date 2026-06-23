@@ -87,6 +87,8 @@ export interface StoreOrder {
   status: StoreOrderStatus;
   payment_status: StorePaymentStatus;
   payment_method?: string | null;
+  payment_provider?: string | null;
+  external_payment_id?: string | null;
   currency: string;
   subtotal_usd: number;
   tax_usd: number;

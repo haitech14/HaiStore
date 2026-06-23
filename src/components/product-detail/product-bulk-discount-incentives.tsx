@@ -1,6 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 
-import { DualPrice } from '@/components/product/product-dual-price';
+import { useDisplayCurrency } from '@/context/display-currency-context';
+import { formatVolumeQuantityPromoMessage } from '@/lib/display-price';
 import { ensureFullPrices } from '@/lib/roles';
 import {
   resolveBulkDiscountPricing,
@@ -18,15 +20,12 @@ interface ProductBulkDiscountIncentivesProps {
   className?: string;
 }
 
-function formatQuantityLabel(quantity: number): string {
-  return `Lleva ${quantity} unidad${quantity === 1 ? '' : 'es'}`;
-}
-
 export function ProductBulkDiscountIncentives({
   product,
   tiers,
   className,
 }: ProductBulkDiscountIncentivesProps) {
+  const { displayCurrency } = useDisplayCurrency();
   const fullPrices = ensureFullPrices(
     product.prices ? product.prices : { public: product.price },
   );
@@ -49,28 +48,38 @@ export function ProductBulkDiscountIncentives({
     });
   }, [tiers, basePriceUsd, floorPriceUsd]);
 
+  const [open, setOpen] = useState(false);
+  const panelId = 'bulk-discount-incentives-panel';
+
   if (incentives.length === 0) return null;
 
   return (
-    <ul
-      className={cn('space-y-1', className)}
-      aria-label="Precio por unidad según cantidad"
-    >
-      {incentives.map(({ quantity, pricing }) => (
-        <li
-          key={quantity}
-          className="flex flex-wrap items-baseline gap-x-1.5 text-xs text-muted-foreground"
-        >
-          <span className="font-medium text-foreground">
-            {formatQuantityLabel(quantity)}:
-          </span>
-          <DualPrice usd={pricing.unitUsd} alwaysBoth className="font-semibold text-red-600" />
-          <span aria-hidden="true">c/u</span>
-          <span className="sr-only">
-            {pricing.unitUsd} dólares por unidad con descuento por volumen
-          </span>
-        </li>
-      ))}
-    </ul>
+    <div className={cn(className)}>
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span className="text-xs font-semibold text-foreground">Descuento por volumen</span>
+        <ChevronDown
+          aria-hidden="true"
+          className={cn(
+            'size-3.5 shrink-0 text-muted-foreground transition-transform',
+            open && 'rotate-180',
+          )}
+        />
+      </button>
+      {open ? (
+        <ul id={panelId} className="mt-1 space-y-0.5" aria-label="Promociones por cantidad">
+          {incentives.map(({ quantity, pricing }) => (
+            <li key={quantity} className="text-xs text-muted-foreground">
+              {formatVolumeQuantityPromoMessage(quantity, pricing.unitUsd, displayCurrency)}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   );
 }

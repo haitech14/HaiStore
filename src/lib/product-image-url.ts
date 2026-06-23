@@ -93,6 +93,31 @@ export function buildProductImageCandidates(
   return candidates;
 }
 
+/** Segunda imagen de galería para hover en tarjetas (`gallery[1]`, sin duplicar la principal). */
+export function resolveProductCardHoverImage(
+  product: ResolveProductImageInput,
+  options?: ResolveProductImageOptions,
+): string | null {
+  const primary = typeof product.image_url === 'string' ? product.image_url.trim() : '';
+  const gallery = Array.isArray(product.gallery) ? product.gallery : [];
+
+  const pick = (url: string | null | undefined): string | null => {
+    if (!url || !isUsableStoredImageUrl(product, url, options)) return null;
+    if (primary && url === primary) return null;
+    return url;
+  };
+
+  const secondGallery = pick(gallery[1]);
+  if (secondGallery) return secondGallery;
+
+  for (const url of gallery) {
+    const resolved = pick(url);
+    if (resolved) return resolved;
+  }
+
+  return null;
+}
+
 /** URL pública para mostrar un producto (evita data: URLs que no persisten en Supabase). */
 export function resolveProductImageUrl(
   product: ResolveProductImageInput,

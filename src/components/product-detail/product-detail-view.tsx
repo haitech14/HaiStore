@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { isProductOutOfStock } from '@/components/cart/add-to-cart-button';
 
@@ -9,19 +9,16 @@ import {
   type QuotePdfPreview,
 } from '@/components/product-detail/product-quote-pdf-viewer';
 import { ProductDetailAdvisorBanner } from '@/components/product-detail/product-detail-advisor-banner';
-import { ProductDetailComparison } from '@/components/product-detail/product-detail-comparison';
 import { ProductDetailConsumables } from '@/components/product-detail/product-detail-consumables';
 import { ProductDetailConsumablesStrip } from '@/components/product-detail/product-detail-consumables-strip';
 import { ProductDetailDescription } from '@/components/product-detail/product-detail-description';
 import { ProductDetailDescriptionPanel } from '@/components/product-detail/product-detail-description-panel';
 import { ProductDetailOptionalProducts, type PurchaseMode } from '@/components/product-detail/product-detail-optional-products';
-import { ProductDetailConfigureEquipment } from '@/components/product-detail/product-detail-configure-equipment';
 import type { EquipmentRentalEstimate } from '@/components/product-detail/product-detail-rental-configurator';
 import { ProductDetailGallery } from '@/components/product-detail/product-detail-gallery';
 import { ProductDetailHeroInfo } from '@/components/product-detail/product-detail-hero-info';
 import { ProductDetailMobilePurchaseBar } from '@/components/product-detail/product-detail-mobile-purchase-bar';
 import { ProductDetailPurchaseCard } from '@/components/product-detail/product-detail-purchase-card';
-import { ProductDetailRelated } from '@/components/product-detail/product-detail-related';
 import { ProductDetailResources } from '@/components/product-detail/product-detail-resources';
 import { ProductDetailSpecsTable } from '@/components/product-detail/product-detail-specs-table';
 import { buildProductDetail } from '@/lib/build-product-detail';
@@ -33,6 +30,7 @@ import {
 } from '@/lib/equipment-config-catalog';
 import {
   mergeConsumableTonerOptions,
+  mergeCrossSellTonerOptions,
   resolveConfigureTonerCards,
   type ConfigureTonerCard,
 } from '@/lib/product-configure-toner';
@@ -44,6 +42,7 @@ import {
 } from '@/lib/equipment-config-selection';
 import { resolveIncludedTonerImage } from '@/lib/product-configure-accessory';
 import { resolveFrequentlyBoughtItems } from '@/lib/product-compatible-toners';
+import { hasCrossSellConfigureCards, mergeMerchandisingEquipmentSteps } from '@/lib/product-merchandising';
 import { resolveEquipmentComparison } from '@/lib/product-equipment-comparison';
 import {
   resolveEquipmentConsumables,
@@ -98,6 +97,58 @@ const MOCK_REVIEWS = [
 
 const MAINTENANCE_PLAN_FALLBACK = [{ pagesPerMonth: 5000, monthlyPricePen: 150 }] as const;
 
+const ProductDetailConfigureEquipment = lazy(() =>
+  import('@/components/product-detail/product-detail-configure-equipment').then((module) => ({
+    default: module.ProductDetailConfigureEquipment,
+  })),
+);
+const ProductDetailComparison = lazy(() =>
+  import('@/components/product-detail/product-detail-comparison').then((module) => ({
+    default: module.ProductDetailComparison,
+  })),
+);
+const ProductDetailRelated = lazy(() =>
+  import('@/components/product-detail/product-detail-related').then((module) => ({
+    default: module.ProductDetailRelated,
+  })),
+);
+
+function useNearViewport(enabled: boolean, rootMargin = '400px 0px') {
+  const ref = useRef<HTMLDivElement>(null);
+  const [near, setNear] = useState(!enabled);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const node = ref.current;
+    if (!node) {
+      setNear(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) setNear(true);
+      },
+      { rootMargin },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [enabled, rootMargin]);
+
+  return { ref, near };
+}
+
+function DetailSectionFallback({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn('h-24 animate-pulse rounded-xl bg-muted/40', className)}
+      role="status"
+      aria-live="polite"
+      aria-label="Cargando sección"
+    />
+  );
+}
+
 export function ProductDetailView({ product, featuredMeta }: ProductDetailViewProps) {
   const { data: rentalPlansRaw = [] } = useRentalPlans({ activeOnly: true });
   const { data: companySettings } = useCompanySettings();
@@ -113,8 +164,12 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
     () => buildProductDetail(product, featuredMeta, rentalPlansFromApi, bulkDiscountTiers),
     [product, featuredMeta, rentalPlansFromApi, bulkDiscountTiers],
   );
+  const { ref: catalogDeferRef, near: catalogNearViewport } = useNearViewport(
+    detail.isPrinterEquipment,
+  );
+  const { ref: relatedDeferRef, near: relatedNearViewport } = useNearViewport(true);
   const { data: catalogProducts = [], isLoading: catalogLoading } = useProducts({
-    enabled: detail.isPrinterEquipment,
+    enabled: detail.isPrinterEquipment && catalogNearViewport,
   });
   const { data: consumableGroupsFromApi = [] } = useProductConsumables(
     product.id,
@@ -180,9 +235,17 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
 
   const equipmentSteps = useMemo(
     () =>
-      mergeConsumableTonerOptions(
-        resolveEquipmentConfigSteps(detail.equipmentConfigSteps, catalogProducts, product),
-        consumableGroups,
+      mergeMerchandisingEquipmentSteps(
+        mergeCrossSellTonerOptions(
+          mergeConsumableTonerOptions(
+            resolveEquipmentConfigSteps(detail.equipmentConfigSteps, catalogProducts, product),
+            consumableGroups,
+          ),
+          product,
+          catalogProducts,
+        ),
+        product,
+        catalogProducts,
       ),
     [detail.equipmentConfigSteps, catalogProducts, product, consumableGroups],
   );
@@ -273,8 +336,9 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
         consumableGroups,
         resolveIncludedTonerImage(includedToner?.image),
         catalogProducts,
+        product,
       ),
-    [catalogProducts, consumableGroups, includedToner?.image, tonerStep],
+    [catalogProducts, consumableGroups, includedToner?.image, product, tonerStep],
   );
 
   const handleHeroTonerToggle = useCallback(
@@ -309,6 +373,8 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
           ),
         ),
       ) ||
+      (product.upsell_product_ids?.length ?? 0) > 0 ||
+      hasCrossSellConfigureCards(product, catalogProducts) ||
       frequentlyBought.length > 0);
 
   const handlePurchaseModeChange = useCallback((mode: PurchaseMode) => {
@@ -334,23 +400,25 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
     (/original/i.test(product.name) || /original/i.test(product.category ?? ''));
 
   const configureEquipmentSection = showConfigureSection ? (
-    <ProductDetailConfigureEquipment
-      product={product}
-      detail={detail}
-      plans={maintenancePlans}
-      equipmentSteps={equipmentSteps}
-      equipmentSelection={equipmentSelection}
-      onEquipmentSelectionChange={setEquipmentSelection}
-      frequentlyBought={frequentlyBought}
-      catalogProducts={catalogProducts}
-      consumableGroups={consumableGroups}
-      purchaseMode={purchaseMode}
-      onPurchaseModeChange={handlePurchaseModeChange}
-      onRentalEstimateChange={setRentalEstimate}
-      purchaseActionsRef={purchaseActionsRef}
-      layout="inline"
-      className="mt-4"
-    />
+    <Suspense fallback={<DetailSectionFallback className="mt-4" />}>
+      <ProductDetailConfigureEquipment
+        product={product}
+        detail={detail}
+        plans={maintenancePlans}
+        equipmentSteps={equipmentSteps}
+        equipmentSelection={equipmentSelection}
+        onEquipmentSelectionChange={setEquipmentSelection}
+        frequentlyBought={frequentlyBought}
+        catalogProducts={catalogProducts}
+        consumableGroups={consumableGroups}
+        purchaseMode={purchaseMode}
+        onPurchaseModeChange={handlePurchaseModeChange}
+        onRentalEstimateChange={setRentalEstimate}
+        purchaseActionsRef={purchaseActionsRef}
+        layout="inline"
+        className="mt-4"
+      />
+    </Suspense>
   ) : null;
 
   return (
@@ -365,9 +433,11 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
             <ProductDetailGallery
               items={detail.gallery}
               productName={product.name}
+              product={product}
               showOriginalBadge={showOriginalBadge}
               brandLabel={detail.brandLabel}
             />
+            <div ref={catalogDeferRef} className="h-px w-full" aria-hidden="true" />
             {configureEquipmentSection}
           </div>
 
@@ -632,11 +702,18 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
 
         {comparison ? (
           <div ref={comparisonRef}>
-            <ProductDetailComparison data={comparison} />
+            <Suspense fallback={<DetailSectionFallback className="mt-10" />}>
+              <ProductDetailComparison data={comparison} />
+            </Suspense>
           </div>
         ) : null}
 
-        <ProductDetailRelated product={product} />
+        <div ref={relatedDeferRef} className="h-px w-full" aria-hidden="true" />
+        {relatedNearViewport ? (
+          <Suspense fallback={<DetailSectionFallback className="mt-10" />}>
+            <ProductDetailRelated product={product} />
+          </Suspense>
+        ) : null}
       </div>
 
       <ProductQuoteDialog

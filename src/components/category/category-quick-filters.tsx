@@ -27,7 +27,7 @@ export function CategoryQuickFilters({
         Modelos
       </p>
       <div
-        className="-mx-1 grid auto-cols-max grid-flow-col grid-rows-2 gap-2 overflow-x-auto px-1 pb-1 scroll-smooth"
+        className="-mx-1 grid auto-cols-max grid-flow-col grid-rows-2 gap-2 overflow-x-auto px-1 pb-1 scroll-smooth [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]"
         role="group"
         aria-label="Filtros por modelo de equipo"
       >

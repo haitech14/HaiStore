@@ -1,11 +1,96 @@
 import { Router } from 'express';
 
-import { requireAdmin } from '../lib/auth-store.js';
+import { requireAdmin, requireAuth } from '../lib/auth-store.js';
 import { notifyHaiSupportChange } from '../lib/haisupport-sync.js';
-import { createStoreOrderFromBody } from '../lib/orders-store.js';
+import { createStoreOrderFromBody, getStoreOrderByNumber } from '../lib/orders-store.js';
 import { getSupabaseAdmin } from '../lib/supabase-auth.js';
 
 export const ordersRouter = Router();
+
+const MY_ORDERS_SELECT = `
+  id,
+  order_number,
+  status,
+  payment_status,
+  payment_method,
+  payment_provider,
+  currency,
+  subtotal_usd,
+  total_usd,
+  total_pen,
+  exchange_rate,
+  shipping_address,
+  billing_address,
+  created_at,
+  paid_at,
+  shipped_at,
+  delivered_at,
+  items:store_order_items (
+    id,
+    quantity,
+    unit_price_usd,
+    line_total_usd,
+    product_snapshot
+  )
+`;
+
+ordersRouter.get('/my', requireAuth, async (req, res, next) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    if (!supabase) {
+      return res.status(503).json({ error: 'Supabase no configurado' });
+    }
+
+    if (!req.user?.id) {
+      return res.json({ orders: [], source: 'demo' });
+    }
+
+    const { data, error } = await supabase
+      .from('store_orders')
+      .select(MY_ORDERS_SELECT)
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error('[orders] my error:', error);
+      return res.status(500).json({ error: 'No se pudieron cargar tus pedidos' });
+    }
+
+    res.json({ orders: data ?? [], source: 'supabase' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+ordersRouter.get('/status/:orderNumber', async (req, res, next) => {
+  try {
+    const orderNumber = decodeURIComponent(req.params.orderNumber ?? '').trim();
+    if (!orderNumber) {
+      return res.status(400).json({ error: 'Número de pedido requerido' });
+    }
+
+    const order = await getStoreOrderByNumber(orderNumber);
+    if (!order) {
+      return res.status(404).json({ error: 'Pedido no encontrado' });
+    }
+
+    res.json({
+      order: {
+        order_number: order.order_number,
+        status: order.status,
+        payment_status: order.payment_status,
+        payment_method: order.payment_method,
+        payment_provider: order.payment_provider,
+        total_usd: order.total_usd,
+        total_pen: order.total_pen,
+        currency: order.currency,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 function parseDateParam(value) {
   if (!value) return null;
@@ -402,10 +487,14 @@ ordersRouter.patch('/admin/:id', requireAdmin, async (req, res, next) => {
 
 ordersRouter.post('/checkout', async (req, res, next) => {
   try {
+    const body = req.body ?? {};
     const order = await createStoreOrderFromBody({
-      ...(req.body ?? {}),
+      ...body,
+      paymentProvider: body.paymentProvider ?? 'manual',
       status: 'pending_payment',
       paymentStatus: 'pending',
+      deductStock: true,
+      deferCouponRedemption: false,
     });
     res.status(201).json({ order });
   } catch (error) {

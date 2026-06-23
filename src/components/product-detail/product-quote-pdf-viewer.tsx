@@ -20,9 +20,18 @@ export interface QuotePdfPreview {
 interface ProductQuotePdfViewerProps {
   preview: QuotePdfPreview | null;
   onOpenChange: (open: boolean) => void;
+  title?: string;
+  description?: string;
+  downloadLabel?: string;
 }
 
-export function ProductQuotePdfViewer({ preview, onOpenChange }: ProductQuotePdfViewerProps) {
+export function ProductQuotePdfViewer({
+  preview,
+  onOpenChange,
+  title = 'Vista previa de cotización',
+  description,
+  downloadLabel = 'Descargar PDF',
+}: ProductQuotePdfViewerProps) {
   const handleDownload = () => {
     if (!preview) return;
     downloadQuotePdf(preview.blob, preview.filename);
@@ -35,12 +44,13 @@ export function ProductQuotePdfViewer({ preview, onOpenChange }: ProductQuotePdf
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="size-5 text-red-600" aria-hidden="true" />
-              Vista previa de cotización
+              {title}
             </DialogTitle>
             <DialogDescription>
-              {preview?.quoteNumber
-                ? `Cotización ${preview.quoteNumber}. Revise el documento antes de descargarlo.`
-                : 'Revise el PDF generado antes de descargarlo o compartirlo con el cliente.'}
+              {description ??
+                (preview?.quoteNumber
+                  ? `Cotización ${preview.quoteNumber}. Revise el documento antes de descargarlo.`
+                  : 'Revise el PDF generado antes de descargarlo o compartirlo con el cliente.')}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -70,7 +80,7 @@ export function ProductQuotePdfViewer({ preview, onOpenChange }: ProductQuotePdf
                 className="gap-2 bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-600 sm:min-w-44"
               >
                 <Download className="size-4" aria-hidden="true" />
-                Descargar PDF
+                {downloadLabel}
               </Button>
             </div>
           </>

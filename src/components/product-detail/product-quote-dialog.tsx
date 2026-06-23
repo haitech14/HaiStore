@@ -17,11 +17,6 @@ import { useProformaMutations } from '@/hooks/use-admin-proformas';
 import { buildProformaPayloadFromProductQuote } from '@/lib/build-proforma-payload';
 import { buildProductQuoteLines } from '@/lib/equipment-config-selection';
 import {
-  buildProductQuotePdf,
-  buildQuoteTechnicalSheetFromProduct,
-  preloadQuotePdfAssets,
-} from '@/lib/generate-product-quote-pdf';
-import {
   haitechClientSchema,
   EMPTY_HAITECH_CLIENT,
 } from '@/lib/haitech-client-schema';
@@ -85,7 +80,9 @@ export function ProductQuoteDialog({
 
   useEffect(() => {
     if (!open) return;
-    preloadQuotePdfAssets([product.image_url]);
+    void import('@/lib/generate-product-quote-pdf').then(({ preloadQuotePdfAssets }) =>
+      preloadQuotePdfAssets([product.image_url]),
+    );
   }, [open, product.image_url]);
 
   const onSubmit = async (event: React.FormEvent) => {
@@ -109,6 +106,9 @@ export function ProductQuoteDialog({
     };
 
     try {
+      const { buildProductQuotePdf, buildQuoteTechnicalSheetFromProduct } = await import(
+        '@/lib/generate-product-quote-pdf'
+      );
       const company = companySettings ?? DEFAULT_COMPANY_SETTINGS;
       let technicalSheet = null;
       try {

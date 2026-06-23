@@ -105,14 +105,38 @@ export async function createStoreOrderFromBody(body) {
 
   const status = VALID_ORDER_STATUS.has(body.status) ? body.status : 'confirmed';
   const paymentStatus = VALID_PAYMENT_STATUS.has(body.paymentStatus) ? body.paymentStatus : 'paid';
+  const paymentProvider =
+    typeof body.paymentProvider === 'string' && body.paymentProvider.trim()
+      ? body.paymentProvider.trim()
+      : null;
+  const deductStock = body.deductStock !== false && paymentProvider !== 'culqi' && paymentProvider !== 'mercadopago';
+  const deferCouponRedemption =
+    body.deferCouponRedemption === true ||
+    paymentProvider === 'culqi' ||
+    paymentProvider === 'mercadopago';
+
+  const addressSnapshot = {
+    razonSocial: customer.nombre,
+    documento: customer.rucDni,
+    atencion: customer.nombreContacto,
+    celular: customer.telefono,
+    direccion: customer.direccion,
+    ciudad: customer.ciudad,
+    email: customer.email ?? null,
+  };
+
+  const userId =
+    typeof body.userId === 'string' && body.userId.trim() ? body.userId.trim() : null;
 
   const { data: order, error: orderError } = await supabase
     .from('store_orders')
     .insert({
       customer_id: clientId,
+      user_id: userId,
       status,
       payment_status: paymentStatus,
       payment_method: body.paymentMethod ?? 'TPV',
+      payment_provider: paymentProvider,
       currency,
       subtotal_usd: totalUsdBeforeDiscount,
       tax_usd: 0,
@@ -122,14 +146,8 @@ export async function createStoreOrderFromBody(body) {
       coupon_code: couponCode,
       total_pen: totalPen,
       exchange_rate: exchangeRate,
-      billing_address: {
-        razonSocial: customer.nombre,
-        documento: customer.rucDni,
-        atencion: customer.nombreContacto,
-        celular: customer.telefono,
-        direccion: customer.direccion,
-        ciudad: customer.ciudad,
-      },
+      billing_address: addressSnapshot,
+      shipping_address: body.shippingAddress ?? addressSnapshot,
       notes: orderNotes,
     })
     .select('*')
@@ -153,7 +171,7 @@ export async function createStoreOrderFromBody(body) {
     throw new Error(`No se pudieron guardar los ítems del pedido: ${itemsError.message}`);
   }
 
-  if (couponId) {
+  if (couponId && !deferCouponRedemption) {
     try {
       await redeemCoupon(couponId, order.id);
     } catch (error) {
@@ -171,19 +189,74 @@ export async function createStoreOrderFromBody(body) {
 
   notifyHaiSupportChange('orders', 'create', payload);
 
-  try {
-    const { applySaleStockDeduction } = await import('./inventory-stock-sale.js');
-    await applySaleStockDeduction(
-      lineItems.map((line) => ({
-        productId: line.productId,
-        quantity: line.quantity,
-      })),
-    );
-  } catch (error) {
-    console.error('[orders-store] stock deduction:', error);
+  if (deductStock) {
+    try {
+      const { applySaleStockDeduction } = await import('./inventory-stock-sale.js');
+      await applySaleStockDeduction(
+        lineItems.map((line) => ({
+          productId: line.productId,
+          quantity: line.quantity,
+        })),
+      );
+    } catch (error) {
+      console.error('[orders-store] stock deduction:', error);
+    }
   }
 
   return payload;
+}
+
+export async function getStoreOrderById(orderId) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) throw new Error('Supabase no configurado');
+
+  const { data, error } = await supabase
+    .from('store_orders')
+    .select(
+      `
+      *,
+      items:store_order_items (
+        id,
+        product_id,
+        quantity,
+        unit_price_usd,
+        line_total_usd,
+        product_snapshot
+      )
+    `,
+    )
+    .eq('id', orderId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function getStoreOrderByNumber(orderNumber) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) throw new Error('Supabase no configurado');
+
+  const { data, error } = await supabase
+    .from('store_orders')
+    .select(
+      `
+      id,
+      order_number,
+      status,
+      payment_status,
+      payment_method,
+      payment_provider,
+      total_usd,
+      total_pen,
+      currency,
+      created_at
+    `,
+    )
+    .eq('order_number', orderNumber)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 export async function upsertStoreOrderFromInbound(payload) {

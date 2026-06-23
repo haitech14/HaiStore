@@ -65,7 +65,7 @@ const SORT_OPTIONS: { value: CategorySortValue; label: string }[] = [
 ];
 
 const iconButtonClass =
-  'inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 text-muted-foreground transition-colors sm:size-11 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2';
+  'inline-flex size-11 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2';
 
 export function CategoryCatalogToolbar({
   pageTitle,
@@ -105,37 +105,38 @@ export function CategoryCatalogToolbar({
         <CategoryActiveFilterChips chips={activeFilterChips} />
       ) : null}
 
-      <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-1.5 md:gap-2">
         {!catalogSidebarLayout && subcategoryTabs ? (
           <div
-            className="flex max-w-[46%] shrink-0 items-center overflow-x-auto border-r border-border/70 pr-1.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:max-w-none sm:pr-3 [&::-webkit-scrollbar]:hidden"
+            className="w-full shrink-0 overflow-x-auto border-border/70 pb-1 sm:max-w-[46%] sm:border-r sm:pr-1.5 sm:pb-0 md:pr-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             role="presentation"
           >
             {subcategoryTabs}
           </div>
         ) : null}
 
-        <div className="relative min-w-0 flex-1">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            type="search"
-            value={searchQuery}
-            onChange={(event) => onSearchQueryChange(event.target.value)}
-            placeholder="Buscar en esta categoría…"
-            aria-label={`Buscar productos en ${pageTitle}`}
-            aria-describedby={searchHint ? 'category-search-hint' : undefined}
-            className="h-9 border-border bg-background pl-9 pr-2 text-sm sm:h-10 sm:pr-3"
-            autoComplete="off"
-          />
-          {searchHint ? (
-            <p id="category-search-hint" className="sr-only">
-              {searchHint}
-            </p>
-          ) : null}
-        </div>
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => onSearchQueryChange(event.target.value)}
+              placeholder="Buscar en esta categoría…"
+              aria-label={`Buscar productos en ${pageTitle}`}
+              aria-describedby={searchHint ? 'category-search-hint' : undefined}
+              className="h-9 border-border bg-background pl-9 pr-2 text-sm sm:h-10 sm:pr-3"
+              autoComplete="off"
+            />
+            {searchHint ? (
+              <p id="category-search-hint" className="sr-only">
+                {searchHint}
+              </p>
+            ) : null}
+          </div>
 
         {catalogSidebarLayout ? (
           <>
@@ -276,6 +277,7 @@ export function CategoryCatalogToolbar({
         </Popover>
 
         {endAction}
+        </div>
       </div>
 
       {!catalogSidebarLayout &&

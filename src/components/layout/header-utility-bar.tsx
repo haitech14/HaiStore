@@ -13,7 +13,7 @@ function UtilityItem({
   const content = (
     <>
       <IconComponent
-        className="size-3.5 shrink-0 text-red-600 sm:size-4"
+        className="size-3.5 shrink-0 text-inherit sm:size-4"
         strokeWidth={1.75}
         aria-hidden="true"
       />
@@ -25,14 +25,14 @@ function UtilityItem({
     return (
       <a
         href={item.href}
-        className="inline-flex items-center gap-1.5 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+        className="inline-flex items-center gap-1.5 text-white/90 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
       >
         {content}
       </a>
     );
   }
 
-  return <span className="inline-flex items-center gap-1.5">{content}</span>;
+  return <span className="inline-flex items-center gap-1.5 text-white/90">{content}</span>;
 }
 
 function UtilityGroup({

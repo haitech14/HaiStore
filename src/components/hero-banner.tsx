@@ -389,10 +389,19 @@ export function HeroBanner() {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     const timer = window.setInterval(() => {
+      if (document.hidden) return;
       emblaApi.scrollNext();
     }, 7000);
 
-    return () => window.clearInterval(timer);
+    const onVisibility = () => {
+      if (!document.hidden) emblaApi.reInit();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [emblaApi, autoplayPaused, showCarouselControls]);
 
   const pauseAutoplay = () => setAutoplayPaused(true);

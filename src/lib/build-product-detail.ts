@@ -56,7 +56,7 @@ import type { Product } from '@/types/product';
 import { productHasNuevoCornerBadge } from '@/lib/product-detail-badges';
 import { findTechnicalSheetAttachment, findAttachmentByKind } from '@/lib/inventory-attachments';
 import { buildProductGalleryItems } from '@/lib/product-media';
-import { formatProductDisplayCode } from '@/lib/product-display-code';
+import { resolveProductHeroBrand, resolveProductHeroCode } from '@/lib/product-hero-meta';
 import {
   heroBulletsToStored,
   highlightsToStoredFeatureBar,
@@ -1209,16 +1209,12 @@ export function buildProductDetail(
 ): ProductDetailViewModel {
   const isPrinter = isPrinterEquipment(product);
   const isSupply = isSupplyProduct(product);
-  const brandLabel = product.brand ?? (isSupply ? 'Compatible' : 'Haitech');
+  const brandLabel =
+    resolveProductHeroBrand(product) ?? (isSupply ? 'Compatible' : product.brand?.trim() || '');
   const categoryLabel = resolveHeroCategoryLabel(product, isPrinter);
 
   const pricing = resolvePricing(product, featuredMeta);
-  const sku =
-    formatProductDisplayCode(product.code, {
-      brand: product.brand,
-      category: product.category,
-      name: product.name,
-    }) || skuFromId(product.id);
+  const sku = resolveProductHeroCode(product) || skuFromId(product.id);
   const colorLabel = isIm430f(product)
     ? 'Blanco/Negro'
     : isSupply
@@ -1370,13 +1366,8 @@ export function generateDefaultStorefrontDetail(product: Product) {
     return { featureBar: [], heroBullets: [] };
   }
 
-  const brandLabel = product.brand ?? 'Haitech';
-  const sku =
-    formatProductDisplayCode(product.code, {
-      brand: product.brand,
-      category: product.category,
-      name: product.name,
-    }) || skuFromId(product.id);
+  const brandLabel = resolveProductHeroBrand(product) ?? product.brand?.trim() ?? '';
+  const sku = resolveProductHeroCode(product) || skuFromId(product.id);
   const specs = buildPrinterSpecs(product, brandLabel, sku);
 
   return {

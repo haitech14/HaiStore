@@ -67,8 +67,15 @@ async function exportDataUrlToFile(dataUrl, filePath) {
   const input = Buffer.from(base64, 'base64');
   await fs.mkdir(path.dirname(filePath), { recursive: true });
 
-  const resized = await sharp(input)
-    .rotate()
+  const rotated = await sharp(input).rotate().toBuffer();
+  let trimmed = rotated;
+  try {
+    trimmed = await sharp(rotated).trim({ threshold: 12 }).toBuffer();
+  } catch {
+    trimmed = rotated;
+  }
+
+  const resized = await sharp(trimmed)
     .resize(MAX_EDGE, MAX_EDGE, { fit: 'inside', withoutEnlargement: true })
     .toBuffer();
 

@@ -4,6 +4,13 @@ import { ProductDetailHeroActions } from '@/components/product-detail/product-de
 import { ProductDetailHeroTonerSelector } from '@/components/product-detail/product-detail-hero-toner-selector';
 import { isProductOutOfStock } from '@/components/cart/add-to-cart-button';
 import type { ConfigureTonerCard } from '@/lib/product-configure-toner';
+import {
+  resolveProductEquipmentConditionLabel,
+  resolveProductHeroBrand,
+  resolveProductHeroCode,
+  resolveProductStockAvailability,
+} from '@/lib/product-hero-meta';
+import { buildProductSeoBodyParagraph } from '@/lib/seo';
 import { resolveHeroBulletIcon } from '@/lib/product-storefront-detail';
 import { cn } from '@/lib/utils';
 import type { ProductDetailViewModel, ProductHeroSpecBullet } from '@/types/product-detail';
@@ -36,7 +43,14 @@ export function ProductDetailHeroInfo({
   onTonerToggle,
 }: ProductDetailHeroInfoProps) {
   const outOfStock = isProductOutOfStock(product);
-  const stockDisplay = outOfStock ? 0 : product.stock;
+  const brandLabel = resolveProductHeroBrand(product) ?? detail.brandLabel;
+  const productCode = resolveProductHeroCode(product) ?? detail.sku;
+  const stockAvailability = resolveProductStockAvailability(product, outOfStock);
+  const conditionLabel = resolveProductEquipmentConditionLabel(product);
+  const seoBodyParagraph = buildProductSeoBodyParagraph(product);
+  const showAutoSeoParagraph = Boolean(
+    seoBodyParagraph && !detail.heroDescription?.trim(),
+  );
   const displayRating = Number(detail.rating.toFixed(1));
   const fullStars = Math.min(5, Math.max(0, Math.round(displayRating)));
   const renderSpecBullets = (bullets: typeof detail.heroSpecBullets) => {
@@ -100,9 +114,9 @@ export function ProductDetailHeroInfo({
 
   return (
     <div className="flex min-w-0 flex-col">
-      {detail.brandLabel ? (
+      {brandLabel ? (
         <p className="text-xs font-bold uppercase tracking-wider text-primary">
-          {detail.brandLabel}
+          {brandLabel}
         </p>
       ) : null}
 
@@ -135,21 +149,33 @@ export function ProductDetailHeroInfo({
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-        {outOfStock ? (
-          <span className="inline-flex rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
-            Sin stock
+        <span
+          className={cn(
+            'inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold',
+            stockAvailability.tone === 'unavailable' && 'bg-muted text-muted-foreground',
+            stockAvailability.tone === 'low' && 'bg-amber-50 text-amber-800',
+            stockAvailability.tone === 'available' && 'bg-emerald-50 text-emerald-700',
+          )}
+        >
+          {stockAvailability.label}
+        </span>
+        {conditionLabel ? (
+          <span
+            className={cn(
+              'inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold',
+              conditionLabel === 'Nueva' && 'bg-red-600 text-white',
+              conditionLabel === 'Seminueva' && 'bg-sky-100 text-sky-900',
+              conditionLabel === 'Remanufacturada' && 'bg-muted text-foreground',
+            )}
+          >
+            {conditionLabel}
           </span>
-        ) : (
-          <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-            En stock
-          </span>
-        )}
-        <p className="text-muted-foreground">
-          Código: <span className="font-medium text-foreground">{detail.sku}</span>
-          {!outOfStock && stockDisplay > 0 ? (
-            <span className="sr-only">, {stockDisplay} unidades disponibles</span>
-          ) : null}
-        </p>
+        ) : null}
+        {productCode ? (
+          <p className="text-muted-foreground">
+            Código: <span className="font-medium font-mono text-foreground">{productCode}</span>
+          </p>
+        ) : null}
       </div>
 
       {(() => {
@@ -159,19 +185,10 @@ export function ProductDetailHeroInfo({
             ? detail.heroSpecBullets.slice(0, regaloIndex + 1)
             : detail.heroSpecBullets;
         const bulletsAfter = regaloIndex >= 0 ? detail.heroSpecBullets.slice(regaloIndex + 1) : [];
-        const showTonerSelector =
-          tonerCards.length > 0 && selectedTonerOptionIds != null && onTonerToggle != null;
 
         return (
           <>
             {renderSpecBullets(bulletsBefore)}
-            {showTonerSelector ? (
-              <ProductDetailHeroTonerSelector
-                cards={tonerCards}
-                selectedOptionIds={selectedTonerOptionIds}
-                onToggle={onTonerToggle}
-              />
-            ) : null}
             {renderSpecBullets(bulletsAfter)}
           </>
         );
@@ -183,11 +200,42 @@ export function ProductDetailHeroInfo({
         </p>
       ) : null}
 
+      {showAutoSeoParagraph ? (
+        <p
+          className={cn(
+            'text-sm leading-relaxed text-muted-foreground',
+            detail.heroLead ? 'mt-2' : 'mt-3',
+          )}
+        >
+          {seoBodyParagraph}
+        </p>
+      ) : null}
+
       {detail.heroDescription ? (
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           {detail.heroDescription}
         </p>
       ) : null}
+
+      {(() => {
+        const showTonerSelector =
+          tonerCards.length > 0 && selectedTonerOptionIds != null && onTonerToggle != null;
+        const showTonerOriginalRicoh =
+          detail.isPrinterEquipment && /ricoh/i.test(brandLabel ?? detail.brandLabel);
+
+        if (!showTonerSelector && !showTonerOriginalRicoh) return null;
+
+        return showTonerSelector ? (
+          <ProductDetailHeroTonerSelector
+            cards={tonerCards}
+            selectedOptionIds={selectedTonerOptionIds}
+            onToggle={onTonerToggle}
+            className="mt-4"
+          />
+        ) : (
+          <p className="mt-4 text-sm font-semibold leading-snug text-[#0f1f3d]">Toner Original RICOH</p>
+        );
+      })()}
 
       <ProductDetailHeroActions
         technicalSheetUrl={detail.technicalSheetUrl}

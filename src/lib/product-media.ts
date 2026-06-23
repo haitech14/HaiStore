@@ -1,5 +1,6 @@
 import type { ProductGalleryItem } from '@/types/product-detail';
 import type { Product } from '@/types/product';
+import { normalizeProductGalleryFields } from '@/lib/product-gallery';
 
 export function isYoutubeMediaUrl(url: string): boolean {
   return url.startsWith('youtube:');
@@ -69,19 +70,14 @@ export function youtubeEmbedUrl(videoId: string): string {
 export function collectProductMediaUrls(
   product: Pick<Product, 'image_url' | 'gallery'>,
 ): string[] {
+  const normalized = normalizeProductGalleryFields(product.image_url, product.gallery);
   const urls: string[] = [];
   const seen = new Set<string>();
 
-  const add = (url: string | null | undefined) => {
-    const trimmed = url?.trim();
-    if (!trimmed || seen.has(trimmed)) return;
-    seen.add(trimmed);
-    urls.push(trimmed);
-  };
-
-  add(product.image_url);
-  for (const url of product.gallery ?? []) {
-    add(url);
+  for (const url of [normalized.image_url, ...normalized.gallery]) {
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    urls.push(url);
   }
 
   return urls;

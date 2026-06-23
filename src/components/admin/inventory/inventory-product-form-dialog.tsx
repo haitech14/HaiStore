@@ -20,6 +20,7 @@ import { InventoryProductResourceFields } from '@/components/admin/inventory/inv
 import { InventoryPricesGrid } from '@/components/admin/inventory/inventory-prices-grid';
 import { InventoryVolumeRolePricesSection } from '@/components/admin/inventory/inventory-volume-role-prices-section';
 import { InventorySelectField } from '@/components/admin/inventory/inventory-select-field';
+import { InventoryMerchandisingSection } from '@/components/admin/inventory/inventory-merchandising-section';
 import { InventoryStorefrontDetailSection } from '@/components/admin/inventory/inventory-storefront-detail-section';
 import { InventorySuppliersFieldset } from '@/components/admin/inventory/inventory-suppliers-fieldset';
 import { Button } from '@/components/ui/button';
@@ -44,7 +45,10 @@ import {
   collectOrphanCategoryLabels,
 } from '@/lib/inventory-category-options';
 import { DEFAULT_WAREHOUSES } from '@/lib/inventory-stock';
-import { normalizeProductGalleryFields } from '@/lib/product-gallery';
+import { appendProductGalleryUrls, setProductMainImageUrl } from '@/lib/product-gallery';
+import {
+  PRODUCT_IMAGE_UPLOAD_HINT,
+} from '@/lib/product-media-upload-limits';
 import { resolvePurchasePriceUsd } from '@/lib/inventory-suppliers';
 import {
   createEmptyInventoryProduct,
@@ -55,6 +59,11 @@ import {
   removeProductMediaUrl,
 } from '@/lib/inventory-product';
 import { isImageMediaUrl } from '@/lib/product-media';
+import {
+  buildProductMetaDescriptionSeo,
+  formatProductPageTitleSeo,
+  suggestProductSlug,
+} from '@/lib/seo';
 import type {
   InventoryProduct,
   InventorySupplier,
@@ -154,6 +163,28 @@ export function InventoryProductFormDialog({
 
   const supplierCount = form.suppliers?.length ?? 0;
 
+  const seoPreview = useMemo(() => {
+    const previewProduct = {
+      id: form.id || 'preview',
+      name: form.name,
+      description: form.description,
+      brand: form.brand,
+      category: form.category,
+      code: form.code,
+      slug: form.slug,
+      price: form.prices.public,
+      prices: form.prices,
+      currency: form.currency,
+      stock: form.stock,
+      attributes: form.attributes,
+    };
+    return {
+      title: formatProductPageTitleSeo(previewProduct),
+      description: buildProductMetaDescriptionSeo(previewProduct),
+      slug: suggestProductSlug(previewProduct),
+    };
+  }, [form]);
+
   const updateField = <K extends keyof InventoryProduct>(key: K, value: InventoryProduct[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
@@ -172,20 +203,16 @@ export function InventoryProductFormDialog({
   const setMainImage = (url: string | null) => {
     setForm((prev) => ({
       ...prev,
-      ...normalizeProductGalleryFields(url, prev.gallery),
+      ...setProductMainImageUrl(prev.image_url, prev.gallery, url),
     }));
   };
 
   const appendGalleryUrls = (urls: string[]) => {
     if (urls.length === 0) return;
-    setForm((prev) => {
-      const current = normalizeProductGalleryFields(prev.image_url, prev.gallery);
-      const newUrls = urls.filter((url) => url !== current.image_url && !current.gallery.includes(url));
-      return {
-        ...prev,
-        ...normalizeProductGalleryFields(current.image_url, [...current.gallery, ...newUrls]),
-      };
-    });
+    setForm((prev) => ({
+      ...prev,
+      ...appendProductGalleryUrls(prev.image_url, prev.gallery, urls),
+    }));
   };
 
   const uploadFilesToAlbum = async (files: File[]) => {
@@ -308,9 +335,48 @@ export function InventoryProductFormDialog({
                         className="h-10 bg-background"
                         value={form.name}
                         onChange={(event) => updateField('name', event.target.value)}
+                        onBlur={() => {
+                          if (!form.slug?.trim() && form.name.trim()) {
+                            updateField(
+                              'slug',
+                              suggestProductSlug({
+                                id: form.id,
+                                name: form.name,
+                                slug: form.slug,
+                                brand: form.brand,
+                                category: form.category,
+                                attributes: form.attributes,
+                              }),
+                            );
+                          }
+                        }}
                         placeholder="Nombre del producto"
                         required
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="inv-slug">URL amigable (slug SEO)</Label>
+                      <Input
+                        id="inv-slug"
+                        className="h-10 bg-background font-mono text-sm"
+                        value={form.slug ?? ''}
+                        onChange={(event) =>
+                          updateField('slug', event.target.value.toLowerCase().trim() || null)
+                        }
+                        placeholder={seoPreview.slug}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        /tienda/producto/{form.slug?.trim() || seoPreview.slug || '…'}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Vista previa SEO
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-[#0f1f3d]">{seoPreview.title}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        {seoPreview.description}
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="inv-description">Descripción</Label>
@@ -361,7 +427,8 @@ export function InventoryProductFormDialog({
                     <InventoryPhotoUploadBox
                       label="Foto principal"
                       uploadLabel="Subir imagen"
-                      hint="JPG, PNG o WebP. Se optimiza y guarda en el álbum."
+                      hint="Arrastra o selecciona la foto principal del producto."
+                      uploadLimitHint={PRODUCT_IMAGE_UPLOAD_HINT}
                       onFiles={(files) => void handleMainImageFiles(files)}
                       onPickFromAlbum={() => setAlbumPicker('main')}
                       preview={
@@ -378,6 +445,7 @@ export function InventoryProductFormDialog({
                       label="Galería"
                       uploadLabel="Subir imágenes"
                       hint="Múltiples archivos. No repite la foto principal."
+                      uploadLimitHint={PRODUCT_IMAGE_UPLOAD_HINT}
                       multiple
                       onFiles={(files) => void handleGalleryFiles(files)}
                       onPickFromAlbum={() => setAlbumPicker('gallery')}
@@ -442,6 +510,12 @@ export function InventoryProductFormDialog({
 
               <InventoryStorefrontDetailSection
                 form={form}
+                onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+              />
+
+              <InventoryMerchandisingSection
+                form={form}
+                products={inventoryProducts}
                 onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
               />
 

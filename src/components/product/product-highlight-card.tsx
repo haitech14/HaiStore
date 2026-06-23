@@ -7,11 +7,14 @@ import { CatalogPreviewDualPriceBlock } from '@/components/product/catalog-previ
 import { isProductOutOfStock } from '@/components/cart/add-to-cart-button';
 import { ProductWhatsAppButton } from '@/components/product-whatsapp-button';
 import { DualPrice } from '@/components/product/product-dual-price';
-import { ProductCardHoverImage } from '@/components/product/product-card-hover-image';
+import {
+  PRODUCT_CARD_IMAGE_CLASS,
+  ProductCardHoverImage,
+} from '@/components/product/product-card-hover-image';
 import { ProductQuantityAddFooter } from '@/components/product/product-quantity-add-footer';
 import { useCatalogDisplayPrice } from '@/hooks/use-catalog-display-price';
 import { formatHighlightProductTitle } from '@/lib/product-card-title';
-import { buildProductImageCandidates } from '@/lib/product-image-url';
+import { buildProductImageCandidates, resolveProductCardHoverImage } from '@/lib/product-image-url';
 import { productPath } from '@/lib/product-path';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/types/product';
@@ -27,8 +30,9 @@ interface ProductHighlightCardProps {
 
 export function ProductHighlightCard({ product }: ProductHighlightCardProps) {
   const outOfStock = isProductOutOfStock(product);
-  const detailHref = productPath(product.id);
+  const detailHref = productPath(product);
   const imageCandidates = useMemo(() => buildProductImageCandidates(product), [product]);
+  const hoverImageSrc = useMemo(() => resolveProductCardHoverImage(product), [product]);
   const [quantity, setQuantity] = useState(1);
   const displayPrice = useCatalogDisplayPrice(product);
 
@@ -41,7 +45,7 @@ export function ProductHighlightCard({ product }: ProductHighlightCardProps) {
     >
       <Link
         to={detailHref}
-        className="relative flex aspect-square w-full items-center justify-center bg-white px-2 pt-2 sm:px-3 sm:pt-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
+        className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
         aria-label={`Ver ficha de ${product.name}`}
       >
         {!outOfStock ? (
@@ -60,7 +64,10 @@ export function ProductHighlightCard({ product }: ProductHighlightCardProps) {
         ) : null}
         <ProductCardHoverImage
           candidates={imageCandidates}
-          imageClassName="max-h-[88%] max-w-[88%] object-contain object-center"
+          hoverSrc={hoverImageSrc}
+          alt={product.name}
+          className="size-full"
+          imageClassName={PRODUCT_CARD_IMAGE_CLASS}
           placeholder={
             <div className="relative flex size-full items-center justify-center overflow-hidden rounded-md border border-border/60 bg-muted/20">
               <img
@@ -92,7 +99,7 @@ export function ProductHighlightCard({ product }: ProductHighlightCardProps) {
             className="w-full rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
           >
             <h3
-              className="line-clamp-3 min-h-[2.75rem] w-full text-pretty text-[0.6875rem] font-bold normal-case leading-snug sm:min-h-[3.25rem] sm:text-[0.8125rem] sm:leading-snug"
+              className="line-clamp-3 min-h-[2.75rem] w-full text-pretty text-xs font-bold normal-case leading-snug sm:min-h-[3.25rem] sm:text-[0.8125rem] sm:leading-snug"
               style={{ color: HIGHLIGHT_TEXT }}
             >
               {formatHighlightProductTitle(product.name)}

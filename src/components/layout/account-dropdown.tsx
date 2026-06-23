@@ -6,6 +6,7 @@ import {
   Eye,
   Headphones,
   LayoutGrid,
+  ListOrdered,
   LogIn,
   LogOut,
   ShoppingBag,
@@ -264,7 +265,13 @@ export function AccountDropdown({ triggerVariant = 'icon' }: AccountDropdownProp
                   className="cursor-pointer rounded-none p-0 focus:bg-muted/50"
                   onSelect={() => goTo('/mi-cuenta?tab=pedidos')}
                 >
-                  <AccountMenuRow icon={ShoppingBag} label="Mis Pedidos" />
+                  <AccountMenuRow icon={ShoppingBag} label="Mis Compras" />
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer rounded-none p-0 focus:bg-muted/50"
+                  onSelect={() => goTo('/mi-cuenta?tab=precios')}
+                >
+                  <AccountMenuRow icon={ListOrdered} label="Lista de Precios" />
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="cursor-pointer rounded-none p-0 focus:bg-muted/50"

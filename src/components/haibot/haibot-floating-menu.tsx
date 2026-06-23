@@ -3,11 +3,13 @@ import { X } from 'lucide-react';
 
 import { HaibotAgentAvatar } from '@/components/haibot/haibot-agent-avatar';
 import { HaibotChatPanel } from '@/components/haibot/haibot-chat-panel';
+import { mobileBottomOffsetStyle, useMobileBottomInset } from '@/context/mobile-bottom-inset-context';
 import { cn } from '@/lib/utils';
 
 export function HaibotFloatingMenu() {
   const panelRef = useRef<HTMLDivElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const bottomInset = useMobileBottomInset();
 
   const closeChat = useCallback(() => setChatOpen(false), []);
 
@@ -35,7 +37,8 @@ export function HaibotFloatingMenu() {
   return (
     <div
       ref={panelRef}
-      className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6"
+      className="fixed right-5 z-50 flex flex-col items-end gap-3 sm:right-6"
+      style={mobileBottomOffsetStyle(bottomInset, 1.25)}
     >
       <HaibotChatPanel open={chatOpen} onClose={closeChat} />
 

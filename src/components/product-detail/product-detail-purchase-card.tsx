@@ -2,9 +2,9 @@ import { useMemo, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Minus, Plus, ShoppingCart, Zap } from 'lucide-react';
 
-import { AddToCartButton, isProductOutOfStock } from '@/components/cart/add-to-cart-button';
+import { AddToCartButton, getAddToCartLabel, isProductOutOfStock } from '@/components/cart/add-to-cart-button';
 import { ProductBulkDiscountIncentives } from '@/components/product-detail/product-bulk-discount-incentives';
-import { ProductBulkDiscountTable } from '@/components/product-detail/product-bulk-discount-table';
+import { ProductDetailRolePriceLines } from '@/components/product-detail/product-detail-role-prices';
 import type { QuotePdfPreview } from '@/components/product-detail/product-quote-pdf-viewer';
 import { ProductWhatsAppButton } from '@/components/product-whatsapp-button';
 import { DualPrice } from '@/components/product/product-dual-price';
@@ -62,7 +62,7 @@ export function ProductDetailPurchaseCard({
   const displayUsd = fullPrices.public;
   const outOfStock = isProductOutOfStock(product);
   const stockDisplay = outOfStock ? 0 : product.stock;
-  const maxQuantity = outOfStock ? 1 : Math.max(1, stockDisplay || 99);
+  const maxQuantity = outOfStock ? 99 : Math.max(1, stockDisplay || 99);
   const hasVolumeDiscount =
     volumePricing.tier != null && volumePricing.savingsUsd > 0.001;
   const isRentMode = purchaseMode === 'rent' && detail.rentalPlans.length > 0;
@@ -95,10 +95,6 @@ export function ProductDetailPurchaseCard({
     [equipmentConfiguration],
   );
   const configuredUnitUsd = offerUnitUsd + equipmentExtrasUsd;
-  const displayTotalUsd =
-    quantity > 1 || hasVolumeDiscount
-      ? volumePricing.totalUsd + equipmentExtrasUsd * quantity
-      : configuredUnitUsd;
   const normalPriceUsd =
     detail.oldPricePen != null
       ? penToUsd(detail.oldPricePen)
@@ -122,10 +118,11 @@ export function ProductDetailPurchaseCard({
   };
 
   const handleBuyNow = () => {
-    if (outOfStock) return;
     addItem(product, { ...cartAddOptions, openDrawer: false });
     navigate('/checkout');
   };
+
+  const addToCartLabel = getAddToCartLabel(product);
 
   const priceBlock = isRentMode && activeRentalEstimate ? (
     <div>
@@ -178,7 +175,7 @@ export function ProductDetailPurchaseCard({
           className="inline font-medium text-foreground"
         />
       </p>
-      <p className="mt-0.5 text-[0.65rem] text-muted-foreground">
+      <p className="mt-0.5 text-xs text-muted-foreground">
         {activeRentalEstimate.equipmentQuantity} equipo
         {activeRentalEstimate.equipmentQuantity > 1 ? 's' : ''} ·{' '}
         {activeRentalEstimate.billablePages.toLocaleString('es-PE')} pág./mes · IGV incluido
@@ -192,7 +189,13 @@ export function ProductDetailPurchaseCard({
         aria-live="polite"
         aria-atomic="true"
       >
-        <DualPrice usd={displayTotalUsd} />
+        <ProductDetailRolePriceLines
+          product={product}
+          quantity={quantity}
+          fullPrices={fullPrices}
+          bulkDiscountTiers={detail.bulkDiscountTiers}
+          equipmentExtrasUsd={equipmentExtrasUsd}
+        />
       </p>
       {quantity > 1 ? (
         <p className="mt-0.5 text-xs text-muted-foreground">
@@ -204,14 +207,7 @@ export function ProductDetailPurchaseCard({
           {' + '}tóner <DualPrice usd={equipmentExtrasUsd} className="inline" />
         </p>
       ) : null}
-      <p className="mt-0.5 text-[0.65rem] text-muted-foreground">IGV incluido</p>
-      {detail.bulkDiscountTiers.length > 0 ? (
-        <ProductBulkDiscountIncentives
-          product={product}
-          tiers={detail.bulkDiscountTiers}
-          className="mt-2"
-        />
-      ) : null}
+      <p className="mt-0.5 text-xs text-muted-foreground">IGV incluido</p>
       {showNormalPrice ? (
         <p className="mt-1 text-xs text-muted-foreground">
           Precio normal:{' '}
@@ -248,14 +244,11 @@ export function ProductDetailPurchaseCard({
         {priceBlock}
 
         {detail.bulkDiscountTiers.length > 0 && !isRentMode ? (
-          <div className="mt-4">
-            <ProductBulkDiscountTable
-              product={product}
-              tiers={detail.bulkDiscountTiers}
-              quantity={quantity}
-              purchaseEmbedded
-            />
-          </div>
+          <ProductBulkDiscountIncentives
+            product={product}
+            tiers={detail.bulkDiscountTiers}
+            className="mt-4"
+          />
         ) : null}
 
         <div className="mt-4 flex items-stretch gap-2.5">
@@ -267,7 +260,7 @@ export function ProductDetailPurchaseCard({
             <button
               type="button"
               onClick={() => adjustQuantity(-1)}
-              disabled={quantity <= 1 || outOfStock}
+              disabled={quantity <= 1}
               aria-label="Disminuir cantidad"
               className="flex size-11 items-center justify-center text-foreground transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:opacity-40"
             >
@@ -283,7 +276,7 @@ export function ProductDetailPurchaseCard({
             <button
               type="button"
               onClick={() => adjustQuantity(1)}
-              disabled={quantity >= maxQuantity || outOfStock}
+              disabled={quantity >= maxQuantity}
               aria-label="Aumentar cantidad"
               className="flex size-11 items-center justify-center text-foreground transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:opacity-40"
             >
@@ -295,11 +288,10 @@ export function ProductDetailPurchaseCard({
             product={product}
             addOptions={cartAddOptions}
             size="lg"
-            disabled={outOfStock}
-            className="h-11 min-h-11 min-w-0 flex-1 gap-2 rounded-lg bg-red-600 text-sm font-semibold text-white shadow-sm hover:bg-red-500 focus-visible:ring-red-600"
+            className="h-11 min-h-11 min-w-0 flex-1 gap-2 rounded-lg bg-red-600 text-sm font-semibold text-white shadow-sm hover:bg-red-500 focus-visible:ring-red-600 disabled:opacity-50"
           >
             <ShoppingCart className="size-4 shrink-0" aria-hidden="true" />
-            Añadir al carrito
+            {addToCartLabel}
           </AddToCartButton>
         </div>
 
@@ -307,13 +299,18 @@ export function ProductDetailPurchaseCard({
           <Button
             type="button"
             size="lg"
-            disabled={outOfStock}
             onClick={handleBuyNow}
             className="h-11 min-h-11 w-full gap-2 rounded-lg border-0 bg-[#0f1f3d] text-sm font-semibold text-white hover:bg-[#0f1f3d]/90 focus-visible:ring-[#0f1f3d]"
           >
             <Zap className="size-4 shrink-0" aria-hidden="true" />
-            Comprar ahora
+            {outOfStock ? 'Comprar a pedido' : 'Comprar ahora'}
           </Button>
+
+          {outOfStock ? (
+            <p className="text-center text-xs text-muted-foreground">
+              Sin stock inmediato · confirmamos plazo al procesar tu pedido.
+            </p>
+          ) : null}
 
           <ProductWhatsAppButton
             stopPropagation={false}

@@ -40,8 +40,8 @@ export function ProductCardImage({
 
   if (sources) {
     return (
-      <ProductImageWatermarkOverlay src={src} className="size-full">
-        <picture className="block size-full">
+      <ProductImageWatermarkOverlay src={src} className="flex size-full items-center justify-center">
+        <picture className="flex size-full items-center justify-center">
           <source type="image/webp" srcSet={sources.webpSrcSet} sizes={sources.sizes} />
           <img
             src={sources.fallbackSrc}
@@ -57,7 +57,7 @@ export function ProductCardImage({
   }
 
   return (
-    <ProductImageWatermarkOverlay src={src} className="size-full">
+    <ProductImageWatermarkOverlay src={src} className="flex size-full items-center justify-center">
       <img
         src={src}
         alt={alt}

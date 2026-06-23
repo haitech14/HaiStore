@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from 'react-router-dom';
 
 import { AdminApiStatusBanner } from '@/components/admin/admin-api-status-banner';
+import { useSeo } from '@/hooks/use-seo';
 import { AdminCatalogSubNav } from '@/components/admin/admin-catalog-subnav';
 import { AdminServicesSubNav } from '@/components/admin/admin-services-subnav';
 import { AdminSettingsSubNav } from '@/components/admin/admin-settings-subnav';
@@ -20,6 +21,10 @@ import {
 function AdminLayoutShell() {
   const { pathname } = useLocation();
   const { open: sidebarOpen } = useAdminSidebar();
+  useSeo({
+    title: 'Panel administrativo | Haitech',
+    robots: 'noindex,nofollow',
+  });
   const showCatalogSubNav = isAdminCatalogPath(pathname);
   const showServicesSubNav = isAdminServicesPath(pathname);
   const showSettingsSubNav = isAdminSettingsPath(pathname);

@@ -5,7 +5,10 @@ import { Star } from 'lucide-react';
 import { ProductCardOverlayActions } from '@/components/product/product-card-overlay-actions';
 import { CatalogPreviewPriceBlock } from '@/components/product/catalog-preview-price-block';
 import { ProductCardTitle } from '@/components/product/product-card-title';
-import { ProductCardHoverImage } from '@/components/product/product-card-hover-image';
+import {
+  PRODUCT_CARD_IMAGE_CLASS,
+  ProductCardHoverImage,
+} from '@/components/product/product-card-hover-image';
 import { ProductQuickViewDialog } from '@/components/product/product-quick-view-dialog';
 import { ProductQuantityAddFooter } from '@/components/product/product-quantity-add-footer';
 import { useCatalogDisplayPrice } from '@/hooks/use-catalog-display-price';
@@ -15,7 +18,7 @@ import { getCatalogProductById } from '@/lib/catalog-featured';
 import { featuredToWishlistItem } from '@/lib/wishlist-product';
 import type { FeaturedProduct } from '@/data/featured-products';
 import { featuredToCompareItem } from '@/lib/compare-product';
-import { buildProductImageCandidates } from '@/lib/product-image-url';
+import { buildProductImageCandidates, resolveProductCardHoverImage } from '@/lib/product-image-url';
 import { productPath } from '@/lib/product-path';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/types/product';
@@ -76,8 +79,8 @@ export function ProductShowcaseCard({
     };
   }, [catalogProduct?.prices, product.price, product.price_role, product.prices]);
   const displayPrice = useCatalogDisplayPrice(priceSource);
-  const imageCandidates = useMemo(() => {
-    return buildProductImageCandidates({
+  const imageSource = useMemo(
+    () => ({
       id: product.id,
       code: product.code ?? catalogProduct?.code ?? null,
       name: product.name,
@@ -85,8 +88,11 @@ export function ProductShowcaseCard({
       brand: product.brand ?? catalogProduct?.brand ?? null,
       image_url: product.image,
       gallery: catalogProduct?.gallery ?? null,
-    });
-  }, [catalogProduct, product]);
+    }),
+    [catalogProduct, product],
+  );
+  const imageCandidates = useMemo(() => buildProductImageCandidates(imageSource), [imageSource]);
+  const hoverImageSrc = useMemo(() => resolveProductCardHoverImage(imageSource), [imageSource]);
   const compareSelected = isSelected(product.id);
   const wishlistSelected = isWishlisted(product.id);
   const badgeSource = {
@@ -110,7 +116,7 @@ export function ProductShowcaseCard({
     created_at: catalogProduct?.created_at ?? new Date().toISOString(),
   };
 
-  const detailHref = productPath(product.id);
+  const detailHref = productPath(product);
 
   return (
     <article
@@ -135,19 +141,18 @@ export function ProductShowcaseCard({
               className={cn(
                 'flex items-center justify-center overflow-hidden',
                 isLargeImage
-                  ? 'aspect-square p-1 sm:p-1.5'
+                  ? 'aspect-square p-0.5 sm:p-1'
                   : isFeatured
-                    ? 'aspect-square p-2 sm:p-3'
-                    : 'aspect-[4/3] p-2 sm:aspect-square sm:p-3',
+                    ? 'aspect-square p-1 sm:p-1.5'
+                    : 'aspect-[4/3] p-1 sm:aspect-square sm:p-1.5',
               )}
             >
               <ProductCardHoverImage
                 candidates={imageCandidates}
+                hoverSrc={hoverImageSrc}
+                alt={product.name}
                 className="size-full"
-                imageClassName={cn(
-                  'object-contain object-center',
-                  isLargeImage ? 'size-full' : 'max-h-full max-w-full',
-                )}
+                imageClassName={PRODUCT_CARD_IMAGE_CLASS}
                 placeholder={
                   <span className="text-4xl font-bold text-neutral-200" aria-hidden="true">
                     {product.name.charAt(0)}

@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin
+Disallow: /panel
+Disallow: /login
+Disallow: /checkout
+Disallow: /mi-cuenta
+Disallow: /api/
+
+Sitemap: https://www.haitech.pe/sitemap.xml

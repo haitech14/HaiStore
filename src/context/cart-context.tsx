@@ -1,6 +1,7 @@
 import * as React from 'react';
 
 import { buildEquipmentCartLineId, getPaidEquipmentOptions } from '@/lib/equipment-config-selection';
+import { clearStoredCart, readStoredCartItems, writeStoredCartItems } from '@/lib/cart-storage';
 import type { CartConfigurationLine, CartItem, Product } from '@/types/product';
 
 export interface AddToCartOptions {
@@ -39,10 +40,14 @@ function cartLineUnitUsd(item: CartItem): number {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = React.useState<CartItem[]>([]);
+  const [items, setItems] = React.useState<CartItem[]>(() => readStoredCartItems());
   const [isOpen, setIsOpen] = React.useState(false);
   const [highlightProductId, setHighlightProductId] = React.useState<string | null>(null);
   const highlightTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    writeStoredCartItems(items);
+  }, [items]);
 
   const flashHighlight = React.useCallback((productId: string) => {
     setHighlightProductId(productId);
@@ -142,7 +147,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems((prev) => prev.filter((item) => item.lineId !== lineId));
   }, []);
 
-  const clear = React.useCallback(() => setItems([]), []);
+  const clear = React.useCallback(() => {
+    setItems([]);
+    clearStoredCart();
+  }, []);
 
   const value = React.useMemo<CartContextValue>(() => {
     const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);

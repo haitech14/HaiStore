@@ -1,15 +1,41 @@
-import { useLayoutEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useLayoutEffect, useMemo } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { ProductDetailView } from '@/components/product-detail/product-detail-view';
 import { Button } from '@/components/ui/button';
+import { useSeo } from '@/hooks/use-seo';
 import { useProduct } from '@/hooks/use-product';
+import { useStoreCategoriesTree } from '@/hooks/use-store-categories';
+import { buildProductBreadcrumbs } from '@/lib/build-product-breadcrumbs';
+import { buildProductSeoConfig } from '@/lib/build-product-seo';
+import { productCanonicalSlug, productPath } from '@/lib/product-path';
 import { recordProductView } from '@/lib/product-views';
 
 export function ProductDetailPage() {
+  const navigate = useNavigate();
   const { id: rawId } = useParams<{ id: string }>();
   const id = rawId ? decodeURIComponent(rawId) : undefined;
   const { product, featuredMeta, isLoading, notFound } = useProduct(id);
+  const { data: categoryTree = [] } = useStoreCategoriesTree();
+
+  const breadcrumbs = useMemo(() => {
+    if (!product) return [];
+    return buildProductBreadcrumbs(product, product.name, categoryTree);
+  }, [product, categoryTree]);
+
+  const seoConfig = useMemo(() => {
+    if (product) return buildProductSeoConfig(product, breadcrumbs, { featuredMeta });
+    if (notFound) {
+      return {
+        title: 'Producto no encontrado | Haitech',
+        description: 'El producto solicitado no está disponible en Haitech.',
+        robots: 'noindex,follow' as const,
+      };
+    }
+    return null;
+  }, [product, breadcrumbs, notFound, featuredMeta]);
+
+  useSeo(seoConfig);
 
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -19,6 +45,14 @@ export function ProductDetailPage() {
     if (!product?.id) return;
     void recordProductView(product.id);
   }, [product?.id]);
+
+  useLayoutEffect(() => {
+    if (!product || !id) return;
+    const canonicalSlug = productCanonicalSlug(product);
+    if (id !== canonicalSlug && id === product.id) {
+      navigate(productPath(product), { replace: true });
+    }
+  }, [product, id, navigate]);
 
   if (isLoading) {
     return (

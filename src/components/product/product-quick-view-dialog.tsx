@@ -33,7 +33,11 @@ export function ProductQuickViewDialog({
 
   const displayName = product?.name ?? snapshot?.name ?? '';
   const displayImage = product?.image_url ?? snapshot?.image ?? null;
-  const detailHref = snapshot ? productPath(snapshot.id) : '#';
+  const detailHref = product
+    ? productPath(product)
+    : snapshot
+      ? productPath({ id: snapshot.id, name: snapshot.name })
+      : '#';
 
   const badgeSource = product ?? {
     id: snapshot?.id ?? '',

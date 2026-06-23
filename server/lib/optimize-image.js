@@ -39,8 +39,15 @@ export async function optimizeImageDataUrl(dataUrl, options = {}) {
       }
     }
 
-    const resized = await sharp(input)
-      .rotate()
+    const rotated = await sharp(input).rotate().toBuffer();
+    let trimmed = rotated;
+    try {
+      trimmed = await sharp(rotated).trim({ threshold: 12 }).toBuffer();
+    } catch {
+      trimmed = rotated;
+    }
+
+    const resized = await sharp(trimmed)
       .resize(maxEdge, maxEdge, { fit: 'inside', withoutEnlargement: true })
       .toBuffer();
 

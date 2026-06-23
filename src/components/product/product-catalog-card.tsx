@@ -19,12 +19,12 @@ import {
   getCatalogCardSpecLines,
 } from '@/lib/product-catalog-card-meta';
 import { PRODUCT_CARD_DISCOUNT_CLASS } from '@/lib/product-card-title';
-import { ProductCardHoverImage } from '@/components/product/product-card-hover-image';
+import { ProductCardHoverImage, PRODUCT_CARD_IMAGE_CLASS } from '@/components/product/product-card-hover-image';
 import { ProductQuantityAddFooter } from '@/components/product/product-quantity-add-footer';
 import { ViewAsRoleBadge } from '@/components/product/view-as-role-badge';
 import { ViewAsRolePrices } from '@/components/product/view-as-role-prices';
 import { useCatalogDisplayPrice } from '@/hooks/use-catalog-display-price';
-import { buildProductImageCandidates } from '@/lib/product-image-url';
+import { buildProductImageCandidates, resolveProductCardHoverImage } from '@/lib/product-image-url';
 import { formatProductCardTitle } from '@/lib/product-card-title';
 import { productPath } from '@/lib/product-path';
 import { productToWishlistItem } from '@/lib/wishlist-product';
@@ -172,8 +172,9 @@ interface ProductCatalogCardProps {
 export function ProductCatalogCard({ product }: ProductCatalogCardProps) {
   const { isSelected: isWishlisted, toggle: toggleWishlist } = useWishlist();
   const outOfStock = isProductOutOfStock(product);
-  const detailHref = productPath(product.id);
+  const detailHref = productPath(product);
   const imageCandidates = useMemo(() => buildProductImageCandidates(product), [product]);
+  const hoverImageSrc = useMemo(() => resolveProductCardHoverImage(product), [product]);
   const wishlistSelected = isWishlisted(product.id);
   const displayTitle = formatProductCardTitle(product);
   const rating = getCatalogCardRating(product);
@@ -217,8 +218,10 @@ export function ProductCatalogCard({ product }: ProductCatalogCardProps) {
         >
           <ProductCardHoverImage
             candidates={imageCandidates}
+            hoverSrc={hoverImageSrc}
+            alt={product.name}
             className="size-full"
-            imageClassName="size-full object-contain object-center p-0.5"
+            imageClassName={PRODUCT_CARD_IMAGE_CLASS}
             placeholder={
               <div className="flex flex-col items-center gap-2 px-4 text-center text-muted-foreground">
                 <ImageOff className="size-8" aria-hidden="true" />

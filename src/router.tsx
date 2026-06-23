@@ -25,6 +25,17 @@ const CheckoutPage = lazyWithRetry(
   () => import('@/pages/checkout').then((m) => ({ default: m.CheckoutPage })),
   'checkout',
 );
+const CheckoutSuccessPage = lazyWithRetry(
+  () => import('@/pages/checkout-success-page').then((m) => ({ default: m.CheckoutSuccessPage })),
+  'checkout-exito',
+);
+const CheckoutMercadoPagoReturnPage = lazyWithRetry(
+  () =>
+    import('@/pages/checkout-mercadopago-return-page').then((m) => ({
+      default: m.CheckoutMercadoPagoReturnPage,
+    })),
+  'checkout-mp',
+);
 const AccountPage = lazyWithRetry(
   () => import('@/pages/account').then((m) => ({ default: m.AccountPage })),
   'mi cuenta',
@@ -376,6 +387,11 @@ export const router = createBrowserRouter([
       { path: 'categoria/:slug', element: withSuspense(<CategoryPage />) },
       { path: 'tienda/producto/:id', element: withSuspense(<ProductDetailPage />) },
       { path: 'checkout', element: withSuspense(<CheckoutPage />) },
+      { path: 'checkout/exito/:orderNumber', element: withSuspense(<CheckoutSuccessPage />) },
+      {
+        path: 'checkout/pago/mercadopago',
+        element: withSuspense(<CheckoutMercadoPagoReturnPage />),
+      },
       { path: 'contacto', element: withSuspense(<ContactPage />) },
       { path: 'mi-cuenta', element: withSuspense(<AccountPage />) },
       { path: 'favoritos', element: withSuspense(<FavoritesPage />) },

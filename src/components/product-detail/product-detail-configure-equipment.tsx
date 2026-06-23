@@ -37,6 +37,16 @@ import {
   resolveConfigureTonerCards,
   type ConfigureTonerCard,
 } from '@/lib/product-configure-toner';
+import {
+  MERCHANDISING_CROSS_SELL_STEP_ID,
+  MERCHANDISING_UPSELL_STEP_ID,
+  crossSellOptionId,
+  resolveCrossSellConfigureCards,
+  resolveMerchandisingConfigureCards,
+  upsellOptionId,
+  type MerchandisingConfigureCard,
+} from '@/lib/product-merchandising';
+import { TonerCardRolePrices } from '@/components/product-detail/product-detail-role-prices';
 import { ensureFullPrices } from '@/lib/roles';
 import { isColorPrinterEquipment } from '@/lib/build-product-detail';
 import { cn } from '@/lib/utils';
@@ -137,9 +147,7 @@ function SelectableTonerCard({
           <p className="line-clamp-2 text-pretty text-[0.6875rem] font-bold leading-snug text-[#0f1f3d] sm:text-xs">
             {card.name}
           </p>
-          <p className="mt-0.5 text-sm font-bold text-red-600 sm:text-base">
-            S/ {formatPenAmount(card.pricePen)}
-          </p>
+          <TonerCardRolePrices prices={card.prices} className="mt-0.5" />
           <p className="mt-0.5 line-clamp-2 text-[0.625rem] leading-snug text-muted-foreground sm:text-[0.6875rem]">
             {card.description}
           </p>
@@ -201,6 +209,65 @@ function SelectableEquipmentCard({
           <p className="mt-0.5 text-sm font-bold text-red-600 sm:text-base">
             S/ {formatPenAmount(card.pricePen)}
           </p>
+          <p className="mt-0.5 line-clamp-2 text-[0.625rem] leading-snug text-muted-foreground sm:text-[0.6875rem]">
+            {card.description}
+          </p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        aria-pressed={selected}
+        className={cn(
+          cardButtonClass,
+          selected
+            ? 'border-red-600 bg-red-50 text-red-700 hover:bg-red-100'
+            : 'inline-flex items-center justify-center gap-1',
+        )}
+        onClick={onToggle}
+      >
+        {selected ? 'Quitar del total' : 'Agregar al total'}
+        {!selected ? (
+          <Plus className="size-3.5 shrink-0 sm:size-4" strokeWidth={2.5} aria-hidden="true" />
+        ) : null}
+      </button>
+    </article>
+  );
+}
+
+function SelectableMerchandisingCard({
+  card,
+  selected,
+  onToggle,
+}: {
+  card: MerchandisingConfigureCard;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <article
+      className={cn(
+        cardClass,
+        selected && 'border-red-600 ring-1 ring-red-600/30',
+      )}
+    >
+      <h3 className="text-xs font-bold text-[#0f1f3d] sm:text-sm">{card.title}</h3>
+
+      <div className="mt-2 flex flex-1 gap-2.5">
+        <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/60 bg-muted/20 sm:size-14">
+          <ProductCardHoverImage
+            candidates={card.imageCandidates}
+            alt=""
+            className="size-full"
+            imageClassName="size-full object-contain p-0.5"
+          />
+        </div>
+
+        <div className="min-w-0 flex-1 text-left">
+          <p className="line-clamp-2 text-pretty text-[0.6875rem] font-bold leading-snug text-[#0f1f3d] sm:text-xs">
+            {card.name}
+          </p>
+          <TonerCardRolePrices prices={card.prices} className="mt-0.5" />
           <p className="mt-0.5 line-clamp-2 text-[0.625rem] leading-snug text-muted-foreground sm:text-[0.6875rem]">
             {card.description}
           </p>
@@ -346,8 +413,35 @@ export function ProductDetailConfigureEquipment({
   );
 
   const purchasableTonerCards = useMemo(
-    () => resolveConfigureTonerCards(tonerStep, consumableGroups, includedTonerImage, catalogProducts),
-    [catalogProducts, consumableGroups, includedTonerImage, tonerStep],
+    () =>
+      resolveConfigureTonerCards(
+        tonerStep,
+        consumableGroups,
+        includedTonerImage,
+        catalogProducts,
+        product,
+      ),
+    [catalogProducts, consumableGroups, includedTonerImage, product, tonerStep],
+  );
+
+  const crossSellStep = equipmentSteps.find((step) => step.id === MERCHANDISING_CROSS_SELL_STEP_ID);
+  const upsellStep = equipmentSteps.find((step) => step.id === MERCHANDISING_UPSELL_STEP_ID);
+
+  const upsellCards = useMemo(
+    () =>
+      resolveMerchandisingConfigureCards(product.upsell_product_ids, catalogProducts, {
+        title: 'Upselling',
+        excludeProductId: product.id,
+      }),
+    [catalogProducts, product.id, product.upsell_product_ids],
+  );
+
+  const crossSellCards = useMemo(
+    () =>
+      resolveCrossSellConfigureCards(product, catalogProducts, {
+        excludeProductIds: upsellCards.map((card) => card.productId),
+      }),
+    [catalogProducts, product, upsellCards],
   );
 
   const equipmentCards = useMemo(
@@ -398,9 +492,13 @@ export function ProductDetailConfigureEquipment({
   const showPurchasableToners = purchasableTonerCards.length > 0;
   const showEquipmentCards = equipmentCards.length > 0;
   const showAccessory = recommendedAccessory != null;
+  const showUpsellCards = upsellCards.length > 0;
+  const showCrossSellCards = crossSellCards.length > 0;
   const visibleCardCount =
     purchasableTonerCards.length +
     equipmentCards.length +
+    crossSellCards.length +
+    upsellCards.length +
     (showMaintenance ? 1 : 0) +
     (showAccessory ? 1 : 0);
 
@@ -416,7 +514,30 @@ export function ProductDetailConfigureEquipment({
     [plans],
   );
 
-  if (!isRentMode && !showMaintenance && !showPurchasableToners && !showEquipmentCards && !showAccessory) return null;
+  if (
+    !isRentMode &&
+    !showMaintenance &&
+    !showPurchasableToners &&
+    !showEquipmentCards &&
+    !showCrossSellCards &&
+    !showUpsellCards &&
+    !showAccessory
+  ) {
+    return null;
+  }
+
+  const handleToggleMerchandising = (
+    step: typeof crossSellStep,
+    optionId: string,
+  ) => {
+    if (!step) return;
+    onEquipmentSelectionChange(selectEquipmentOption(equipmentSelection, step, optionId));
+  };
+
+  const isMerchandisingSelected = (stepId: string | undefined, optionId: string): boolean => {
+    if (!stepId) return false;
+    return equipmentSelection[stepId]?.has(optionId) ?? false;
+  };
 
   const handleChoosePlan = () => {
     onPurchaseModeChange('rent');
@@ -562,6 +683,36 @@ export function ProductDetailConfigureEquipment({
                     card={card}
                     selected={isEquipmentCardSelected(card)}
                     onToggle={() => handleToggleEquipmentCard(card)}
+                  />
+                </li>
+              ))}
+
+              {crossSellCards.map((card) => (
+                <li key={`cross-sell-${card.productId}`} className={carouselSlideClass}>
+                  <SelectableMerchandisingCard
+                    card={card}
+                    selected={isMerchandisingSelected(
+                      crossSellStep?.id,
+                      crossSellOptionId(card.productId),
+                    )}
+                    onToggle={() =>
+                      handleToggleMerchandising(crossSellStep, crossSellOptionId(card.productId))
+                    }
+                  />
+                </li>
+              ))}
+
+              {upsellCards.map((card) => (
+                <li key={`upsell-${card.productId}`} className={carouselSlideClass}>
+                  <SelectableMerchandisingCard
+                    card={card}
+                    selected={isMerchandisingSelected(
+                      upsellStep?.id,
+                      upsellOptionId(card.productId),
+                    )}
+                    onToggle={() =>
+                      handleToggleMerchandising(upsellStep, upsellOptionId(card.productId))
+                    }
                   />
                 </li>
               ))}

@@ -64,6 +64,29 @@ function ComparisonColumnHeader({
   );
 }
 
+function ComparisonCellValue({
+  value,
+  emphasize = false,
+}: {
+  value: boolean | string | undefined;
+  emphasize?: boolean;
+}) {
+  if (value === true) {
+    return (
+      <span className="inline-flex size-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+        <Check className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
+        <span className="sr-only">Sí</span>
+      </span>
+    );
+  }
+
+  return (
+    <span className={cn(emphasize && 'font-bold')}>
+      {typeof value === 'string' ? value : '—'}
+    </span>
+  );
+}
+
 export function ProductDetailComparison({ data, className }: ProductDetailComparisonProps) {
   if (data.columns.length === 0) return null;
 
@@ -82,7 +105,36 @@ export function ProductDetailComparison({ data, className }: ProductDetailCompar
         <p className="mt-1 text-sm text-muted-foreground">{data.subtitle}</p>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="space-y-4 md:hidden">
+        {data.columns.map((column) => (
+          <article
+            key={column.modelLabel}
+            className={cn(
+              'rounded-xl border p-4 shadow-sm',
+              column.isCurrent
+                ? 'border-red-600/30 bg-red-50/50 ring-1 ring-red-600/15'
+                : 'border-border/70 bg-card',
+            )}
+          >
+            <ComparisonColumnHeader column={column} highlighted={column.isCurrent} />
+            <dl className="mt-4 divide-y divide-border/60 text-sm">
+              {data.rows.map((row) => (
+                <div key={row.id} className="flex items-start justify-between gap-3 py-2.5">
+                  <dt className="min-w-0 flex-1 font-medium text-[#0f1f3d]">{row.label}</dt>
+                  <dd className="shrink-0 text-right text-[#0f1f3d]">
+                    <ComparisonCellValue
+                      value={column.values[row.id]}
+                      emphasize={column.isCurrent && row.id === 'volume'}
+                    />
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[48rem] border-collapse text-sm sm:min-w-[56rem]">
           <thead>
             <tr>
@@ -127,14 +179,7 @@ export function ProductDetailComparison({ data, className }: ProductDetailCompar
                       key={`${column.modelLabel}-${row.id}`}
                       className="border-b border-border/50 px-3 py-3 text-center text-[#0f1f3d]"
                     >
-                      {value === true ? (
-                        <span className="inline-flex size-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                          <Check className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
-                          <span className="sr-only">Sí</span>
-                        </span>
-                      ) : (
-                        <span>{typeof value === 'string' ? value : '—'}</span>
-                      )}
+                      <ComparisonCellValue value={value} />
                     </td>
                   );
                 })}
@@ -144,22 +189,10 @@ export function ProductDetailComparison({ data, className }: ProductDetailCompar
                     rowIndex === 0 && 'border-t border-red-600/20',
                   )}
                 >
-                  {(() => {
-                    const value = currentColumn.values[row.id];
-                    if (value === true) {
-                      return (
-                        <span className="inline-flex size-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                          <Check className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
-                          <span className="sr-only">Sí</span>
-                        </span>
-                      );
-                    }
-                    return (
-                      <span className={cn(row.id === 'volume' && 'font-bold')}>
-                        {typeof value === 'string' ? value : '—'}
-                      </span>
-                    );
-                  })()}
+                  <ComparisonCellValue
+                    value={currentColumn.values[row.id]}
+                    emphasize={row.id === 'volume'}
+                  />
                 </td>
               </tr>
             ))}

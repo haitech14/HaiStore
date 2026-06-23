@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  FileText,
   Headphones,
+  ListOrdered,
   Menu,
   ShoppingBag,
+  User,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -19,7 +20,7 @@ import {
 import { useIsDesktopNav } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 
-export type AccountTab = 'cuenta' | 'pedidos';
+export type AccountTab = 'cuenta' | 'pedidos' | 'precios';
 
 interface AccountNavItem {
   id: string;
@@ -30,8 +31,9 @@ interface AccountNavItem {
 }
 
 const accountNavItems: AccountNavItem[] = [
-  { id: 'cuenta', label: 'Estado de cuenta', icon: FileText, tab: 'cuenta' },
-  { id: 'pedidos', label: 'Mis pedidos', icon: ShoppingBag, tab: 'pedidos' },
+  { id: 'cuenta', label: 'Mi Perfil', icon: User, tab: 'cuenta' },
+  { id: 'pedidos', label: 'Mis Compras', icon: ShoppingBag, tab: 'pedidos' },
+  { id: 'precios', label: 'Lista de Precios', icon: ListOrdered, tab: 'precios' },
   { id: 'soporte', label: 'Soporte', icon: Headphones, href: '/contacto' },
 ];
 

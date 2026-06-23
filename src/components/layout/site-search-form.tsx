@@ -23,6 +23,7 @@ import {
   type SearchServiceSuggestion,
 } from '@/lib/product-search';
 import { formatProductDisplayCode } from '@/lib/product-display-code';
+import { productPath } from '@/lib/product-path';
 import { resolveProductImageUrl } from '@/lib/product-image-url';
 import { ensureFullPrices } from '@/lib/roles';
 import type { Product } from '@/types/product';
@@ -46,17 +47,17 @@ const searchBarClass =
   'flex w-full items-stretch overflow-hidden rounded-lg border border-border/80 bg-white shadow-sm transition-shadow focus-within:border-border focus-within:ring-2 focus-within:ring-ring/20';
 
 const categorySegmentClass =
-  'h-10 min-w-[7.5rem] max-w-[9rem] appearance-none border-0 border-l border-border/80 bg-white py-0 pl-2 pr-7 text-xs text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:min-w-[8.5rem] sm:max-w-[10rem]';
+  'h-11 min-w-[8rem] max-w-[10rem] appearance-none border-0 border-l border-border/80 bg-white py-0 pl-2.5 pr-8 text-sm text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:min-w-[9rem] sm:max-w-[11rem]';
 
 const searchInputClass =
-  'h-10 w-full min-w-0 flex-1 border-0 bg-white py-0 pl-9 pr-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:px-3 sm:pl-9';
+  'h-11 w-full min-w-0 flex-1 border-0 bg-white py-0 pl-10 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:pl-10';
 
 const searchButtonClass =
-  'flex h-10 w-10 shrink-0 items-center justify-center rounded-r-[calc(var(--radius)-1px)] border-0 bg-red-600 text-white transition-colors hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2';
+  'flex h-11 w-11 shrink-0 items-center justify-center rounded-r-[calc(var(--radius)-1px)] border-0 bg-red-600 text-white transition-colors hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2';
 
 function SuggestionSectionHeading({ children }: { children: string }) {
   return (
-    <p className="border-b border-border/60 bg-muted/25 px-3.5 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+    <p className="border-b border-border/60 bg-muted/25 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
       {children}
     </p>
   );
@@ -101,36 +102,36 @@ function SearchProductSuggestionRow({
         .filter(Boolean)
         .join(', ')}
       className={cn(
-        'flex min-h-[5.5rem] items-stretch gap-1 border-b border-border/40 bg-background transition-colors last:border-b-0',
+        'flex min-h-[6.5rem] items-stretch gap-1 border-b border-border/40 bg-background transition-colors last:border-b-0 sm:min-h-[7rem]',
         isActive && 'bg-accent',
       )}
       onMouseEnter={onMouseEnter}
     >
       <button
         type="button"
-        className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-sm hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-inset"
+        className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left text-sm hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-inset sm:gap-3.5 sm:px-4 sm:py-3"
         onClick={onNavigateProduct}
       >
         {imageUrl ? (
           <img
             src={imageUrl}
             alt=""
-            className="size-10 shrink-0 rounded-md border border-border/60 bg-muted object-contain p-0.5"
+            className="size-14 shrink-0 rounded-md border border-border/60 bg-muted object-contain p-1 sm:size-16"
             loading="lazy"
           />
         ) : (
           <span
-            className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border/60 bg-muted/50 text-muted-foreground"
+            className="flex size-14 shrink-0 items-center justify-center rounded-md border border-border/60 bg-muted/50 text-muted-foreground sm:size-16"
             aria-hidden="true"
           >
-            <ImageOff className="size-3.5" strokeWidth={1.75} />
+            <ImageOff className="size-5" strokeWidth={1.75} />
           </span>
         )}
         <span className="min-w-0 flex-1">
-          <span className="line-clamp-2 text-[0.8125rem] font-medium leading-snug text-foreground">
+          <span className="line-clamp-2 text-sm font-medium leading-snug text-foreground sm:text-[0.9375rem]">
             {product.name}
           </span>
-          <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.65rem]">
+          <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-[0.8125rem]">
             {code ? (
               <span className="font-mono tracking-tight text-muted-foreground">{code}</span>
             ) : null}
@@ -145,32 +146,32 @@ function SearchProductSuggestionRow({
           </span>
         </span>
         {showAdminPrices ? (
-          <span className="hidden shrink-0 space-y-1 text-right tabular-nums min-[480px]:block">
+          <span className="hidden shrink-0 space-y-1.5 text-right tabular-nums min-[480px]:block">
             <span className="block">
-              <span className="block text-[0.55rem] font-medium uppercase tracking-wide text-muted-foreground">
+              <span className="block text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
                 Técnico
               </span>
-              <span className="block text-[0.7rem] font-semibold text-foreground">
+              <span className="block text-sm font-semibold text-foreground">
                 {formatUsd(rolePrices.tecnico)}
               </span>
             </span>
             <span className="block">
-              <span className="block text-[0.55rem] font-medium uppercase tracking-wide text-muted-foreground">
+              <span className="block text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
                 Público
               </span>
-              <span className="block text-[0.7rem] font-semibold text-foreground">
+              <span className="block text-sm font-semibold text-foreground">
                 {formatUsd(rolePrices.public)}
               </span>
             </span>
           </span>
         ) : (
-          <span className="shrink-0 text-[0.7rem] font-semibold tabular-nums text-foreground">
+          <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground sm:text-base">
             {formatUsd(product.price)}
           </span>
         )}
       </button>
 
-      <div className="flex shrink-0 items-center border-l border-border/40 px-1.5 py-2">
+      <div className="flex shrink-0 items-center border-l border-border/40 px-2 py-3 sm:px-2.5">
         <AddToCartButton
           product={product}
           addOptions={{ openDrawer: true }}
@@ -178,9 +179,9 @@ function SearchProductSuggestionRow({
           size="icon"
           variant="ghost"
           aria-label={`Añadir ${product.name} al carrito`}
-          className="size-9 min-h-9 shrink-0 rounded-md text-red-600 hover:bg-red-50 hover:text-red-600 focus-visible:ring-red-600"
+          className="size-10 min-h-10 shrink-0 rounded-md text-red-600 hover:bg-red-50 hover:text-red-600 focus-visible:ring-red-600 sm:size-11 sm:min-h-11"
         >
-          <ShoppingCart className="size-4" aria-hidden="true" />
+          <ShoppingCart className="size-[1.125rem] sm:size-5" aria-hidden="true" />
         </AddToCartButton>
       </div>
     </div>
@@ -332,7 +333,7 @@ export function SiteSearchForm({
 
   const goToProduct = (product: Product) => {
     seedProductQueryCache(queryClient, product, role, viewAsRoles);
-    goToPath(`/tienda/producto/${product.id}`);
+    goToPath(productPath(product));
   };
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -469,16 +470,16 @@ export function SiteSearchForm({
 
       {showPanel ? (
         <div
-          className="absolute left-0 right-0 top-full z-[60] mt-2 max-h-[min(70vh,32rem)] overflow-hidden rounded-lg border border-border/70 bg-popover shadow-[0_8px_24px_rgba(15,23,42,0.12)] sm:left-1/2 sm:right-auto sm:w-[min(100vw-1.5rem,44rem)] sm:-translate-x-1/2"
+          className="absolute left-0 right-0 top-full z-[60] mt-2 max-h-[min(80vh,44rem)] overflow-hidden rounded-xl border border-border/70 bg-popover shadow-[0_12px_32px_rgba(15,23,42,0.14)] sm:left-1/2 sm:right-auto sm:w-[min(100vw-1rem,56rem)] sm:-translate-x-1/2"
           role="presentation"
         >
           {queryTooShort ? (
-            <p className="px-4 py-3 text-sm text-muted-foreground" role="status">
+            <p className="px-5 py-4 text-sm text-muted-foreground sm:text-base" role="status">
               Escribe al menos {MIN_PRODUCT_SEARCH_LENGTH} caracteres para buscar.
             </p>
           ) : isSearchPending || searchPending ? (
             <p
-              className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground"
+              className="flex items-center gap-2 px-5 py-4 text-sm text-muted-foreground sm:text-base"
               role="status"
               aria-live="polite"
             >
@@ -486,7 +487,7 @@ export function SiteSearchForm({
               Buscando…
             </p>
           ) : suggestions.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-muted-foreground" role="status">
+            <p className="px-5 py-4 text-sm text-muted-foreground sm:text-base" role="status">
               No hay resultados para «{trimmedDeferredQuery}». Prueba con otro término o revisa la
               ortografía.
             </p>
@@ -496,7 +497,7 @@ export function SiteSearchForm({
                 id={listboxId}
                 role="listbox"
                 aria-label="Resultados de búsqueda"
-                className="max-h-[min(62vh,28rem)] overflow-y-auto"
+                className="max-h-[min(72vh,40rem)] overflow-y-auto"
               >
                 {categorySuggestions.length > 0 ? (
                   <>
@@ -513,22 +514,22 @@ export function SiteSearchForm({
                             role="option"
                             aria-selected={isActive}
                             className={cn(
-                              'flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm transition-colors',
+                              'flex w-full items-center gap-3.5 px-4 py-3 text-left text-sm transition-colors sm:gap-4 sm:px-5 sm:py-3.5 sm:text-base',
                               isActive ? 'bg-accent' : 'hover:bg-muted/60',
                             )}
                             onMouseEnter={() => setActiveIndex(index)}
                             onClick={() => activateSuggestion(item)}
                           >
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border/60 bg-muted/40 text-foreground/70">
+                            <span className="flex size-12 shrink-0 items-center justify-center rounded-md border border-border/60 bg-muted/40 text-foreground/70 sm:size-14">
                               <FolderOpen
-                                className="size-4"
+                                className="size-5 sm:size-[1.375rem]"
                                 strokeWidth={1.75}
                                 aria-hidden="true"
                               />
                             </span>
                             <span className="min-w-0 flex-1">
                               <span className="block font-medium text-foreground">{item.name}</span>
-                              <span className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                              <span className="mt-0.5 line-clamp-1 text-xs text-muted-foreground sm:text-sm">
                                 {item.subtitle}
                               </span>
                             </span>
@@ -555,18 +556,18 @@ export function SiteSearchForm({
                             role="option"
                             aria-selected={isActive}
                             className={cn(
-                              'flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm transition-colors',
+                              'flex w-full items-center gap-3.5 px-4 py-3 text-left text-sm transition-colors sm:gap-4 sm:px-5 sm:py-3.5 sm:text-base',
                               isActive ? 'bg-accent' : 'hover:bg-muted/60',
                             )}
                             onMouseEnter={() => setActiveIndex(suggestionIndex)}
                             onClick={() => activateSuggestion(item)}
                           >
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border/60 bg-red-600/10 text-red-600">
-                              <Wrench className="size-4" strokeWidth={1.75} aria-hidden="true" />
+                            <span className="flex size-12 shrink-0 items-center justify-center rounded-md border border-border/60 bg-red-600/10 text-red-600 sm:size-14">
+                              <Wrench className="size-5 sm:size-[1.375rem]" strokeWidth={1.75} aria-hidden="true" />
                             </span>
                             <span className="min-w-0 flex-1">
                               <span className="block font-medium text-foreground">{item.name}</span>
-                              <span className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                              <span className="mt-0.5 line-clamp-1 text-xs text-muted-foreground sm:text-sm">
                                 {item.subtitle}
                               </span>
                             </span>
@@ -616,21 +617,21 @@ export function SiteSearchForm({
                   : null}
               </ul>
               {canLoadMoreProducts || totalMatches > productSuggestions.length ? (
-                <div className="space-y-1 border-t border-border/80 bg-muted/10 px-3 py-2">
+                <div className="space-y-1 border-t border-border/80 bg-muted/10 px-4 py-3 sm:px-5 sm:py-3.5">
                   {canLoadMoreProducts ? (
                     <button
                       type="button"
-                      className="flex w-full items-center justify-center gap-1.5 rounded-md py-2 text-center text-xs font-semibold text-red-600 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                      className="flex w-full items-center justify-center gap-2 rounded-md py-2.5 text-center text-sm font-semibold text-red-600 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 sm:py-3 sm:text-base"
                       onClick={loadMoreProducts}
                     >
-                      <Plus className="size-3.5" aria-hidden="true" />
+                      <Plus className="size-4" aria-hidden="true" />
                       Agregar más productos
                     </button>
                   ) : null}
                   {totalMatches > productSuggestions.length ? (
                     <button
                       type="button"
-                      className="w-full rounded-md py-2 text-center text-xs font-semibold text-[#0f1f3d] hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                      className="w-full rounded-md py-2.5 text-center text-sm font-semibold text-[#0f1f3d] hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 sm:py-3 sm:text-base"
                       onClick={() => goToSearchResults(query, categoryFilter)}
                     >
                       Ver todos los resultados ({totalMatches})

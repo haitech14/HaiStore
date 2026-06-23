@@ -36,6 +36,16 @@ export function formatPenInteger(pen: number): string {
   }).format(pen);
 }
 
+/** Mensaje promocional: «Si llevas N, llévate en $X» según moneda activa. */
+export function formatVolumeQuantityPromoMessage(
+  quantity: number,
+  unitPriceUsd: number,
+  displayCurrency: DisplayCurrency,
+): string {
+  const amount = formatDisplayPriceFromUsd(unitPriceUsd, displayCurrency);
+  return `Si llevas ${quantity}, llévate en ${amount}`;
+}
+
 /** Mensaje promocional: «Si llevas N, ahorra S/ X soles». */
 export function formatOfferQuantitySavingsMessage(
   targetQuantity: number,

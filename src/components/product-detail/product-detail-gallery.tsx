@@ -10,7 +10,14 @@ import {
 import { ProductDetailFeatureBar } from '@/components/product-detail/product-detail-feature-bar';
 import { ProductDetailHeroFeatures } from '@/components/product-detail/product-detail-hero-features';
 import { youtubeThumbnailUrl } from '@/lib/product-media';
+import {
+  productDetailMainImageSources,
+  productDetailThumbnailSources,
+  supportsResponsiveProductImage,
+} from '@/lib/responsive-image';
+import { extractProductModel } from '@/lib/seo';
 import { cn } from '@/lib/utils';
+import type { Product } from '@/types/product';
 import { ProductImageWatermarkOverlay } from '@/components/product/product-image-watermark-overlay';
 import type { ProductDescriptionHighlight } from '@/types/product-detail';
 import type { ProductGalleryItem } from '@/types/product-detail';
@@ -18,11 +25,25 @@ import type { ProductGalleryItem } from '@/types/product-detail';
 interface ProductDetailGalleryProps {
   items: ProductGalleryItem[];
   productName: string;
+  product?: Pick<Product, 'name' | 'attributes' | 'brand' | 'category'>;
   showOriginalBadge?: boolean;
   brandLabel?: string;
   featureBar?: ProductDescriptionHighlight[];
   secondaryFeatureBar?: ProductDescriptionHighlight[];
   viewer3dUrl?: string | null;
+}
+
+function resolveProductImageAlt(
+  productName: string,
+  product: Pick<Product, 'name' | 'attributes' | 'brand' | 'category'> | undefined,
+  index: number,
+  itemAlt?: string | null,
+): string {
+  if (itemAlt?.trim()) return itemAlt.trim();
+  const model = product ? extractProductModel(product) : null;
+  const viewSuffix = index > 0 ? ` — vista ${index + 1}` : '';
+  if (model) return `${productName} (${model})${viewSuffix}`;
+  return `${productName}${viewSuffix}`;
 }
 
 function getItemKey(item: ProductGalleryItem): string {
@@ -37,14 +58,83 @@ function getThumbnailSrc(item: ProductGalleryItem): string {
   return item.poster ?? item.src;
 }
 
+function GalleryResponsiveImage({
+  src,
+  alt,
+  className,
+  loading = 'lazy',
+  sizes,
+  variant = 'main',
+  onError,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  loading?: 'lazy' | 'eager';
+  sizes?: string;
+  variant?: 'main' | 'thumb';
+  onError?: () => void;
+}) {
+  const [forcePlain, setForcePlain] = useState(false);
+  const responsive = supportsResponsiveProductImage(src) && !forcePlain;
+  const sources = responsive
+    ? variant === 'thumb'
+      ? productDetailThumbnailSources(src)
+      : productDetailMainImageSources(src)
+    : null;
+
+  const handleError = () => {
+    if (responsive) {
+      setForcePlain(true);
+      return;
+    }
+    onError?.();
+  };
+
+  useEffect(() => {
+    setForcePlain(false);
+  }, [src]);
+
+  if (sources) {
+    return (
+      <picture className="flex size-full items-center justify-center">
+        <source type="image/webp" srcSet={sources.webpSrcSet} sizes={sizes ?? sources.sizes} />
+        <img
+          src={sources.fallbackSrc}
+          alt={alt}
+          className={className}
+          loading={loading}
+          decoding="async"
+          onError={handleError}
+        />
+      </picture>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      loading={loading}
+      decoding="async"
+      onError={onError}
+    />
+  );
+}
+
 function GalleryMainMedia({
   item,
   productName,
+  product,
+  imageIndex,
   onImageError,
   imageError,
 }: {
   item: ProductGalleryItem;
   productName: string;
+  product?: Pick<Product, 'name' | 'attributes' | 'brand' | 'category'>;
+  imageIndex: number;
   onImageError: () => void;
   imageError: boolean;
 }) {
@@ -65,7 +155,7 @@ function GalleryMainMedia({
       <video
         src={item.src}
         controls
-        className="max-h-[min(62vh,580px)] w-full max-w-full rounded-md bg-black object-contain"
+        className="max-h-[min(72vh,680px)] w-full max-w-full rounded-md bg-black object-contain"
         preload="metadata"
       >
         <track kind="captions" />
@@ -83,20 +173,85 @@ function GalleryMainMedia({
 
   return (
     <ProductImageWatermarkOverlay src={item.src} className="flex size-full items-center justify-center">
-      <img
+      <GalleryResponsiveImage
         src={item.src}
-        alt={item.alt ?? productName}
-        className="max-h-[min(62vh,580px)] w-full max-w-full object-contain object-center"
+        alt={resolveProductImageAlt(productName, product, imageIndex, item.alt)}
+        className="max-h-[min(72vh,680px)] w-full max-w-full object-contain object-center"
         loading="eager"
+        variant="main"
         onError={onImageError}
       />
     </ProductImageWatermarkOverlay>
   );
 }
 
+function GalleryThumbnailButton({
+  item,
+  index,
+  productName,
+  isActive,
+  onSelect,
+}: {
+  item: ProductGalleryItem;
+  index: number;
+  productName: string;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  const isVideo = item.type === 'video' || item.type === 'video-file';
+
+  return (
+    <li className="shrink-0">
+      <button
+        type="button"
+        className={cn(
+          'relative overflow-hidden rounded-md border-2 bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600',
+          'aspect-square w-16 sm:w-[4.25rem]',
+          'max-sm:w-[4.5rem]',
+          isActive ? 'border-red-600' : 'border-border/70 hover:border-border',
+        )}
+        onClick={onSelect}
+        aria-label={
+          isVideo
+            ? `Ver vídeo ${index + 1} de ${productName}`
+            : `Ver imagen ${index + 1} de ${productName}`
+        }
+        aria-current={isActive}
+      >
+        <ProductImageWatermarkOverlay
+          src={item.type === 'image' ? item.src : ''}
+          className="size-full"
+        >
+          {item.type === 'image' ? (
+            <GalleryResponsiveImage
+              src={item.src}
+              alt=""
+              className="size-full object-cover"
+              variant="thumb"
+            />
+          ) : (
+            <img
+              src={getThumbnailSrc(item)}
+              alt=""
+              className="size-full object-cover"
+              loading="lazy"
+            />
+          )}
+        </ProductImageWatermarkOverlay>
+        {isVideo ? (
+          <span className="absolute inset-0 flex items-center justify-center bg-black/35">
+            <Play className="size-4 text-white" aria-hidden="true" />
+          </span>
+        ) : null}
+      </button>
+    </li>
+  );
+}
+
 export function ProductDetailGallery({
   items,
   productName,
+  product,
   showOriginalBadge = false,
   brandLabel = '',
   featureBar = [],
@@ -112,7 +267,10 @@ export function ProductDetailGallery({
   const activeItem = galleryItems[safeIndex] ?? null;
   const activeImage =
     activeItem?.type === 'image' && !imageError
-      ? { src: activeItem.src, alt: activeItem.alt ?? productName }
+      ? {
+          src: activeItem.src,
+          alt: resolveProductImageAlt(productName, product, safeIndex, activeItem.alt),
+        }
       : null;
 
   useEffect(() => {
@@ -123,9 +281,31 @@ export function ProductDetailGallery({
   const secondaryFeatureBarItems =
     featureBarItems.length > 0 ? [] : secondaryFeatureBar.slice(0, 4);
 
+  const thumbnailList = (
+    <ul
+      className={cn(
+        'flex gap-2 p-2 [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1',
+        'max-sm:order-2 max-sm:overflow-x-auto max-sm:border-t max-sm:border-border/60 max-sm:bg-muted/10',
+        'sm:w-[4.25rem] sm:shrink-0 sm:flex-col sm:overflow-y-auto sm:border-r sm:border-border/60 sm:bg-muted/10 md:w-24 lg:max-h-[min(72vh,680px)]',
+      )}
+      aria-label={`Miniaturas de ${productName}`}
+    >
+      {galleryItems.map((item, index) => (
+        <GalleryThumbnailButton
+          key={getItemKey(item)}
+          item={item}
+          index={index}
+          productName={productName}
+          isActive={index === safeIndex}
+          onSelect={() => setActiveIndex(index)}
+        />
+      ))}
+    </ul>
+  );
+
   if (galleryItems.length === 0) {
     return (
-        <div className="flex min-h-[260px] flex-col">
+      <div className="flex min-h-[260px] flex-col">
         <div className="flex min-h-[260px] flex-1 items-center justify-center rounded-lg border border-border/60 bg-white p-4 sm:min-h-[320px]">
           <div className="text-center">
             <p className="text-sm font-semibold text-muted-foreground">Sin Imagen</p>
@@ -147,54 +327,10 @@ export function ProductDetailGallery({
   return (
     <div className="flex w-full flex-col">
       <div className="relative overflow-hidden rounded-lg border border-border/60 bg-white">
-        <div className="flex min-h-[260px] items-stretch sm:min-h-[320px] lg:min-h-[420px]">
-          <ul
-            className="flex w-[4.25rem] shrink-0 flex-col gap-2 overflow-y-auto border-r border-border/60 bg-muted/10 p-2 sm:w-20 md:w-24 lg:max-h-[min(62vh,580px)] [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1"
-            aria-label={`Miniaturas de ${productName}`}
-          >
-            {galleryItems.map((item, index) => {
-              const isActive = index === safeIndex;
-              const isVideo = item.type === 'video' || item.type === 'video-file';
+        <div className="flex min-h-[280px] flex-col items-stretch max-sm:min-h-0 sm:min-h-[360px] sm:flex-row lg:min-h-[520px]">
+          <div className="hidden sm:contents">{thumbnailList}</div>
 
-              return (
-                <li key={getItemKey(item)} className="shrink-0">
-                  <button
-                    type="button"
-                    className={cn(
-                      'relative aspect-square w-full overflow-hidden rounded-md border-2 bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600',
-                      isActive ? 'border-red-600' : 'border-border/70 hover:border-border',
-                    )}
-                    onClick={() => setActiveIndex(index)}
-                    aria-label={
-                      isVideo
-                        ? `Ver vídeo ${index + 1} de ${productName}`
-                        : `Ver imagen ${index + 1} de ${productName}`
-                    }
-                    aria-current={isActive}
-                  >
-                    <ProductImageWatermarkOverlay
-                      src={item.type === 'image' ? item.src : ''}
-                      className="size-full"
-                    >
-                      <img
-                        src={getThumbnailSrc(item)}
-                        alt=""
-                        className="size-full object-cover"
-                        loading="lazy"
-                      />
-                    </ProductImageWatermarkOverlay>
-                    {isVideo ? (
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/35">
-                        <Play className="size-4 text-white" aria-hidden="true" />
-                      </span>
-                    ) : null}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-
-          <div className="relative min-w-0 flex-1">
+          <div className="relative min-w-0 flex-1 max-sm:order-1">
             {showOriginalBadge ? (
               <span className="absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-md bg-[#0f1f3d]/90 px-2 py-1 text-[0.6rem] font-semibold uppercase tracking-wide text-white shadow-sm sm:left-4 sm:top-4 sm:gap-1.5 sm:px-2.5 sm:py-1.5 sm:text-[0.65rem]">
                 <ShieldCheck className="size-3 shrink-0 sm:size-3.5" aria-hidden="true" />
@@ -217,11 +353,7 @@ export function ProductDetailGallery({
               </a>
             ) : null}
 
-            <div
-              className={cn(
-                'flex h-full min-h-[inherit] items-center justify-center bg-white p-3 sm:p-4 lg:p-5',
-              )}
-            >
+            <div className="flex h-full min-h-[240px] items-center justify-center bg-white p-2 sm:min-h-[inherit] sm:p-3 lg:p-4">
               {activeItem ? (
                 activeItem.type === 'image' ? (
                   <button
@@ -233,6 +365,8 @@ export function ProductDetailGallery({
                     <GalleryMainMedia
                       item={activeItem}
                       productName={productName}
+                      {...(product ? { product } : {})}
+                      imageIndex={safeIndex}
                       onImageError={() => setImageError(true)}
                       imageError={imageError}
                     />
@@ -242,6 +376,8 @@ export function ProductDetailGallery({
                     <GalleryMainMedia
                       item={activeItem}
                       productName={productName}
+                      {...(product ? { product } : {})}
+                      imageIndex={safeIndex}
                       onImageError={() => setImageError(true)}
                       imageError={imageError}
                     />
@@ -262,6 +398,8 @@ export function ProductDetailGallery({
               </button>
             ) : null}
           </div>
+
+          <div className="contents sm:hidden">{thumbnailList}</div>
         </div>
       </div>
 
@@ -271,10 +409,12 @@ export function ProductDetailGallery({
           <DialogDescription className="sr-only">Vista ampliada del producto</DialogDescription>
           {activeImage ? (
             <ProductImageWatermarkOverlay src={activeImage.src}>
-              <img
+              <GalleryResponsiveImage
                 src={activeImage.src}
                 alt={activeImage.alt}
                 className="mx-auto max-h-[85vh] w-full object-contain"
+                loading="eager"
+                variant="main"
               />
             </ProductImageWatermarkOverlay>
           ) : null}

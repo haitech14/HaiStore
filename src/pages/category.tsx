@@ -37,7 +37,9 @@ import {
 import { useQuery } from '@tanstack/react-query';
 
 import { useCategoryCatalog } from '@/hooks/use-category-catalog';
+import { useSeo } from '@/hooks/use-seo';
 import { searchCatalogProducts } from '@/lib/catalog-search-api';
+import { buildCategorySeoConfig } from '@/lib/build-category-seo';
 import { applyViewAsPriceToProducts, shouldApplyViewAsPriceTransform, viewAsRolesQueryKey } from '@/lib/view-as-role';
 import {
   findCategoryBySlug,
@@ -201,6 +203,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
   const catalogPageSize = getResponsiveCatalogPageSize(isMobile, gridColumns);
   const showFormatSectionsEarly =
     shouldShowCatalogSpecFilterTabs(slug) && viewMode === 'grid';
+  const formatSectionFetchLimit = showFormatSectionsEarly ? (isMobile ? 48 : 500) : catalogPageSize;
 
   const { data: catalogData, isLoading: catalogLoading, isError: catalogError } = useCategoryCatalog({
     enabled: Boolean(slug) && !isRentalCategory && !isInventorySearch && productLabels.length > 0,
@@ -216,7 +219,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     search: catalogSearch,
     sortBy,
     page: showFormatSectionsEarly ? 1 : catalogPage,
-    limit: showFormatSectionsEarly ? 500 : catalogPageSize,
+    limit: formatSectionFetchLimit,
   });
 
   const { data: searchData, isLoading: searchLoading, isError: searchError } = useQuery({
@@ -527,6 +530,53 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     parentHeroContent,
     products,
   ]);
+
+  const seoHasFilterParams = useMemo(() => {
+    if (isInventorySearch) return true;
+    if (selectedAttributes.length > 0) return true;
+    if (selectedProduction != null) return true;
+    if (inStockOnly) return true;
+    if (priceMin != null || priceMax != null) return true;
+    if (catalogPage > 1) return true;
+    const estado = searchParams.get('estado');
+    if (estado && estado !== 'all') return true;
+    return ['orden', 'vista', 'pagina', 'precio_min', 'precio_max'].some((key) =>
+      searchParams.has(key),
+    );
+  }, [
+    isInventorySearch,
+    selectedAttributes,
+    selectedProduction,
+    inStockOnly,
+    priceMin,
+    priceMax,
+    catalogPage,
+    searchParams,
+  ]);
+
+  const categorySeoConfig = useMemo(() => {
+    if (!category) return null;
+    return buildCategorySeoConfig({
+      category,
+      subcategoryName: activeSubcategory?.name ?? rentalSubcategory?.title ?? null,
+      heroSubtitle: heroContent?.subtitle ?? null,
+      catalogSlug,
+      isInventorySearch,
+      searchQuery,
+      hasFilterParams: seoHasFilterParams,
+    });
+  }, [
+    category,
+    activeSubcategory?.name,
+    rentalSubcategory?.title,
+    heroContent?.subtitle,
+    catalogSlug,
+    isInventorySearch,
+    searchQuery,
+    seoHasFilterParams,
+  ]);
+
+  useSeo(categorySeoConfig);
 
   const inStockProductCount = useMemo(
     () => baseProducts.filter((product) => product.stock > 0).length,

@@ -62,16 +62,23 @@ export function getFeaturedProductById(id: string): FeaturedProduct | undefined 
 
 export function featuredToProduct(featured: FeaturedProduct): Product {
   const catalogRow = getCatalogProductById(featured.id);
+  const prices = featured.prices ?? catalogRow?.prices;
+  const attributes = featured.attributes ?? catalogRow?.attributes;
+
   return {
     id: featured.id,
+    code: featured.code ?? catalogRow?.code ?? null,
     name: featured.name,
-    description: null,
+    description: catalogRow?.description ?? null,
     price: featured.price,
-    currency: 'USD',
-    image_url: featured.image,
+    ...(prices ? { prices } : {}),
+    currency: catalogRow?.currency ?? 'USD',
+    image_url: featured.image ?? catalogRow?.image_url ?? null,
     gallery: catalogRow?.gallery ?? [],
-    stock: 10,
-    category: featured.category,
-    created_at: new Date().toISOString(),
+    stock: catalogRow?.stock ?? 0,
+    category: featured.category ?? catalogRow?.category ?? null,
+    brand: featured.brand ?? catalogRow?.brand ?? null,
+    created_at: catalogRow?.created_at ?? new Date().toISOString(),
+    ...(attributes ? { attributes } : {}),
   };
 }

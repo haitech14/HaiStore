@@ -22,6 +22,7 @@ import {
   readVideoFile,
   setProductVideoUrl,
 } from '@/lib/inventory-product';
+import { PRODUCT_VIDEO_UPLOAD_HINT } from '@/lib/product-media-upload-limits';
 import {
   isYoutubeMediaUrl,
   normalizeYoutubeMediaUrl,
@@ -234,7 +235,7 @@ function VideoResourceSlot({
             <CloudUpload className="size-7 text-muted-foreground/80" aria-hidden="true" />
             <span className="text-sm font-medium text-foreground">Subir MP4</span>
             <span className="max-w-[11rem] text-xs leading-snug text-muted-foreground">
-              O pega un enlace de YouTube abajo. Máx. 80 MB.
+              O pega un enlace de YouTube abajo. {PRODUCT_VIDEO_UPLOAD_HINT}.
             </span>
           </button>
           <div className="flex gap-2">

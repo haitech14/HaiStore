@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/dialog';
 import { cartItemsToTpvLines } from '@/lib/cart-to-tpv-lines';
 import { buildProformaPayloadFromProductQuote } from '@/lib/build-proforma-payload';
-import { buildTpvDocumentPdf } from '@/lib/generate-tpv-document-pdf';
 import {
   EMPTY_HAITECH_CLIENT,
   haitechClientSchema,
@@ -99,6 +98,7 @@ export function CartQuoteDialog({ open, onOpenChange, items }: CartQuoteDialogPr
     try {
       const company = companySettings ?? DEFAULT_COMPANY_SETTINGS;
       const documentNumber = nextTpvDocumentNumber('proforma');
+      const { buildTpvDocumentPdf } = await import('@/lib/generate-tpv-document-pdf');
       const generated = await buildTpvDocumentPdf(
         'proforma',
         documentNumber,

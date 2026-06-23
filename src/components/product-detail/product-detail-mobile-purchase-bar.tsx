@@ -1,15 +1,24 @@
 import { useEffect, useMemo, useState, type RefObject } from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ShoppingCart, Zap } from 'lucide-react';
 
 import { AddToCartButton } from '@/components/cart/add-to-cart-button';
 import { DualPrice } from '@/components/product/product-dual-price';
-import { formatOfferQuantitySavingsMessageFromUsd } from '@/lib/display-price';
+import { Button } from '@/components/ui/button';
+import { useCart } from '@/context/cart-context';
+import { useDisplayCurrency } from '@/context/display-currency-context';
+import { formatVolumeQuantityPromoMessage } from '@/lib/display-price';
 import {
+  resolveBulkDiscountPricing,
   resolveBulkDiscountSavingsHint,
   type BulkDiscountPricing,
 } from '@/lib/bulk-discount-tiers';
 import { computeEquipmentExtrasUsd } from '@/lib/equipment-config-selection';
 import { cn } from '@/lib/utils';
+import {
+  MOBILE_PURCHASE_BAR_HEIGHT_PX,
+  useSetMobileBottomInset,
+} from '@/context/mobile-bottom-inset-context';
 import type { CartConfigurationLine } from '@/types/product';
 import type { BulkDiscountTier } from '@/types/product-detail';
 import type { Product } from '@/types/product';
@@ -37,6 +46,8 @@ export function ProductDetailMobilePurchaseBar({
   purchaseActionsRef,
   equipmentConfiguration,
 }: ProductDetailMobilePurchaseBarProps) {
+  const navigate = useNavigate();
+  const { addItem } = useCart();
   const [heroActionsVisible, setHeroActionsVisible] = useState(true);
 
   useEffect(() => {
@@ -54,7 +65,8 @@ export function ProductDetailMobilePurchaseBar({
     return () => observer.disconnect();
   }, [purchaseActionsRef]);
 
-  const showBar = !heroActionsVisible && !outOfStock;
+  const showBar = !heroActionsVisible;
+  useSetMobileBottomInset(showBar ? MOBILE_PURCHASE_BAR_HEIGHT_PX : 0);
   const hasVolumeDiscount = volumePricing.tier != null && volumePricing.savingsUsd > 0.001;
   const equipmentExtrasUsd = equipmentConfiguration
     ? computeEquipmentExtrasUsd(equipmentConfiguration.options)
@@ -65,6 +77,8 @@ export function ProductDetailMobilePurchaseBar({
     ...(equipmentConfiguration != null ? { configuration: equipmentConfiguration } : {}),
   };
 
+  const { displayCurrency } = useDisplayCurrency();
+
   const savingsMessage = useMemo(() => {
     if (bulkDiscountTiers.length === 0) {
       return quantity > 1 ? `Total ${quantity} ud.` : null;
@@ -73,12 +87,30 @@ export function ProductDetailMobilePurchaseBar({
       floorPriceUsd,
     });
     if (!hint) return quantity > 1 ? `Total ${quantity} ud.` : null;
-    return formatOfferQuantitySavingsMessageFromUsd(hint.targetQuantity, hint.savingsUsd);
-  }, [bulkDiscountTiers, quantity, basePriceUsd, floorPriceUsd]);
+
+    const pricing = resolveBulkDiscountPricing(
+      hint.targetQuantity,
+      basePriceUsd,
+      bulkDiscountTiers,
+      { floorPriceUsd },
+    );
+    return formatVolumeQuantityPromoMessage(
+      hint.targetQuantity,
+      pricing.unitUsd,
+      displayCurrency,
+    );
+  }, [bulkDiscountTiers, quantity, basePriceUsd, floorPriceUsd, displayCurrency]);
 
   const totalUsd =
     (quantity > 1 || hasVolumeDiscount ? volumePricing.totalUsd : volumePricing.unitUsd) +
     equipmentExtrasUsd * quantity;
+
+  const handleBuyNow = () => {
+    addItem(product, { ...cartAddOptions, openDrawer: false });
+    navigate('/checkout');
+  };
+
+  const buyNowLabel = outOfStock ? 'Pedido' : 'Comprar';
 
   return (
     <div
@@ -89,7 +121,7 @@ export function ProductDetailMobilePurchaseBar({
       )}
       aria-hidden={!showBar}
     >
-      <div className="container flex items-center gap-3">
+      <div className="container flex items-center gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-lg font-bold leading-tight text-red-600">
             <DualPrice usd={totalUsd} />
@@ -98,14 +130,25 @@ export function ProductDetailMobilePurchaseBar({
             <p className="truncate text-xs text-muted-foreground">{savingsMessage}</p>
           ) : null}
         </div>
-        <AddToCartButton
-          product={product}
-          addOptions={cartAddOptions}
-          className="min-h-11 shrink-0 gap-1.5 rounded-md bg-red-600 px-4 text-sm font-bold text-white hover:bg-red-500"
-        >
-          <ShoppingCart className="size-4 shrink-0" aria-hidden="true" />
-          Añadir al carrito
-        </AddToCartButton>
+        <div className="flex shrink-0 items-stretch gap-2">
+          <AddToCartButton
+            product={product}
+            addOptions={cartAddOptions}
+            className="min-h-11 gap-1.5 rounded-md bg-red-600 px-3 text-sm font-bold text-white hover:bg-red-500"
+          >
+            <ShoppingCart className="size-4 shrink-0" aria-hidden="true" />
+            <span className="sr-only sm:not-sr-only sm:inline">Carrito</span>
+          </AddToCartButton>
+          <Button
+            type="button"
+            onClick={handleBuyNow}
+            className="min-h-11 gap-1 rounded-md bg-[#0f1f3d] px-3 text-sm font-bold text-white hover:bg-[#0f1f3d]/90"
+            aria-label="Comprar ahora"
+          >
+            <Zap className="size-4 shrink-0" aria-hidden="true" />
+            <span className="hidden min-[400px]:inline">{buyNowLabel}</span>
+          </Button>
+        </div>
       </div>
     </div>
   );

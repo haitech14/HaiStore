@@ -15,6 +15,7 @@ import {
   sortProductsBySearchRelevance,
 } from '../../shared/catalog-search.js';
 import { normalizeCatalogSearchText } from '../../shared/catalog-search-normalize.js';
+import { findInventoryProductByLookupKey } from '../../shared/product-lookup.js';
 
 function normalizeSearchText(value) {
   return normalizeCatalogSearchText(value);
@@ -182,11 +183,20 @@ export async function queryProductsByIds({ role = 'public', ids = [] } = {}) {
   const uniqueIds = [...new Set(ids.filter((id) => typeof id === 'string' && id.length > 0))];
   if (uniqueIds.length === 0) return { products: [] };
 
+  const { products: inventoryRows } = await readInventory();
   const allProducts = await loadPublicProducts(role);
   const byId = new Map(allProducts.map((product) => [product.id, product]));
 
+  const resolveProduct = (lookupId) => {
+    const direct = byId.get(lookupId);
+    if (direct) return direct;
+    const inventoryRow = findInventoryProductByLookupKey(inventoryRows, lookupId);
+    if (!inventoryRow) return undefined;
+    return byId.get(inventoryRow.id);
+  };
+
   return {
-    products: uniqueIds.map((id) => byId.get(id)).filter(Boolean),
+    products: uniqueIds.map((id) => resolveProduct(id)).filter(Boolean),
   };
 }
 

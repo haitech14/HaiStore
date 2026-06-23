@@ -410,31 +410,6 @@ export function InventoryRowCells({
     );
   }
 
-  if (columnId === 'description') {
-    return (
-      <InventoryInlineField
-        fieldId={fieldKey('description')}
-        activeFieldId={activeFieldId}
-        onActivate={() => setActiveFieldId(fieldKey('description'))}
-        onClose={close}
-        display={
-          <p className="line-clamp-3 text-xs leading-snug text-muted-foreground">
-            {product.description?.trim() || '—'}
-          </p>
-        }
-        edit={
-          <Input
-            className="h-9 text-xs"
-            defaultValue={product.description ?? ''}
-            aria-label="Descripción"
-            autoFocus
-            onBlur={(event) => void saveText('description', event.target.value)}
-          />
-        }
-      />
-    );
-  }
-
   if (columnId === 'installation') {
     const installation = getProductAttributeValue(product.attributes, 'Instalación');
     return (
