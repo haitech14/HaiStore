@@ -292,8 +292,18 @@ export function ProductDetailRentalConfigurator({
       </fieldset>
 
       <div className="rounded-md border border-border/70 bg-background px-3 py-2 text-xs text-foreground">
+        <p className="mt-1">
+          Cuota fija mensual:{' '}
+          <span className="font-semibold">valor del equipo + 20% (×1,2)</span> ÷{' '}
+          <span className="font-semibold">{estimate.termMonths} meses</span> ={' '}
+          <span className="font-semibold">
+            S/{' '}
+            {estimate.fixedFeeMonthlyPen.toLocaleString('es-PE', { maximumFractionDigits: 2 })}
+          </span>
+          .
+        </p>
         {isColorEquipment ? (
-          <p>
+          <p className="mt-1">
             Cuota variable mensual: negro{' '}
             <span className="font-semibold">S/ {RENTAL_COLOR_BLACK_VARIABLE_COPY_COST_PEN}</span>
             {' + '}color{' '}
@@ -317,7 +327,7 @@ export function ProductDetailRentalConfigurator({
             .
           </p>
         ) : (
-          <p>
+          <p className="mt-1">
             Cuota variable mensual:{' '}
             <span className="font-semibold">S/ {RENTAL_BW_VARIABLE_COPY_COST_PEN}</span>
             {' × '}
@@ -339,16 +349,6 @@ export function ProductDetailRentalConfigurator({
             .
           </p>
         )}
-        <p className="mt-1">
-          Cuota fija mensual:{' '}
-          <span className="font-semibold">valor del equipo + 20% (×1,2)</span> ÷{' '}
-          <span className="font-semibold">{estimate.termMonths} meses</span> ={' '}
-          <span className="font-semibold">
-            S/{' '}
-            {estimate.fixedFeeMonthlyPen.toLocaleString('es-PE', { maximumFractionDigits: 2 })}
-          </span>
-          .
-        </p>
         <p className="mt-1.5 font-semibold text-foreground">
           Total mensual: S/{' '}
           {estimate.estimatedMonthlyPen.toLocaleString('es-PE', { maximumFractionDigits: 2 })}

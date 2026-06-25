@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { isProductOutOfStock } from '@/components/cart/add-to-cart-button';
 
@@ -20,12 +21,30 @@ import { ProductDetailHeroInfo } from '@/components/product-detail/product-detai
 import { ProductDetailMobilePurchaseBar } from '@/components/product-detail/product-detail-mobile-purchase-bar';
 import { ProductDetailSocialProofToast } from '@/components/product-detail/product-detail-social-proof-toast';
 import { ProductDetailPurchaseCard } from '@/components/product-detail/product-detail-purchase-card';
+import { ProductRentalQuoteDialog } from '@/components/product-detail/product-rental-quote-dialog';
 import { ProductDetailResources } from '@/components/product-detail/product-detail-resources';
 import { ProductDetailSpecsTable } from '@/components/product-detail/product-detail-specs-table';
 import { buildProductDetail } from '@/lib/build-product-detail';
 import { DEFAULT_BULK_DISCOUNT_TIERS, resolveBulkDiscountPricing } from '@/lib/bulk-discount-tiers';
 import { ensureFullPrices } from '@/lib/roles';
+import {
+  resolvePublicUnitBaseWithPreparationUsd,
+  resolveSeminuevaPreparationSurchargeUsd,
+  shouldShowSeminuevaPreparationSelector,
+  type SeminuevaPreparationType,
+} from '@/lib/seminueva-preparation';
+import { useAuth } from '@/context/auth-context';
 import { buildProductBreadcrumbs } from '@/lib/build-product-breadcrumbs';
+import {
+  productQualifiesForMaintenancePlanCta,
+  productQualifiesForRentalCta,
+} from '@/lib/product-detail-secondary-actions';
+import {
+  calculateRentalQuote,
+  RENTAL_DEFAULT_MONTHLY_PAGES,
+  RENTAL_DEFAULT_TERM_MONTHS,
+} from '@/lib/rental-calculator';
+import { serviceHubPath } from '@/lib/service-hub';
 import {
   resolveEquipmentConfigSteps,
 } from '@/lib/equipment-config-catalog';
@@ -153,6 +172,8 @@ function DetailSectionFallback({ className }: { className?: string }) {
 }
 
 export function ProductDetailView({ product, featuredMeta }: ProductDetailViewProps) {
+  const navigate = useNavigate();
+  const { role, viewAsRoles } = useAuth();
   const { data: rentalPlansRaw = [] } = useRentalPlans({ activeOnly: true });
   const { data: companySettings } = useCompanySettings();
   const rentalPlansFromApi = useMemo(() => {
@@ -207,27 +228,43 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
   const [activeTab, setActiveTab] = useState<DetailTab>('description');
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [quoteOpen, setQuoteOpen] = useState(false);
+  const [maintenanceQuoteOpen, setMaintenanceQuoteOpen] = useState(false);
   const [quotePdfPreview, setQuotePdfPreview] = useState<QuotePdfPreview | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [preparationType, setPreparationType] = useState<SeminuevaPreparationType>('acondicionada');
   const purchaseActionsRef = useRef<HTMLDivElement>(null);
+  const configureSectionRef = useRef<HTMLDivElement>(null);
   const comparisonRef = useRef<HTMLDivElement>(null);
 
   const fullPrices = useMemo(
     () => ensureFullPrices(product.prices ? product.prices : { public: product.price }),
     [product.price, product.prices],
   );
-  const displayUsd = fullPrices.public;
+  const showPreparationTypeSelector = shouldShowSeminuevaPreparationSelector(
+    product,
+    role,
+    viewAsRoles,
+  );
+  const preparationSurchargeUsd = showPreparationTypeSelector
+    ? resolveSeminuevaPreparationSurchargeUsd(preparationType, product)
+    : 0;
+  const publicUnitBaseUsd = resolvePublicUnitBaseWithPreparationUsd(
+    fullPrices.public,
+    showPreparationTypeSelector ? preparationType : 'acondicionada',
+    product,
+  );
   const volumePricing = useMemo(
     () =>
-      resolveBulkDiscountPricing(quantity, displayUsd, bulkDiscountTiers, {
+      resolveBulkDiscountPricing(quantity, publicUnitBaseUsd, bulkDiscountTiers, {
         floorPriceUsd: fullPrices.tecnico,
       }),
-    [quantity, displayUsd, bulkDiscountTiers, fullPrices.tecnico],
+    [quantity, publicUnitBaseUsd, bulkDiscountTiers, fullPrices.tecnico],
   );
   const outOfStock = isProductOutOfStock(product);
 
   useEffect(() => {
     setQuantity(1);
+    setPreparationType('acondicionada');
   }, [product.id]);
 
   const handleQuotePdfPreviewClose = useCallback((open: boolean) => {
@@ -405,6 +442,49 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
     }
   }, []);
 
+  const showRentalAction = productQualifiesForRentalCta(product);
+  const showMaintenancePlanAction = productQualifiesForMaintenancePlanCta(product);
+
+  const maintenanceQuoteBreakdown = useMemo(
+    () =>
+      calculateRentalQuote({
+        monthlyPages: RENTAL_DEFAULT_MONTHLY_PAGES,
+        includesPaper: false,
+        includesOperator: false,
+        plans: maintenancePlans,
+        termMonths: RENTAL_DEFAULT_TERM_MONTHS,
+      }),
+    [maintenancePlans],
+  );
+
+  const handleRentalClick = useCallback(() => {
+    const hasInlineRentalFlow = detail.rentalPlans.length > 0 && showConfigureSection;
+    if (!hasInlineRentalFlow) {
+      navigate(serviceHubPath('alquiler'));
+      return;
+    }
+    handlePurchaseModeChange('rent');
+    requestAnimationFrame(() => {
+      configureSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [
+    detail.rentalPlans.length,
+    showConfigureSection,
+    handlePurchaseModeChange,
+    navigate,
+  ]);
+
+  const handleMaintenancePlanClick = useCallback(() => {
+    setMaintenanceQuoteOpen(true);
+  }, []);
+
+  const secondaryPurchaseActionProps = {
+    showRentalAction,
+    onRentalClick: handleRentalClick,
+    showMaintenancePlanAction,
+    onMaintenancePlanClick: handleMaintenancePlanClick,
+  };
+
   const heroGridClass =
     'grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(260px,320px)] lg:items-start lg:gap-5 xl:gap-6';
 
@@ -459,7 +539,7 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
               brandLabel={detail.brandLabel}
             />
             <div className="h-px w-full" aria-hidden="true" />
-            {configureEquipmentSection}
+            <div ref={configureSectionRef}>{configureEquipmentSection}</div>
           </div>
 
           <ProductDetailHeroInfo
@@ -471,6 +551,9 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
             tonerCards={purchasableTonerCards}
             selectedTonerOptionIds={equipmentSelection.toner ?? new Set<string>()}
             onTonerToggle={handleHeroTonerToggle}
+            showPreparationTypeSelector={showPreparationTypeSelector}
+            preparationType={preparationType}
+            onPreparationTypeChange={setPreparationType}
           />
 
           <div className="hidden lg:block">
@@ -484,6 +567,10 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
               purchaseMode={purchaseMode}
               onPurchaseModeChange={handlePurchaseModeChange}
               rentalEstimate={rentalEstimate}
+              maintenancePlanMonthlyPen={maintenanceQuoteBreakdown.monthlySubtotalPen}
+              preparationType={showPreparationTypeSelector ? preparationType : undefined}
+              preparationSurchargeUsd={preparationSurchargeUsd}
+              {...secondaryPurchaseActionProps}
               {...(equipmentConfiguration ? { equipmentConfiguration } : {})}
               onQuoteGenerated={setQuotePdfPreview}
             />
@@ -502,6 +589,10 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
             purchaseMode={purchaseMode}
             onPurchaseModeChange={handlePurchaseModeChange}
             rentalEstimate={rentalEstimate}
+            maintenancePlanMonthlyPen={maintenanceQuoteBreakdown.monthlySubtotalPen}
+            preparationType={showPreparationTypeSelector ? preparationType : undefined}
+            preparationSurchargeUsd={preparationSurchargeUsd}
+            {...secondaryPurchaseActionProps}
             {...(equipmentConfiguration ? { equipmentConfiguration } : {})}
             onQuoteGenerated={setQuotePdfPreview}
           />
@@ -755,17 +846,34 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
       <ProductQuotePdfViewer
         preview={quotePdfPreview}
         onOpenChange={handleQuotePdfPreviewClose}
+        autoDownload
       />
+
+      {showMaintenancePlanAction ? (
+        <ProductRentalQuoteDialog
+          open={maintenanceQuoteOpen}
+          onOpenChange={setMaintenanceQuoteOpen}
+          product={product}
+          displayTitle={detail.displayTitle}
+          sku={detail.sku}
+          brandLabel={detail.brandLabel}
+          breakdown={maintenanceQuoteBreakdown}
+          onGenerated={setQuotePdfPreview}
+        />
+      ) : null}
 
       <ProductDetailMobilePurchaseBar
         product={product}
         quantity={quantity}
         volumePricing={volumePricing}
-        basePriceUsd={displayUsd}
+        basePriceUsd={publicUnitBaseUsd}
         bulkDiscountTiers={bulkDiscountTiers}
         floorPriceUsd={fullPrices.tecnico}
         outOfStock={outOfStock}
         purchaseActionsRef={purchaseActionsRef}
+        preparationType={showPreparationTypeSelector ? preparationType : undefined}
+        preparationSurchargeUsd={preparationSurchargeUsd}
+        {...secondaryPurchaseActionProps}
         {...(equipmentConfiguration ? { equipmentConfiguration } : {})}
       />
 

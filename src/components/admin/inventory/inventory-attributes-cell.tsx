@@ -158,13 +158,13 @@ export function InventoryAttributesCell({ attributes, onSave }: InventoryAttribu
           : null;
 
   return (
-    <div className="group relative min-h-9 min-w-0 pr-7">
+    <div className="group flex min-h-9 min-w-0 items-center gap-1">
       <Popover open={open} onOpenChange={handleOpenChange} modal={false}>
         <PopoverAnchor asChild>
           <button
             type="button"
             className={cn(
-              'min-h-9 w-full cursor-pointer rounded-sm text-left outline-none',
+              'min-h-9 w-full flex-1 cursor-pointer rounded-sm text-left outline-none',
               'hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring',
             )}
             onClick={() => setOpen(true)}
@@ -214,7 +214,7 @@ export function InventoryAttributesCell({ attributes, onSave }: InventoryAttribu
         type="button"
         variant="secondary"
         size="icon"
-        className="absolute top-1/2 z-10 size-6 min-h-6 min-w-6 -translate-y-1/2 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-visible:opacity-100 right-0"
+        className="size-7 shrink-0 shadow-sm opacity-80 transition-opacity hover:opacity-100 focus-visible:opacity-100"
         onClick={() => setOpen(true)}
         aria-label="Editar atributos"
       >

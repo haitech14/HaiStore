@@ -1,9 +1,10 @@
-import { readInventory, toPublicProductList, toPublicProductCard } from './inventory-store.js';
-import { withResolvedMedia } from './product-catalog.js';
+import { readInventory, toPublicProductList } from './inventory-store.js';
+import { listProducts, withResolvedMedia } from './product-catalog.js';
 import { resolveEquipmentConsumables } from '../../shared/product-equipment-consumables.js';
 import {
   isPrinterEquipmentProduct,
   productMatchesCategoryFilter,
+  productMatchesCatalogFamily,
   productMatchesCondition,
 } from '../../shared/home-catalog-filter.js';
 import {
@@ -16,23 +17,24 @@ import {
 } from '../../shared/catalog-search.js';
 import { normalizeCatalogSearchText } from '../../shared/catalog-search-normalize.js';
 import { findInventoryProductByLookupKey } from '../../shared/product-lookup.js';
+import {
+  buildBrandFacets,
+  productMatchesBrandFilter,
+} from '../../shared/catalog-brand-filter.js';
+import {
+  MOST_VIEWED_OFFER_ATTR_KEY,
+  appendMostViewedOfferFacet,
+  compareProductsByViewCount,
+  resolveCatalogAttributeKeys,
+  resolveMostViewedOfferProductIds,
+} from '../../shared/catalog-most-viewed-offers.js';
 
 function normalizeSearchText(value) {
   return normalizeCatalogSearchText(value);
 }
 
-function resolveAttributeKeys(product) {
-  const keys = new Set();
-  for (const attr of product.attributes ?? []) {
-    if (attr?.name && attr?.value) {
-      keys.add(`${attr.name}::${attr.value}`);
-    }
-  }
-  return keys;
-}
-
-function productMatchesAttributeFilters(product, attributeKeys, productionKey) {
-  const resolved = resolveAttributeKeys(product);
+function productMatchesAttributeFilters(product, attributeKeys, productionKey, offerIds) {
+  const resolved = resolveCatalogAttributeKeys(product, offerIds);
   if (attributeKeys.length > 0 && !attributeKeys.every((key) => resolved.has(key))) {
     return false;
   }
@@ -77,8 +79,7 @@ function buildPriceRange(products) {
 }
 
 async function loadPublicProducts(role) {
-  const { products } = await readInventory();
-  return products.map((product) => toPublicProductList(withResolvedMedia(product), role));
+  return listProducts({ role, adminView: false });
 }
 
 function parsePipeList(raw) {
@@ -87,6 +88,12 @@ function parsePipeList(raw) {
 }
 
 function filterByCategoryLabels(products, labels, slug) {
+  if (slug === 'impresoras') {
+    return products.filter((product) => productMatchesCatalogFamily(product, 'impresoras'));
+  }
+  if (slug === 'sin-categoria') {
+    return products.filter((product) => !String(product.category ?? '').trim());
+  }
   return products.filter((product) => {
     if (slug === 'repuestos' && isPrinterEquipmentProduct(product)) {
       return false;
@@ -95,9 +102,50 @@ function filterByCategoryLabels(products, labels, slug) {
   });
 }
 
+function dedupeProductsById(products) {
+  const seen = new Set();
+  const result = [];
+  for (const product of products) {
+    if (seen.has(product.id)) continue;
+    seen.add(product.id);
+    result.push(product);
+  }
+  return result;
+}
+
 /**
  * Catálogo paginado por categoría con filtros server-side.
  */
+const CATEGORY_CATALOG_CACHE_TTL_MS = 60 * 1000;
+const CATEGORY_CATALOG_CACHE_MAX = 128;
+
+/** @type {Map<string, { payload: object; cachedAt: number }>} */
+const categoryCatalogCache = new Map();
+
+export function invalidateCategoryCatalogCache() {
+  categoryCatalogCache.clear();
+}
+
+function buildCategoryCatalogCacheKey(params) {
+  return JSON.stringify({
+    role: params.role,
+    slug: params.slug,
+    subSlug: params.subSlug,
+    labels: params.labels,
+    condition: params.condition,
+    inStockOnly: params.inStockOnly,
+    priceMin: params.priceMin,
+    priceMax: params.priceMax,
+    brandKeys: params.brandKeys,
+    attributeKeys: params.attributeKeys,
+    productionKey: params.productionKey,
+    search: params.search,
+    sortBy: params.sortBy,
+    page: params.page,
+    limit: params.limit,
+  });
+}
+
 export async function queryProductsByCategory({
   role = 'public',
   slug = '',
@@ -107,6 +155,7 @@ export async function queryProductsByCategory({
   inStockOnly = false,
   priceMin = null,
   priceMax = null,
+  brandKeys = [],
   attributeKeys = [],
   productionKey = null,
   search = '',
@@ -114,6 +163,29 @@ export async function queryProductsByCategory({
   page = 1,
   limit = 30,
 } = {}) {
+  const cacheKey = buildCategoryCatalogCacheKey({
+    role,
+    slug,
+    subSlug,
+    labels,
+    condition,
+    inStockOnly,
+    priceMin,
+    priceMax,
+    brandKeys,
+    attributeKeys,
+    productionKey,
+    search,
+    sortBy,
+    page,
+    limit,
+  });
+  const now = Date.now();
+  const cached = categoryCatalogCache.get(cacheKey);
+  if (cached && now - cached.cachedAt < CATEGORY_CATALOG_CACHE_TTL_MS) {
+    return cached.payload;
+  }
+
   const safeLabels = labels.length > 0 ? labels : [];
   const catalogFamily = catalogFamilyForSlug(slug);
   const allProducts = await loadPublicProducts(role);
@@ -128,6 +200,7 @@ export async function queryProductsByCategory({
   }
 
   const facetBase = [...matched];
+  const mostViewedOfferIds = resolveMostViewedOfferProductIds(facetBase);
 
   if (condition && catalogFamily) {
     matched = matched.filter((product) => productMatchesCondition(product, condition, catalogFamily));
@@ -138,7 +211,8 @@ export async function queryProductsByCategory({
   }
 
   const facets = {
-    attributes: buildAttributeFacets(facetBase),
+    attributes: appendMostViewedOfferFacet(buildAttributeFacets(facetBase), mostViewedOfferIds),
+    brands: buildBrandFacets(facetBase),
     priceRange: buildPriceRange(facetBase),
   };
 
@@ -151,25 +225,38 @@ export async function queryProductsByCategory({
 
   if (attributeKeys.length > 0 || productionKey) {
     matched = matched.filter((product) =>
-      productMatchesAttributeFilters(product, attributeKeys, productionKey),
+      productMatchesAttributeFilters(product, attributeKeys, productionKey, mostViewedOfferIds),
     );
   }
 
+  if (brandKeys.length > 0) {
+    matched = matched.filter((product) => productMatchesBrandFilter(product, brandKeys));
+  }
+
   const trimmedSearch = String(search ?? '').trim();
+  const sortByMostViewed = attributeKeys.includes(MOST_VIEWED_OFFER_ATTR_KEY);
   if (trimmedSearch.length >= 3) {
     matched = matched.filter((product) => productMatchesSearchQuery(product, trimmedSearch));
     matched = sortProductsBySearchRelevance(matched, trimmedSearch);
+  } else if (sortByMostViewed) {
+    matched.sort((a, b) => {
+      const byViews = compareProductsByViewCount(a, b);
+      if (byViews !== 0) return byViews;
+      return compareProducts(sortBy, a, b);
+    });
   } else {
     matched.sort((a, b) => compareProducts(sortBy, a, b));
   }
 
-  const safeLimit = Math.min(Math.max(Number(limit) || 30, 1), 100);
+  matched = dedupeProductsById(matched);
+
+  const safeLimit = Math.min(Math.max(Number(limit) || 30, 1), 500);
   const safePage = Math.max(Number(page) || 1, 1);
   const total = matched.length;
   const totalPages = Math.max(1, Math.ceil(total / safeLimit));
   const start = (safePage - 1) * safeLimit;
 
-  return {
+  const payload = {
     products: matched.slice(start, start + safeLimit),
     total,
     page: safePage,
@@ -177,6 +264,14 @@ export async function queryProductsByCategory({
     limit: safeLimit,
     facets,
   };
+
+  if (categoryCatalogCache.size >= CATEGORY_CATALOG_CACHE_MAX) {
+    const oldestKey = categoryCatalogCache.keys().next().value;
+    if (oldestKey) categoryCatalogCache.delete(oldestKey);
+  }
+  categoryCatalogCache.set(cacheKey, { payload, cachedAt: now });
+
+  return payload;
 }
 
 export async function queryProductsByIds({ role = 'public', ids = [] } = {}) {
@@ -212,14 +307,14 @@ export async function queryRelatedProducts({ id, role = 'public', limit = 8 } = 
     return { products: [] };
   }
 
-  const sourceKeys = resolveAttributeKeys(source);
+  const sourceKeys = resolveCatalogAttributeKeys(source);
   const formatoKey = [...sourceKeys].find((key) => key.startsWith('Formato papel::'));
 
   const related = allProducts
     .filter((product) => {
       if (product.id === id || !isPrinterEquipment(product)) return false;
       if (formatoKey) {
-        return resolveAttributeKeys(product).has(formatoKey);
+        return resolveCatalogAttributeKeys(product).has(formatoKey);
       }
       return product.category === source.category;
     })

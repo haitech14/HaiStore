@@ -1,9 +1,9 @@
 /** Equipos que no deben mostrarse en vitrinas del inicio ni filas destacadas del catálogo. */
 export const HOME_CAROUSEL_EXCLUDED_PRODUCT_IDS = new Set([
-  'ab878d89-61e0-4e51-a941-03455e1da407',
+  // 'ab878d89-61e0-4e51-a941-03455e1da407', // MP 305+ (permitido en vitrina)
 ]);
 
-const HOME_CAROUSEL_EXCLUDED_NAME_PATTERNS = [/\bmultifuncional\b.*\bmp\s*305\s*\+/i];
+const HOME_CAROUSEL_EXCLUDED_NAME_PATTERNS = [];
 
 export function isHomeCarouselExcludedProduct(product) {
   const id = String(product?.id ?? '').trim();

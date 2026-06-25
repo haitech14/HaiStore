@@ -10,6 +10,8 @@ export const PRODUCT_CARD_IMAGE_CLASS =
 
 interface ProductCardHoverImageProps {
   candidates: string[];
+  /** Inventario real (sin stock genérico); solo estas URLs se usan como fallback de hover. */
+  storedCandidates?: string[];
   /** Segunda foto de galería al pasar el cursor sobre la imagen. */
   hoverSrc?: string | null;
   alt?: string;
@@ -20,6 +22,7 @@ interface ProductCardHoverImageProps {
 
 export function ProductCardHoverImage({
   candidates,
+  storedCandidates,
   hoverSrc = null,
   alt = '',
   className = 'size-full',
@@ -41,7 +44,9 @@ export function ProductCardHoverImage({
   useEffect(() => {
     setFailedIndices(new Set());
     setHoverFailed(false);
-  }, [candidates.join('|'), hoverSrc]);
+  }, [candidates.join('|'), hoverSrc, storedCandidates?.join('|')]);
+
+  const hoverPool = storedCandidates ?? candidates;
 
   const displayIndex = useMemo(() => {
     for (let index = 0; index < candidates.length; index += 1) {
@@ -50,21 +55,25 @@ export function ProductCardHoverImage({
     return -1;
   }, [candidates, failedIndices]);
 
-  const fallbackHoverIndex = useMemo(() => {
-    if (displayIndex < 0) return -1;
-    for (let index = 0; index < candidates.length; index += 1) {
-      if (index !== displayIndex && !failedIndices.has(index)) return index;
-    }
-    return -1;
-  }, [candidates, displayIndex, failedIndices]);
-
   const primarySrc = displayIndex >= 0 ? candidates[displayIndex] : null;
+
+  const fallbackHoverSrc = useMemo(() => {
+    if (displayIndex < 0 || !primarySrc) return null;
+    for (const url of hoverPool) {
+      if (url !== primarySrc && !failedIndices.has(candidates.indexOf(url))) {
+        return url;
+      }
+    }
+    for (const url of hoverPool) {
+      if (url !== primarySrc) return url;
+    }
+    return null;
+  }, [candidates, displayIndex, failedIndices, hoverPool, primarySrc]);
+
   const resolvedHoverSrc: string | null = hoverCapable
     ? !hoverFailed && hoverSrc && hoverSrc !== primarySrc
       ? hoverSrc
-      : fallbackHoverIndex >= 0
-        ? candidates[fallbackHoverIndex] ?? null
-        : null
+      : fallbackHoverSrc
     : null;
 
   const markFailed = (index: number) => {
@@ -118,7 +127,8 @@ export function ProductCardHoverImage({
                 setHoverFailed(true);
                 return;
               }
-              markFailed(fallbackHoverIndex);
+              const failedIndex = candidates.indexOf(resolvedHoverSrc ?? '');
+              if (failedIndex >= 0) markFailed(failedIndex);
             }}
           />
         </div>

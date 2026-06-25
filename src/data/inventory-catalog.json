@@ -2,12 +2,12 @@
   "products": [
     {
       "id": "ricoh-im-430f",
-      "code": "9900129",
-      "name": "Impresora Multifuncional RICOH IM 430F",
+      "code": "423509",
+      "name": "Impresora Multifuncional NUEVA RICOH IM 430F",
       "description": "Multifuncional monocromática A4, 40 ppm, panel táctil 10.1\".",
       "currency": "USD",
-      "stock": 12,
-      "category": "Multifuncionales",
+      "stock": 24,
+      "category": "Multifuncionales Nuevas",
       "brand": "Ricoh",
       "image_url": "/products/ricoh-im-430f.webp",
       "gallery": [
@@ -15,16 +15,63 @@
         "/products/ricoh-im-430f-2.webp",
         "/products/ricoh-im-430f-3.webp"
       ],
-      "compare_at_price_usd": 891,
-      "purchase_price_usd": 505.44,
+      "purchase_price_usd": 825,
       "created_at": "2026-05-15T00:00:00.000Z",
       "prices": {
-        "public": 702,
-        "corporativo": 646,
-        "tecnico": 618,
-        "mayorista": 597,
-        "distribuidor": 548,
-        "vip": 505
+        "public": 1099,
+        "corporativo": 1012,
+        "tecnico": 919,
+        "mayorista": 899,
+        "distribuidor": 959,
+        "vip": 825
+      }
+    },
+    {
+      "id": "bfb264b8-70dc-4ad4-9686-2df02df8c75e",
+      "code": "M-320F",
+      "name": "Impresora Multifuncional B/N Nueva RICOH M 320F",
+      "description": "Multifuncional monocromática A4 Ricoh M 320F.",
+      "currency": "USD",
+      "stock": 5,
+      "category": "Multifuncionales Nuevas",
+      "brand": "Ricoh",
+      "image_url": "/products/bfb264b8-70dc-4ad4-9686-2df02df8c75e.webp",
+      "gallery": [
+        "/products/bfb264b8-70dc-4ad4-9686-2df02df8c75e.webp",
+        "/products/bfb264b8-70dc-4ad4-9686-2df02df8c75e-256.webp",
+        "/products/bfb264b8-70dc-4ad4-9686-2df02df8c75e-512.webp"
+      ],
+      "purchase_price_usd": 720,
+      "created_at": "2026-06-25T00:00:00.000Z",
+      "prices": {
+        "public": 999,
+        "tecnico": 899,
+        "mayorista": 879,
+        "distribuidor": 929
+      }
+    },
+    {
+      "id": "ab878d89-61e0-4e51-a941-03455e1da407",
+      "code": "MP-305+",
+      "name": "Impresora Multifuncional B/N Nueva RICOH MP 305+",
+      "description": "Multifuncional monocromática A4 Ricoh MP 305+.",
+      "currency": "USD",
+      "stock": 3,
+      "category": "Multifuncionales Nuevas",
+      "brand": "Ricoh",
+      "image_url": "/products/ab878d89-61e0-4e51-a941-03455e1da407.webp",
+      "gallery": [
+        "/products/ab878d89-61e0-4e51-a941-03455e1da407.webp",
+        "/products/ab878d89-61e0-4e51-a941-03455e1da407-256.webp",
+        "/products/ab878d89-61e0-4e51-a941-03455e1da407-512.webp"
+      ],
+      "purchase_price_usd": 610,
+      "created_at": "2026-06-25T00:00:00.000Z",
+      "prices": {
+        "public": 899,
+        "tecnico": 829,
+        "mayorista": 809,
+        "distribuidor": 859
       }
     },
     {
@@ -489,6 +536,73 @@
         "mayorista": 42,
         "distribuidor": 39,
         "vip": 36
+      }
+    },
+    {
+      "id": "419078",
+      "code": "419078",
+      "name": "Toner Cartucho Original RICOH IM 430F (Rend 14,500)",
+      "description": "Cartucho original negro — Rend 14,500 páginas al 5% — IM-430F / P-502 / IM-430F TL",
+      "currency": "USD",
+      "stock": 0,
+      "category": "Toner Original",
+      "brand": "Ricoh",
+      "image_url": "/products/toner-419078.webp",
+      "gallery": ["/products/toner-419078.webp"],
+      "purchase_price_usd": 52.9,
+      "created_at": "2026-06-24T00:00:00.000Z",
+      "prices": {
+        "public": 82.9,
+        "tecnico": 69.9,
+        "mayorista": 66.9,
+        "distribuidor": 61.9,
+        "vip": 57.9
+      }
+    },
+    {
+      "id": "418480",
+      "code": "418480",
+      "name": "Toner Cartucho Original RICOH IM 550F / IM 600F (Rend 40,000)",
+      "description": "Cartucho original negro alto rendimiento — Rend 40,000 páginas al 5% — IM-550F / IM-600F / P-800 / P-801",
+      "currency": "USD",
+      "stock": 0,
+      "category": "Toner Original",
+      "brand": "Ricoh",
+      "image_url": "/products/toner-418480.webp",
+      "gallery": [
+        "/products/toner-418480.webp",
+        "/products/toner-418480-2.webp",
+        "/products/toner-418480-3.webp"
+      ],
+      "purchase_price_usd": 84.9,
+      "created_at": "2026-06-24T00:00:00.000Z",
+      "prices": {
+        "public": 132.9,
+        "tecnico": 112.9,
+        "mayorista": 107.9,
+        "distribuidor": 99.9,
+        "vip": 92.9
+      }
+    },
+    {
+      "id": "compat-tc-im-550-intercopy",
+      "code": "TC-IM-550-INTERCOPY",
+      "name": "Tóner compatible RICOH IM 550 / IM 600",
+      "description": "Tóner compatible negro — Rendimiento según modelo — IM-550F / IM-600F",
+      "currency": "USD",
+      "stock": 0,
+      "category": "Toner, Toner Compatibles",
+      "brand": "HaiPrint",
+      "image_url": "/categories/toner-suministros.png",
+      "gallery": ["/categories/toner-suministros.png"],
+      "purchase_price_usd": 22.9,
+      "created_at": "2026-06-24T00:00:00.000Z",
+      "prices": {
+        "public": 39.9,
+        "tecnico": 33.9,
+        "mayorista": 31.9,
+        "distribuidor": 29.9,
+        "vip": 27.9
       }
     }
   ]

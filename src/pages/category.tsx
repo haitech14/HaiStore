@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, PanelLeftClose } from 'lucide-react';
 
 import { CatalogFilterOption } from '@/components/catalog-filter-option';
+import { CatalogFilterGroup } from '@/components/catalog-filter-group';
 import { CatalogSidebarNav } from '@/components/catalog-sidebar-nav';
 import { CategoryCatalogFormatSections } from '@/components/category/category-catalog-format-sections';
 import {
@@ -10,9 +11,8 @@ import {
   type CatalogViewMode,
   type CategorySortValue,
 } from '@/components/category/category-catalog-toolbar';
-import { CategoryQuickFilters } from '@/components/category/category-quick-filters';
 import { CatalogProductPagination } from '@/components/category/catalog-product-pagination';
-import { CategoryHeroBanner } from '@/components/category-hero-banner';
+import { HomeCatalogLoadError } from '@/components/home-catalog-load-error';
 import { RentalCategoryGrid } from '@/components/rental-category-grid';
 import { SubcategoryTabs } from '@/components/subcategory-tabs';
 import {
@@ -22,6 +22,7 @@ import {
 import { ProductCard } from '@/components/product-card';
 import { ProductHighlightCard } from '@/components/product/product-highlight-card';
 import { Button } from '@/components/ui/button';
+import { RangeSlider } from '@/components/ui/range-slider';
 import {
   Sheet,
   SheetContent,
@@ -29,7 +30,6 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { useAuth } from '@/context/auth-context';
-import { getCategoryHeroContent, getSubcategoryHeroContent } from '@/data/category-hero';
 import {
   EMPTY_STORE_CATEGORY_TREE,
   useStoreCategoriesTree,
@@ -37,6 +37,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 
 import { useCategoryCatalog } from '@/hooks/use-category-catalog';
+import { useProducts } from '@/hooks/use-products';
 import { useSeo } from '@/hooks/use-seo';
 import { searchCatalogProducts } from '@/lib/catalog-search-api';
 import { buildCategorySeoConfig } from '@/lib/build-category-seo';
@@ -52,6 +53,7 @@ import {
   formatSubcategoryTabLabel,
   parseCategorySubSearchParam,
 } from '@/lib/store-category-display';
+import { syncStoreCategoryTreeProductCounts } from '@/lib/store-category-product-counts';
 import type { ActiveFilterChip } from '@/components/category/category-active-filter-chips';
 import { productMatchesCategoryFilter } from '@/lib/inventory-categories';
 import { applyEquipmentSubcategorySlugFilter } from '@/lib/equipment-subcategory-filter';
@@ -72,6 +74,8 @@ import {
 } from '@/data/rental-categories';
 import { catalogGridClassName, type CatalogGridColumns } from '@/lib/category-grid-layout';
 import {
+  CATALOG_FORMAT_SECTION_MAX,
+  CATALOG_TABLE_VIEW_MAX,
   getCatalogPageSlice,
   getCatalogTotalPages,
   getResponsiveCatalogPageSize,
@@ -84,6 +88,7 @@ import {
 } from '@/lib/product-condition';
 import {
   buildCatalogQuickFilters,
+  buildBrandFacets,
   buildCatalogFormatSections,
   buildCatalogSpecFilterTabs,
   buildModelQuickFilters,
@@ -97,8 +102,11 @@ import {
   isRendimientoAttributeKey,
   PRODUCTION_FILTER_OPTIONS,
   productMatchesCatalogFilters,
+  productMatchesBrandFilter,
+  MOST_VIEWED_OFFER_ATTR_KEY,
   shouldShowCatalogSpecFilterTabs,
   shouldShowProductionFilters,
+  shouldUseCatalogSidebarLayout,
   getCatalogLayoutOrderedProducts,
   getSpecFilterDisplayLabel,
   toggleCatalogSpecFilter,
@@ -137,7 +145,10 @@ export type CategoryPageProps = {
 export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
   const { slug: routeSlug } = useParams<{ slug: string }>();
   const slug = catalogSlug ?? routeSlug;
-  const catalogSidebarLayout = shouldShowCatalogSpecFilterTabs(slug);
+  const isStoreAll = !slug;
+  const isRentalCategory = slug === RENTAL_PARENT_SLUG;
+  const catalogSidebarLayout = isStoreAll ? true : shouldUseCatalogSidebarLayout(slug);
+  const showCatalogSpecFilters = shouldShowCatalogSpecFilterTabs(slug);
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const rawSubSlug = searchParams.get('sub');
@@ -149,9 +160,30 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
 
   const category = slug ? findCategoryBySlug(slug) : undefined;
   const catalogFamily = slug ? catalogFamilyForCategorySlug(slug) : null;
-  const { data: categoryTreeData, isLoading: categoryTreeLoading } = useStoreCategoriesTree();
+  const {
+    data: categoryTreeData,
+    isLoading: categoryTreeLoading,
+    isError: categoryTreeError,
+    isFetching: categoryTreeFetching,
+    refetch: refetchCategoryTree,
+  } = useStoreCategoriesTree();
   const categoryTree = categoryTreeData ?? EMPTY_STORE_CATEGORY_TREE;
-  const [selectedAttributes, setSelectedAttributes] = useState<string[]>([]);
+  const syncSidebarCountsFromCatalog = !isInventorySearch && !isRentalCategory;
+  const { data: allProductsData } = useProducts({ enabled: syncSidebarCountsFromCatalog });
+  const allProducts = allProductsData ?? EMPTY_PRODUCT_LIST;
+  const sidebarCategoryTree = useMemo(() => {
+    if (!syncSidebarCountsFromCatalog) return categoryTree;
+    return syncStoreCategoryTreeProductCounts(categoryTree, allProducts);
+  }, [categoryTree, allProducts, syncSidebarCountsFromCatalog]);
+  const [selectedAttributes, setSelectedAttributes] = useState<string[]>(() => {
+    const raw = searchParams.get('attrs');
+    if (!raw?.trim()) return [];
+    return raw
+      .split('|')
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  });
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedProduction, setSelectedProduction] = useState<string | null>(null);
   const [priceMin, setPriceMin] = useState<number | null>(null);
   const [priceMax, setPriceMax] = useState<number | null>(null);
@@ -160,7 +192,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
   const [gridColumns, setGridColumns] = useState<CatalogGridColumns>(
     catalogSidebarLayout ? 5 : 6,
   );
-  const [filtersPanelOpen, setFiltersPanelOpen] = useState(catalogSidebarLayout);
+  const [filtersPanelOpen, setFiltersPanelOpen] = useState(true);
   const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [inStockOnly, setInStockOnly] = useState(false);
@@ -193,19 +225,30 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     [storeCategory, subSlug],
   );
 
-  const isRentalCategory = slug === RENTAL_PARENT_SLUG;
-
   const productLabels = useMemo(() => {
+    if (isStoreAll) return EMPTY_LABEL_LIST;
     if (!category) return EMPTY_LABEL_LIST;
     return resolveCategoryPageProductLabels(category, storeCategory, subSlug, categoryTree);
-  }, [category, storeCategory, subSlug, categoryTree]);
+  }, [category, storeCategory, subSlug, categoryTree, isStoreAll]);
 
   const catalogPageSize = getResponsiveCatalogPageSize(isMobile, gridColumns);
+  const isTableView = viewMode === 'table';
   const showFormatSectionsEarly =
     shouldShowCatalogSpecFilterTabs(slug) && viewMode === 'grid';
-  const formatSectionFetchLimit = showFormatSectionsEarly ? (isMobile ? 48 : 500) : catalogPageSize;
+  const formatSectionFetchLimit = showFormatSectionsEarly
+    ? (isMobile ? 48 : CATALOG_FORMAT_SECTION_MAX)
+    : isTableView
+      ? CATALOG_TABLE_VIEW_MAX
+      : catalogPageSize;
+  const catalogFetchPage = showFormatSectionsEarly || isTableView ? 1 : catalogPage;
 
-  const { data: catalogData, isLoading: catalogLoading, isError: catalogError } = useCategoryCatalog({
+  const {
+    data: catalogData,
+    isLoading: catalogLoading,
+    isError: catalogError,
+    isFetching: catalogFetching,
+    refetch: refetchCatalog,
+  } = useCategoryCatalog({
     enabled: Boolean(slug) && !isRentalCategory && !isInventorySearch && productLabels.length > 0,
     slug: slug ?? '',
     subSlug,
@@ -214,15 +257,16 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     inStockOnly,
     priceMin,
     priceMax,
+    brandKeys: selectedBrands,
     attributeKeys: selectedAttributes,
     productionKey: selectedProduction,
     search: catalogSearch,
     sortBy,
-    page: showFormatSectionsEarly ? 1 : catalogPage,
+    page: catalogFetchPage,
     limit: formatSectionFetchLimit,
   });
 
-  const { data: searchData, isLoading: searchLoading, isError: searchError } = useQuery({
+  const { data: searchData, isLoading: searchLoading, isError: searchError, isFetching: searchFetching, refetch: refetchSearch } = useQuery({
     queryKey: ['catalog-search', searchQuery, searchCategoryFilter, viewAsRolesQueryKey(viewAsRoles)],
     queryFn: () =>
       searchCatalogProducts(searchQuery, {
@@ -241,12 +285,16 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
         : payload,
   });
 
-  const useServerCatalog = !isInventorySearch && !isRentalCategory && productLabels.length > 0;
+  const useServerCatalog = !isStoreAll && !isInventorySearch && !isRentalCategory && productLabels.length > 0;
   const products = isInventorySearch
     ? (searchData?.products ?? EMPTY_PRODUCT_LIST)
-    : (catalogData?.products ?? EMPTY_PRODUCT_LIST);
+    : isStoreAll
+      ? allProducts
+      : (catalogData?.products ?? EMPTY_PRODUCT_LIST);
   const isLoading = isInventorySearch ? searchLoading : catalogLoading;
   const isError = isInventorySearch ? searchError : catalogError;
+  const isCatalogFetching = isInventorySearch ? searchFetching : catalogFetching;
+  const refetchCatalogProducts = isInventorySearch ? refetchSearch : refetchCatalog;
 
   const baseProducts = useMemo(() => {
     if (!products.length) return EMPTY_PRODUCT_LIST;
@@ -262,12 +310,19 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
       });
     }
 
+    if (isStoreAll) {
+      return products;
+    }
+
     if (useServerCatalog) {
       return products;
     }
 
     return applyEquipmentSubcategorySlugFilter(
       products.filter((product) => {
+        if (slug === 'sin-categoria') {
+          return !String(product.category ?? '').trim();
+        }
         if (slug === 'repuestos' && isPrinterEquipmentProduct(product)) {
           return false;
         }
@@ -279,6 +334,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     products,
     productLabels,
     isInventorySearch,
+    isStoreAll,
     useServerCatalog,
     searchQuery,
     searchCategoryFilter,
@@ -286,6 +342,46 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     slug,
     subSlug,
   ]);
+
+  const facetCountProducts = useMemo(() => {
+    if (isInventorySearch || isRentalCategory || productLabels.length === 0) {
+      return baseProducts;
+    }
+    if (syncSidebarCountsFromCatalog && allProducts.length > 0) {
+      return applyEquipmentSubcategorySlugFilter(
+        allProducts.filter((product) => {
+          if (slug === 'repuestos' && isPrinterEquipmentProduct(product)) {
+            return false;
+          }
+          return productLabels.some((label) => productMatchesCategoryFilter(product, label));
+        }),
+        subSlug,
+      );
+    }
+    return baseProducts;
+  }, [
+    baseProducts,
+    allProducts,
+    syncSidebarCountsFromCatalog,
+    isInventorySearch,
+    isRentalCategory,
+    productLabels,
+    slug,
+    subSlug,
+  ]);
+
+  const mostViewedOfferFilter = useMemo(() => {
+    const fromFacets = catalogData?.facets?.attributes?.find(
+      (attr) => attr.key === MOST_VIEWED_OFFER_ATTR_KEY,
+    );
+    const count = countProductsForAttributeKey(facetCountProducts, MOST_VIEWED_OFFER_ATTR_KEY);
+    if (!fromFacets && count === 0) return null;
+    return {
+      key: MOST_VIEWED_OFFER_ATTR_KEY,
+      label: 'Más vistos',
+      count: fromFacets?.count ?? count,
+    };
+  }, [catalogData?.facets?.attributes, facetCountProducts]);
 
   const availableAttributes = useMemo(() => {
     if (useServerCatalog && catalogData?.facets?.attributes) {
@@ -315,7 +411,9 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     return availableAttributes
       .filter(
         (attr) =>
-          !isModeloEquipoAttributeKey(attr.key) && !isRendimientoAttributeKey(attr.key),
+          attr.key !== MOST_VIEWED_OFFER_ATTR_KEY &&
+          !isModeloEquipoAttributeKey(attr.key) &&
+          !isRendimientoAttributeKey(attr.key),
       )
       .map((attr) => ({
         ...attr,
@@ -336,6 +434,26 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     };
   }, [baseProducts, useServerCatalog, catalogData?.facets?.priceRange]);
 
+  useEffect(() => {
+    setPriceMin((prev) =>
+      prev == null
+        ? prev
+        : Math.max(availablePriceRange.min, Math.min(prev, availablePriceRange.max)),
+    );
+    setPriceMax((prev) =>
+      prev == null
+        ? prev
+        : Math.max(availablePriceRange.min, Math.min(prev, availablePriceRange.max)),
+    );
+  }, [availablePriceRange.min, availablePriceRange.max]);
+
+  const brandFilterOptions = useMemo(() => {
+    if (useServerCatalog && catalogData?.facets?.brands) {
+      return catalogData.facets.brands;
+    }
+    return buildBrandFacets(baseProducts);
+  }, [baseProducts, useServerCatalog, catalogData?.facets?.brands]);
+
   const availableAttributeKeys = useMemo(
     () => availableAttributes.map((attr) => attr.key).join('|'),
     [availableAttributes],
@@ -343,11 +461,29 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
 
   useEffect(() => {
     setSelectedAttributes([]);
+    setSelectedBrands([]);
     setSelectedProduction(null);
     setPriceMin(null);
     setPriceMax(null);
     setCatalogSearch('');
   }, [slug, subSlug]);
+
+  const availableBrandKeys = useMemo(
+    () => brandFilterOptions.map((brand: { key: string }) => brand.key).join('|'),
+    [brandFilterOptions],
+  );
+
+  useEffect(() => {
+    if (!availableBrandKeys) return;
+    const validKeys = new Set(availableBrandKeys.split('|').filter(Boolean));
+    setSelectedBrands((prev) => {
+      const next = prev.filter((key) => validKeys.has(key));
+      if (next.length === prev.length && next.every((key, index) => key === prev[index])) {
+        return prev;
+      }
+      return next;
+    });
+  }, [availableBrandKeys]);
 
   useEffect(() => {
     if (!availableAttributeKeys) return;
@@ -379,8 +515,16 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     }
     if (selectedAttributes.length > 0 || selectedProduction) {
       list = list.filter((product) =>
-        productMatchesCatalogFilters(product, selectedAttributes, selectedProduction),
+        productMatchesCatalogFilters(
+          product,
+          selectedAttributes,
+          selectedProduction,
+          facetCountProducts,
+        ),
       );
+    }
+    if (selectedBrands.length > 0) {
+      list = list.filter((product) => productMatchesBrandFilter(product, selectedBrands));
     }
     if (inStockOnly) {
       list = list.filter((product) => product.stock > 0);
@@ -414,7 +558,9 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     estadoFilter,
     catalogFamily,
     selectedAttributes,
+    selectedBrands,
     selectedProduction,
+    facetCountProducts,
     inStockOnly,
     priceMin,
     priceMax,
@@ -446,95 +592,19 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     Boolean(storeCategory?.children?.length) && !isInventorySearch;
   const showProductCatalog = !isRentalCategory || hasSubcategoryHeroes;
 
-  const parentHeroFallback = useMemo(() => {
-    if (!category) return null;
-    const fallbackImage = storeCategory?.image ?? category.image;
-    return {
-      name: storeCategory?.name ?? category.name,
-      tagline: storeCategory?.tagline ?? category.tagline,
-      ...(fallbackImage ? { image: fallbackImage } : {}),
-    };
-  }, [category, storeCategory]);
-
-  const parentHeroContent = useMemo(() => {
-    if (!category || !parentHeroFallback) return null;
-    return getCategoryHeroContent(category.slug, parentHeroFallback);
-  }, [category, parentHeroFallback]);
-
-  const subcategoryHeroes = useMemo(() => {
-    if (!hasSubcategoryHeroes || !storeCategory || !category || !parentHeroFallback) {
-      return null;
-    }
-
-    return (storeCategory.children ?? []).map((sub) => {
-      const content = getSubcategoryHeroContent(
-        category.slug,
-        {
-          name: sub.name,
-          slug: sub.slug,
-          tagline: sub.tagline,
-          image: sub.image,
-          inventoryLabels: sub.inventoryLabels,
-        },
-        parentHeroFallback,
-        products ?? [],
-      );
-
-      return {
-        slug: sub.slug,
-        content: {
-          ...content,
-          title: formatSubcategoryTabLabel(sub.name, parentHeroFallback.name),
-        },
-      };
-    });
-  }, [
-    hasSubcategoryHeroes,
-    storeCategory,
-    category,
-    parentHeroFallback,
-    products,
-  ]);
-
-  const heroContent = useMemo(() => {
-    if (!category || !parentHeroFallback) return null;
-
-    if (hasSubcategoryHeroes && activeSubcategory) {
-      return getSubcategoryHeroContent(
-        category.slug,
-        {
-          name: activeSubcategory.name,
-          slug: activeSubcategory.slug,
-          tagline: activeSubcategory.tagline,
-          image: activeSubcategory.image,
-          inventoryLabels: activeSubcategory.inventoryLabels,
-        },
-        parentHeroFallback,
-        products ?? [],
-      );
-    }
-
-    if (hasSubcategoryHeroes && !activeSubcategory) {
-      return null;
-    }
-
-    return (
-      parentHeroContent ??
-      getCategoryHeroContent(category.slug, parentHeroFallback)
-    );
-  }, [
-    category,
-    parentHeroFallback,
-    activeSubcategory,
-    hasSubcategoryHeroes,
-    parentHeroContent,
-    products,
-  ]);
+  const categorySeoSubtitle = useMemo(() => {
+    const fromSub = activeSubcategory?.tagline?.trim();
+    if (fromSub) return fromSub;
+    const fromStore = storeCategory?.tagline?.trim();
+    if (fromStore) return fromStore;
+    return category?.tagline?.trim() || null;
+  }, [activeSubcategory?.tagline, storeCategory?.tagline, category?.tagline]);
 
   const seoHasFilterParams = useMemo(() => {
     if (isInventorySearch) return true;
     if (selectedAttributes.length > 0) return true;
     if (selectedProduction != null) return true;
+    if (selectedBrands.length > 0) return true;
     if (inStockOnly) return true;
     if (priceMin != null || priceMax != null) return true;
     if (catalogPage > 1) return true;
@@ -547,6 +617,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     isInventorySearch,
     selectedAttributes,
     selectedProduction,
+    selectedBrands,
     inStockOnly,
     priceMin,
     priceMax,
@@ -559,7 +630,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     return buildCategorySeoConfig({
       category,
       subcategoryName: activeSubcategory?.name ?? rentalSubcategory?.title ?? null,
-      heroSubtitle: heroContent?.subtitle ?? null,
+      heroSubtitle: categorySeoSubtitle,
       catalogSlug,
       isInventorySearch,
       searchQuery,
@@ -569,7 +640,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     category,
     activeSubcategory?.name,
     rentalSubcategory?.title,
-    heroContent?.subtitle,
+    categorySeoSubtitle,
     catalogSlug,
     isInventorySearch,
     searchQuery,
@@ -648,6 +719,12 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     );
   }, []);
 
+  const toggleBrand = useCallback((key: string) => {
+    setSelectedBrands((prev) =>
+      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key],
+    );
+  }, []);
+
   const toggleSpecFilter = useCallback((key: string) => {
     setSelectedAttributes((prev) => toggleCatalogSpecFilter(prev, key));
   }, []);
@@ -658,9 +735,9 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
   );
 
   const specFilterTabs = useMemo(() => {
-    if (!shouldShowCatalogSpecFilterTabs(slug)) return [];
+    if (!showCatalogSpecFilters) return [];
     return buildCatalogSpecFilterTabs(baseProducts);
-  }, [slug, baseProducts]);
+  }, [showCatalogSpecFilters, baseProducts]);
 
   const showFormatSections = showFormatSectionsEarly;
 
@@ -669,7 +746,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     return getCatalogLayoutOrderedProducts(filteredProducts);
   }, [filteredProducts, showFormatSections]);
 
-  const useServerPagination = useServerCatalog && !showFormatSections;
+  const useServerPagination = useServerCatalog && !showFormatSections && !isTableView;
   const catalogTotalPages = useServerPagination
     ? (catalogData?.totalPages ?? 1)
     : getCatalogTotalPages(paginationProducts.length, catalogPageSize);
@@ -678,20 +755,18 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     ? filteredProducts
     : getCatalogPageSlice(paginationProducts, safeCatalogPage, catalogPageSize);
 
-  const catalogSidebarOpen = catalogSidebarLayout
-    ? isDesktopNav
-    : filtersPanelOpen && isDesktopNav;
+  const catalogSidebarOpen = filtersPanelOpen && isDesktopNav;
 
-  const catalogProductsForDisplay = useMemo(() => {
-    if (!showFormatSections) {
-      return pagedCatalogProducts;
+  const closeFiltersPanel = useCallback(() => {
+    setFiltersPanelOpen(false);
+    if (catalogSidebarLayout) {
+      setGridColumns(6);
     }
-    return getCatalogLayoutOrderedProducts(filteredProducts);
-  }, [showFormatSections, pagedCatalogProducts, filteredProducts]);
+  }, [catalogSidebarLayout]);
 
   const catalogFormatSections = useMemo(
-    () => buildCatalogFormatSections(catalogProductsForDisplay),
-    [catalogProductsForDisplay],
+    () => (showFormatSections ? buildCatalogFormatSections(filteredProducts) : []),
+    [filteredProducts, showFormatSections],
   );
 
   useEffect(() => {
@@ -700,6 +775,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     slug,
     subSlug,
     selectedAttributes,
+    selectedBrands,
     selectedProduction,
     sortBy,
     catalogSearch,
@@ -718,21 +794,61 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     if (catalogPage !== safeCatalogPage) setCatalogPage(safeCatalogPage);
   }, [catalogPage, safeCatalogPage]);
 
+  useEffect(() => {
+    const fromUrl = (searchParams.get('attrs') ?? '')
+      .split('|')
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+    const hasOfferInUrl = fromUrl.includes(MOST_VIEWED_OFFER_ATTR_KEY);
+    setSelectedAttributes((prev) => {
+      const hasOffer = prev.includes(MOST_VIEWED_OFFER_ATTR_KEY);
+      if (hasOfferInUrl === hasOffer) return prev;
+      if (hasOfferInUrl) return [...new Set([...prev, MOST_VIEWED_OFFER_ATTR_KEY])];
+      return prev.filter((key) => key !== MOST_VIEWED_OFFER_ATTR_KEY);
+    });
+  }, [searchParams]);
+
+  const toggleMostViewedOffer = useCallback(() => {
+    const nextHasOffer = !selectedAttributes.includes(MOST_VIEWED_OFFER_ATTR_KEY);
+    setSelectedAttributes((prev) =>
+      nextHasOffer
+        ? [...prev, MOST_VIEWED_OFFER_ATTR_KEY]
+        : prev.filter((key) => key !== MOST_VIEWED_OFFER_ATTR_KEY),
+    );
+    const next = new URLSearchParams(searchParams);
+    if (nextHasOffer) next.set('attrs', MOST_VIEWED_OFFER_ATTR_KEY);
+    else next.delete('attrs');
+    setSearchParams(next, { replace: true, preventScrollReset: true });
+  }, [selectedAttributes, searchParams, setSearchParams]);
+
   const clearAllFilters = useCallback(() => {
     setSelectedAttributes([]);
+    setSelectedBrands([]);
     setSelectedProduction(null);
     setInStockOnly(false);
     setPriceMin(null);
     setPriceMax(null);
+    setCatalogSearch('');
+    setSortBy('price-asc');
     selectSubcategory(null);
-  }, [selectSubcategory]);
+    const next = new URLSearchParams(searchParams);
+    next.delete('attrs');
+    next.delete('buscar');
+    next.delete('cat');
+    next.delete('estado');
+    next.delete('orden');
+    next.delete('vista');
+    next.delete('pagina');
+    next.delete('precio_min');
+    next.delete('precio_max');
+    setSearchParams(next, { replace: true, preventScrollReset: true });
+  }, [selectSubcategory, searchParams, setSearchParams]);
 
   const toggleProduction = useCallback((key: string) => {
     setSelectedProduction((prev) => (prev === key ? null : key));
   }, []);
 
   const toggleCategoryFilters = useCallback(() => {
-    if (catalogSidebarLayout && isDesktopNav) return;
     if (isDesktopNav) {
       setFiltersPanelOpen((open) => {
         const next = !open;
@@ -744,7 +860,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
     setFiltersSheetOpen(true);
   }, [catalogSidebarLayout, isDesktopNav]);
 
-  if (!slug || !category) {
+  if (!isStoreAll && (!slug || !category)) {
     return <Navigate to="/" replace />;
   }
 
@@ -776,16 +892,22 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
 
   const pageTitle = isInventorySearch
     ? `Resultados para «${searchQuery}»`
-    : (rentalSubcategory?.title ?? activeSubcategory?.name ?? category.name);
+    : isStoreAll
+      ? 'Todo el catálogo'
+      : (rentalSubcategory?.title ?? activeSubcategory?.name ?? category!.name);
   const defaultCategoryForNewProduct =
-    activeSubcategory?.name ?? storeCategory?.name ?? category.name ?? null;
+    isStoreAll ? null : (activeSubcategory?.name ?? storeCategory?.name ?? category!.name ?? null);
+  const hasBrandFilters = selectedBrands.length > 0;
   const hasAttributeFilters = selectedAttributes.length > 0 || selectedProduction != null;
+  const hasSearchFilter = catalogSearch.trim().length > 0;
+  const hasSortFilter = sortBy !== 'price-asc';
   const hasPriceFilter =
     (priceMin != null && priceMin !== availablePriceRange.min) ||
     (priceMax != null && priceMax !== availablePriceRange.max);
   const hasSidebarFilters =
     (rawSubSlug != null && rawSubSlug !== ALL_SUBCATEGORIES_QUERY) ||
     hasPriceFilter ||
+    hasBrandFilters ||
     inStockOnly;
 
   const formatSpecFilterTabs = specFilterTabs.filter((tab) => tab.key.includes('Formato papel::'));
@@ -794,15 +916,30 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
   const categoryFiltersContent = (
     <>
       <section aria-label="Catálogo por categoría">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <h3 className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
           {catalogSidebarLayout ? 'Categorías' : 'Catálogo'}
         </h3>
-        <div className="mt-2 max-h-[min(22rem,50vh)] overflow-y-auto rounded-lg border border-border/70 bg-muted/15 p-1.5 pr-0.5">
-          {categoryTree.length === 0 ? (
-            <p className="px-2 py-3 text-xs text-muted-foreground">Cargando categorías…</p>
+        <div className="mt-1.5 max-h-[min(16rem,42vh)] overflow-y-auto rounded-md border border-border/70 bg-background shadow-sm [scrollbar-width:thin]">
+          {categoryTreeLoading && categoryTree.length === 0 ? (
+            <p className="px-2.5 py-2 text-xs text-muted-foreground">Cargando categorías…</p>
+          ) : categoryTreeError && categoryTree.length === 0 ? (
+            <div className="space-y-2 px-2.5 py-2">
+              <p className="text-xs text-destructive">No se pudieron cargar las categorías.</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={categoryTreeFetching}
+                onClick={() => void refetchCategoryTree()}
+              >
+                {categoryTreeFetching ? 'Reintentando…' : 'Reintentar'}
+              </Button>
+            </div>
+          ) : categoryTree.length === 0 ? (
+            <p className="px-2.5 py-2 text-xs text-muted-foreground">Sin categorías disponibles.</p>
           ) : (
             <CatalogSidebarNav
-              categoryTree={categoryTree}
+              categoryTree={sidebarCategoryTree}
               activeCategorySlug={slug ?? ''}
               subSlug={subSlug}
               allSubcategoriesSelected={isAllSubcategoriesView}
@@ -812,12 +949,56 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
         </div>
       </section>
 
+      {catalogSidebarLayout && showCatalogSpecFilters && colorSpecFilterTabs.length > 0 ? (
+        <section aria-label="Color de impresión">
+          <h3 className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
+            Color
+          </h3>
+          <CatalogFilterGroup className="mt-1.5">
+            {colorSpecFilterTabs.map((tab) => (
+              <CatalogFilterOption
+                key={tab.key}
+                id={`filter-color-${tab.key}`}
+                label={getSpecFilterDisplayLabel(tab.key)}
+                count={tab.count}
+                active={selectedSpecFilters.includes(tab.key)}
+                compact
+                disabled={tab.count === 0}
+                onToggle={() => toggleSpecFilter(tab.key)}
+              />
+            ))}
+          </CatalogFilterGroup>
+        </section>
+      ) : null}
+
+      {catalogSidebarLayout && showCatalogSpecFilters && formatSpecFilterTabs.length > 0 ? (
+        <section aria-label="Formato de papel">
+          <h3 className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
+            Formato
+          </h3>
+          <CatalogFilterGroup className="mt-1.5">
+            {formatSpecFilterTabs.map((tab) => (
+              <CatalogFilterOption
+                key={tab.key}
+                id={`filter-formato-${tab.key}`}
+                label={getSpecFilterDisplayLabel(tab.key)}
+                count={tab.count}
+                active={selectedSpecFilters.includes(tab.key)}
+                compact
+                disabled={tab.count === 0}
+                onToggle={() => toggleSpecFilter(tab.key)}
+              />
+            ))}
+          </CatalogFilterGroup>
+        </section>
+      ) : null}
+
       {showProductionFilters ? (
         <section aria-label="Producción mensual">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            {catalogSidebarLayout ? 'Producción (Páginas/Mes)' : 'Producción'}
+          <h3 className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
+            {catalogSidebarLayout ? 'Producción/mes' : 'Producción'}
           </h3>
-          <div className="mt-2 space-y-1">
+          <CatalogFilterGroup className="mt-1.5">
             {!catalogSidebarLayout ? (
               <CatalogFilterOption
                 id="filter-produccion-all"
@@ -825,6 +1006,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
                 count={baseProducts.length}
                 active={selectedProduction === null}
                 mode="radio"
+                compact
                 onToggle={() => setSelectedProduction(null)}
               />
             ) : null}
@@ -836,82 +1018,42 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
                 count={option.count}
                 active={selectedProduction === option.key}
                 mode="radio"
+                compact
                 disabled={option.count === 0}
                 onToggle={() => toggleProduction(option.key)}
               />
             ))}
-          </div>
-        </section>
-      ) : null}
-
-      {catalogSidebarLayout && formatSpecFilterTabs.length > 0 ? (
-        <section aria-label="Formato de papel">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Formato de Papel
-          </h3>
-          <div className="mt-2 space-y-1">
-            {formatSpecFilterTabs.map((tab) => (
-              <CatalogFilterOption
-                key={tab.key}
-                id={`filter-formato-${tab.key}`}
-                label={getSpecFilterDisplayLabel(tab.key)}
-                count={tab.count}
-                active={selectedSpecFilters.includes(tab.key)}
-                disabled={tab.count === 0}
-                onToggle={() => toggleSpecFilter(tab.key)}
-              />
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {catalogSidebarLayout && colorSpecFilterTabs.length > 0 ? (
-        <section aria-label="Color de impresión">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Color
-          </h3>
-          <div className="mt-2 space-y-1">
-            {colorSpecFilterTabs.map((tab) => (
-              <CatalogFilterOption
-                key={tab.key}
-                id={`filter-color-${tab.key}`}
-                label={getSpecFilterDisplayLabel(tab.key)}
-                count={tab.count}
-                active={selectedSpecFilters.includes(tab.key)}
-                disabled={tab.count === 0}
-                onToggle={() => toggleSpecFilter(tab.key)}
-              />
-            ))}
-          </div>
+          </CatalogFilterGroup>
         </section>
       ) : null}
 
       {!catalogSidebarLayout ? (
         <section aria-label="Disponibilidad">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h3 className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
             Disponibilidad
           </h3>
-          <div className="mt-2 space-y-1">
+          <CatalogFilterGroup className="mt-1.5">
             <CatalogFilterOption
               id="filter-in-stock-only"
               label="Solo en stock"
               count={inStockProductCount}
               active={inStockOnly}
+              compact
               disabled={inStockProductCount === 0}
               onToggle={() => setInStockOnly((prev) => !prev)}
             />
-          </div>
+          </CatalogFilterGroup>
         </section>
       ) : null}
 
       {!catalogSidebarLayout ? (
         <section aria-label="Atributos del producto">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h3 className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
             Atributos
           </h3>
-          <div className="mt-2 max-h-56 space-y-1 overflow-y-auto pr-0.5">
+          <CatalogFilterGroup className="mt-1.5 max-h-48 overflow-y-auto">
             {sidebarAttributeOptions.length === 0 ? (
-              <p className="rounded-md border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
+              <p className="px-2.5 py-3 text-center text-xs text-muted-foreground">
                 Sin atributos en esta categoría.
               </p>
             ) : (
@@ -922,69 +1064,117 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
                   label={attr.displayLabel}
                   count={attr.count}
                   active={selectedAttributes.includes(attr.key)}
+                  compact
                   disabled={attr.count === 0}
                   onToggle={() => toggleAttribute(attr.key)}
                 />
               ))
             )}
-          </div>
+          </CatalogFilterGroup>
         </section>
       ) : null}
 
-      {!catalogSidebarLayout ? (
-        <section aria-label="Precio">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Precio (USD)
+      <section aria-label="Precio">
+        <h3
+          className={cn(
+            'font-semibold uppercase tracking-wider text-muted-foreground',
+            catalogSidebarLayout
+              ? 'text-[0.65rem] tracking-wider'
+              : 'text-xs tracking-wide',
+          )}
+        >
+          Precio (USD)
+        </h3>
+        <div className={cn('space-y-3', catalogSidebarLayout ? 'mt-1.5' : 'mt-2')}>
+          <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center justify-start gap-1.5">
+              <span className="font-medium">Mín:</span>
+              <span className="tabular-nums text-foreground">
+                {priceMin ?? availablePriceRange.min}
+              </span>
+            </div>
+            <div className="flex items-center justify-end gap-1.5 text-right">
+              <span className="font-medium">Máx:</span>
+              <span className="tabular-nums text-foreground">
+                {priceMax ?? availablePriceRange.max}
+              </span>
+            </div>
+          </div>
+
+          <RangeSlider
+            min={availablePriceRange.min}
+            max={availablePriceRange.max}
+            step={1}
+            value={[
+              priceMin ?? availablePriceRange.min,
+              priceMax ?? availablePriceRange.max,
+            ]}
+            onValueChange={(next) => {
+              const [minValue, maxValue] = next;
+              if (minValue == null || maxValue == null) return;
+              setPriceMin(Math.max(availablePriceRange.min, Math.min(minValue, maxValue)));
+              setPriceMax(Math.min(availablePriceRange.max, Math.max(maxValue, minValue)));
+            }}
+            onValueCommit={(next) => {
+              const [minValue, maxValue] = next;
+              if (minValue == null || maxValue == null) return;
+              setPriceMin(Math.max(availablePriceRange.min, Math.min(minValue, maxValue)));
+              setPriceMax(Math.min(availablePriceRange.max, Math.max(maxValue, minValue)));
+            }}
+          />
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Rango disponible: {availablePriceRange.min} - {availablePriceRange.max} USD
+        </p>
+      </section>
+
+      {mostViewedOfferFilter ? (
+        <section aria-label="Ofertas">
+          <h3 className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
+            Ofertas
           </h3>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <label className="space-y-1 text-xs text-muted-foreground">
-              <span>Mínimo</span>
-              <input
-                type="number"
-                min={availablePriceRange.min}
-                max={availablePriceRange.max}
-                value={priceMin ?? availablePriceRange.min}
-                onChange={(event) => {
-                  const next = Number(event.target.value);
-                  setPriceMin(
-                    Number.isFinite(next)
-                      ? Math.max(availablePriceRange.min, next)
-                      : availablePriceRange.min,
-                  );
-                }}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
-              />
-            </label>
-            <label className="space-y-1 text-xs text-muted-foreground">
-              <span>Máximo</span>
-              <input
-                type="number"
-                min={availablePriceRange.min}
-                max={availablePriceRange.max}
-                value={priceMax ?? availablePriceRange.max}
-                onChange={(event) => {
-                  const next = Number(event.target.value);
-                  setPriceMax(
-                    Number.isFinite(next)
-                      ? Math.min(availablePriceRange.max, next)
-                      : availablePriceRange.max,
-                  );
-                }}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
-              />
-            </label>
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Rango disponible: {availablePriceRange.min} - {availablePriceRange.max} USD
-          </p>
+          <CatalogFilterGroup className="mt-1.5">
+            <CatalogFilterOption
+              id="filter-offer-most-viewed"
+              label={mostViewedOfferFilter.label}
+              count={mostViewedOfferFilter.count}
+              active={selectedAttributes.includes(MOST_VIEWED_OFFER_ATTR_KEY)}
+              compact
+              disabled={mostViewedOfferFilter.count === 0}
+              onToggle={toggleMostViewedOffer}
+            />
+          </CatalogFilterGroup>
         </section>
       ) : null}
 
-      {hasSidebarFilters || hasAttributeFilters ? (
+      {brandFilterOptions.length > 0 ? (
+        <section aria-label="Marcas">
+          <h3 className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
+            Marcas
+          </h3>
+          <CatalogFilterGroup className="mt-1.5 max-h-48 overflow-y-auto">
+            {brandFilterOptions.map((brand: { key: string; label: string; count: number }) => (
+              <CatalogFilterOption
+                key={brand.key}
+                id={`filter-brand-${brand.key}`}
+                label={brand.label}
+                count={brand.count}
+                active={selectedBrands.includes(brand.key)}
+                compact
+                disabled={brand.count === 0}
+                onToggle={() => toggleBrand(brand.key)}
+              />
+            ))}
+          </CatalogFilterGroup>
+        </section>
+      ) : null}
+
+      {hasSidebarFilters || hasAttributeFilters || hasBrandFilters || hasSearchFilter || hasSortFilter ? (
         <Button
           type="button"
           variant="outline"
-          className="min-h-11 w-full rounded-lg font-semibold"
+          size="sm"
+          className="h-8 w-full text-xs font-medium"
           onClick={clearAllFilters}
         >
           Limpiar filtros
@@ -1019,6 +1209,31 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
         onRemove: () => setSelectedProduction(null),
       });
     }
+    if (selectedAttributes.includes(MOST_VIEWED_OFFER_ATTR_KEY)) {
+      activeFilterChips.push({
+        key: MOST_VIEWED_OFFER_ATTR_KEY,
+        label: 'Más vistos',
+        onRemove: toggleMostViewedOffer,
+      });
+    }
+    for (const brandKey of selectedBrands) {
+      const brandOption = brandFilterOptions.find((brand: { key: string }) => brand.key === brandKey);
+      activeFilterChips.push({
+        key: `brand:${brandKey}`,
+        label: brandOption?.label ?? 'Marca',
+        onRemove: () => toggleBrand(brandKey),
+      });
+    }
+    if (hasPriceFilter) {
+      activeFilterChips.push({
+        key: 'price-range',
+        label: `Precio ${priceMin ?? availablePriceRange.min}–${priceMax ?? availablePriceRange.max} USD`,
+        onRemove: () => {
+          setPriceMin(null);
+          setPriceMax(null);
+        },
+      });
+    }
   }
 
   const heroSubcategoriesTabs =
@@ -1040,39 +1255,17 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
   return (
     <div className="flex flex-col gap-8 pb-12 pt-6 sm:gap-10 sm:pb-16 sm:pt-8">
       <div className="container flex flex-col gap-6 sm:gap-8">
-        {subcategoryHeroes && !activeSubcategory ? (
-          <div id={CATEGORY_HERO_ID} className="scroll-mt-28 sm:scroll-mt-32">
-            <h1 className="sr-only">{storeCategory?.name ?? category.name}</h1>
-            <div
-              className="grid gap-3 sm:gap-4 lg:grid-cols-3"
-              role="group"
-              aria-label={`Subcategorías de ${storeCategory?.name ?? category.name}`}
-            >
-              {subcategoryHeroes.map(({ slug, content }) => (
-                <CategoryHeroBanner
-                  key={slug}
-                  content={content}
-                  inline
-                  interactive
-                  selected={subSlug === slug}
-                  onActivate={() => selectSubcategory(slug)}
-                  headingLevel="h2"
-                />
-              ))}
-            </div>
-          </div>
-        ) : heroContent ? (
-          <div id={CATEGORY_HERO_ID} className="scroll-mt-28 sm:scroll-mt-32">
-            <CategoryHeroBanner content={heroContent} />
-          </div>
-        ) : null}
+        <h1 id={CATEGORY_HERO_ID} className="sr-only">
+          {pageTitle}
+        </h1>
 
         <div
           className={cn(
             'grid gap-5 lg:gap-6',
             showProductCatalog &&
-              (catalogSidebarLayout ? isDesktopNav : filtersPanelOpen)
-              ? 'lg:grid-cols-[minmax(17rem,20rem)_minmax(0,1fr)]'
+              filtersPanelOpen &&
+              isDesktopNav
+              ? 'lg:grid-cols-[minmax(13.5rem,15.5rem)_minmax(0,1fr)]'
               : 'lg:grid-cols-1',
           )}
         >
@@ -1080,14 +1273,26 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
           <aside
             ref={filtersAsideRef}
             className={cn(
-              'hidden h-fit rounded-xl border bg-card p-4 shadow-sm lg:sticky lg:top-24 lg:block',
-              !catalogSidebarLayout && !filtersPanelOpen && 'lg:hidden',
+              'hidden h-fit rounded-lg border bg-card p-3 shadow-sm lg:sticky lg:top-24 lg:block',
+              !filtersPanelOpen && 'lg:hidden',
             )}
           >
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Filtros
-            </h2>
-            <div id="category-filters-panel" className="mt-4 space-y-5">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Filtros
+              </h2>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8 shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label="Contraer panel de filtros"
+                onClick={closeFiltersPanel}
+              >
+                <PanelLeftClose className="size-4" aria-hidden="true" />
+              </Button>
+            </div>
+            <div id="category-filters-panel" className="mt-2.5 space-y-3">
               {categoryFiltersContent}
             </div>
           </aside>
@@ -1103,7 +1308,7 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
               <SheetHeader className="border-b border-border px-5 py-4 text-left">
                 <SheetTitle>Filtros</SheetTitle>
               </SheetHeader>
-              <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
+              <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
                 {categoryFiltersContent}
               </div>
             </SheetContent>
@@ -1129,7 +1334,11 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
             <>
             <CategoryCatalogToolbar
               subcategoryTabs={catalogSidebarLayout ? undefined : heroSubcategoriesTabs}
-              productCount={filteredProducts.length}
+              productCount={
+                useServerCatalog
+                  ? (catalogData?.total ?? filteredProducts.length)
+                  : filteredProducts.length
+              }
               pageTitle={pageTitle}
               searchQuery={catalogSearch}
               onSearchQueryChange={setCatalogSearch}
@@ -1150,13 +1359,14 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
               selectedProduction={selectedProduction}
               onSelectAllQuickFilters={() => {
                 setSelectedAttributes([]);
+                setSelectedBrands([]);
                 setSelectedProduction(null);
               }}
               onToggleAttribute={toggleAttribute}
               onToggleProduction={toggleProduction}
               catalogSidebarLayout={catalogSidebarLayout}
               activeFilterChips={activeFilterChips}
-              filtersActive={hasAttributeFilters || hasPriceFilter || inStockOnly}
+              filtersActive={hasAttributeFilters || hasBrandFilters || hasPriceFilter || inStockOnly}
               endAction={
                 isAdmin && viewMode === 'table' ? (
                   <Button
@@ -1173,20 +1383,18 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
             />
 
             {!catalogSidebarLayout ? (
-              <CategoryQuickFilters
-                modelFilters={modelFilterChips}
-                selectedAttributes={selectedAttributes}
-                onToggleAttribute={toggleAttribute}
-              />
+              null
             ) : null}
             </>
             ) : null}
 
-            {showProductCatalog && isError && (
-              <p role="alert" className="text-destructive">
-                No se pudieron cargar los productos. Inténtalo de nuevo más tarde.
-              </p>
-            )}
+            {showProductCatalog && isError && products.length === 0 ? (
+              <HomeCatalogLoadError
+                message="No se pudieron cargar los productos. Inténtalo de nuevo más tarde."
+                onRetry={() => void refetchCatalogProducts()}
+                isRetrying={isCatalogFetching}
+              />
+            ) : null}
 
             {showProductCatalog && isLoading ? (
               viewMode === 'table' ? (
@@ -1208,10 +1416,13 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
             ) : showProductCatalog && viewMode === 'table' ? (
               <CategoryProductsTable
                 products={filteredProducts}
+                {...(useServerCatalog && catalogData?.total != null
+                  ? { totalCount: catalogData.total }
+                  : {})}
                 defaultCategory={defaultCategoryForNewProduct}
                 bindOpenCreate={bindOpenCreate}
               />
-            ) : showProductCatalog && filteredProducts.length === 0 ? (
+            ) : showProductCatalog && !isLoading && !isError && filteredProducts.length === 0 ? (
               <div className="rounded-lg border border-dashed px-6 py-10 text-center">
                 <p className="font-medium text-foreground">
                   No hay productos en «{pageTitle}» por ahora.
@@ -1231,7 +1442,6 @@ export function CategoryPage({ catalogSlug }: CategoryPageProps = {}) {
                 ) : showFormatSections ? (
                   <CategoryCatalogFormatSections
                     sections={catalogFormatSections}
-                    categorySlug={slug}
                     gridColumns={gridColumns}
                     sidebarOpen={catalogSidebarOpen}
                     renderProduct={(product) => (

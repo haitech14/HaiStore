@@ -204,7 +204,7 @@ export function AdminDashboard() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{product.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {product.units} uds · {product.revenue}
+                      {product.units} unids. · {product.revenue}
                     </p>
                   </div>
                 </li>

@@ -8,7 +8,15 @@ import {
   Zap,
 } from 'lucide-react';
 
-import { AddToCartButton, getAddToCartLabel } from '@/components/cart/add-to-cart-button';
+import {
+  AddToCartButton,
+  ON_REQUEST_STOCK_BADGE_CLASS,
+  adjustProductQuantity,
+  formatOrderQuantityHint,
+  getAddToCartLabel,
+  hasOnRequestQuantity,
+  isProductOutOfStock,
+} from '@/components/cart/add-to-cart-button';
 import { DualPrice } from '@/components/product/product-dual-price';
 import { ProductWhatsAppButton } from '@/components/product-whatsapp-button';
 import { Button } from '@/components/ui/button';
@@ -61,12 +69,14 @@ export function ProductDetailPurchaseBox({ product, detail }: ProductDetailPurch
   );
   const volumePanelId = useId();
   const warrantyPanelId = useId();
-  const outOfStock = product.stock <= 0;
+  const outOfStock = isProductOutOfStock(product);
   const countdown = useOrderCountdown();
   const stockDisplay = outOfStock ? 0 : Math.max(product.stock, 10);
+  const includesOnRequest = hasOnRequestQuantity(product, quantity);
+  const orderHint = formatOrderQuantityHint(product, quantity);
 
   const adjustQuantity = (delta: number) => {
-    setQuantity((current) => Math.max(1, Math.min(stockDisplay || 99, current + delta)));
+    setQuantity((current) => adjustProductQuantity(product, current, delta));
   };
 
   return (
@@ -83,16 +93,23 @@ export function ProductDetailPurchaseBox({ product, detail }: ProductDetailPurch
       <p
         className={cn(
           'flex items-center gap-1.5 text-sm font-semibold',
-          outOfStock ? 'text-red-600' : 'text-red-600',
+          !outOfStock && 'text-red-600',
         )}
       >
         <span
-          className="flex size-5 items-center justify-center rounded-full bg-red-100 text-red-600"
+          className={cn(
+            'flex size-5 items-center justify-center rounded-full',
+            outOfStock
+              ? 'border border-amber-400 bg-amber-100 text-amber-950'
+              : 'bg-red-100 text-red-600',
+          )}
           aria-hidden="true"
         >
           ✓
         </span>
-        {outOfStock ? 'Sin stock' : `${stockDisplay} en stock`}
+        <span className={outOfStock ? ON_REQUEST_STOCK_BADGE_CLASS : undefined}>
+          {outOfStock ? 'A pedido' : `${stockDisplay} en stock`}
+        </span>
       </p>
 
       <div className="mt-4 flex items-center rounded-lg border border-neutral-200 bg-white">
@@ -105,19 +122,26 @@ export function ProductDetailPurchaseBox({ product, detail }: ProductDetailPurch
         >
           <Minus className="size-4" aria-hidden="true" />
         </button>
-        <span className="flex-1 text-center text-base font-semibold text-neutral-900" aria-live="polite">
+        <span
+          className="flex-1 text-center text-base font-semibold text-neutral-900"
+          aria-live="polite"
+          title={orderHint ?? undefined}
+        >
           {quantity}
         </span>
         <button
           type="button"
           onClick={() => adjustQuantity(1)}
-          disabled={quantity >= (stockDisplay || 99)}
           aria-label="Aumentar cantidad"
           className="flex size-11 items-center justify-center text-neutral-600 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:opacity-40"
         >
           <Plus className="size-4" aria-hidden="true" />
         </button>
       </div>
+
+      {includesOnRequest && orderHint ? (
+        <p className="mt-2 text-center text-xs text-muted-foreground">{orderHint}</p>
+      ) : null}
 
       <div className="mt-4 space-y-2">
         {detail.bulkDiscountTiers.length > 0 && (

@@ -1,10 +1,12 @@
-import { useState, type MouseEvent } from 'react';
+import { useCallback, useState, type MouseEvent } from 'react';
 import { mdiWhatsapp } from '@mdi/js';
 import { Icon } from '@mdi/react';
-import { toast } from 'sonner';
 
 import { WhatsAppContactDialog } from '@/components/whatsapp-contact-dialog';
-import type { QuotePdfPreview } from '@/components/product-detail/product-quote-pdf-viewer';
+import {
+  ProductQuotePdfViewer,
+  type QuotePdfPreview,
+} from '@/components/product-detail/product-quote-pdf-viewer';
 import { Button } from '@/components/ui/button';
 import { useCompanySettings } from '@/hooks/use-company-settings';
 import { useProformaMutations } from '@/hooks/use-admin-proformas';
@@ -31,7 +33,7 @@ interface ProductWhatsAppButtonProps {
   accent?: 'solid' | 'outline';
   /** Contexto para generar cotización PDF (ficha de producto). */
   quoteContext?: ProductQuoteContext;
-  /** Callback al generar cotización (p. ej. abrir visor PDF). */
+  /** Callback al generar cotización (p. ej. abrir visor PDF en la ficha). */
   onQuoteGenerated?: (preview: QuotePdfPreview) => void;
 }
 
@@ -50,6 +52,7 @@ export function ProductWhatsAppButton({
   const { registerProductQuote } = useProformaMutations();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [quotePdfPreview, setQuotePdfPreview] = useState<QuotePdfPreview | null>(null);
 
   const detailPath = product.id ? productPath(product.id) : null;
   const resolvedProductUrl =
@@ -62,6 +65,15 @@ export function ProductWhatsAppButton({
     ...(resolvedProductUrl ? { productUrl: resolvedProductUrl } : {}),
     ...(quantity != null && quantity > 0 ? { quantity } : {}),
   };
+
+  const handleQuotePdfPreviewClose = useCallback((open: boolean) => {
+    if (!open) {
+      setQuotePdfPreview((current) => {
+        if (current?.url) URL.revokeObjectURL(current.url);
+        return null;
+      });
+    }
+  }, []);
 
   const handleSubmit = async (
     nextContact: WhatsAppContact,
@@ -110,6 +122,9 @@ export function ProductWhatsAppButton({
 
         quoteNumber = preview.quoteNumber;
         onQuoteGenerated?.(preview);
+        if (!onQuoteGenerated) {
+          setQuotePdfPreview(preview);
+        }
       }
 
       const opened = openProductWhatsAppChat(lineItem, nextContact, undefined, {
@@ -120,12 +135,9 @@ export function ProductWhatsAppButton({
       if (!opened) {
         throw new Error('No se pudo abrir WhatsApp. Verifica el número de contacto.');
       }
-
-      if (options.generateQuote && quoteNumber) {
-        toast.success(`Cotización ${quoteNumber} generada.`);
-      }
     } catch (error) {
       if (options.generateQuote) {
+        const { toast } = await import('sonner');
         toast.error(
           error instanceof Error ? error.message : 'No se pudo generar la cotización.',
         );
@@ -176,6 +188,14 @@ export function ProductWhatsAppButton({
         isSubmitting={isSaving || isProcessing}
         onSubmit={handleSubmit}
       />
+
+      {!onQuoteGenerated ? (
+        <ProductQuotePdfViewer
+          preview={quotePdfPreview}
+          onOpenChange={handleQuotePdfPreviewClose}
+          autoDownload
+        />
+      ) : null}
     </>
   );
 }

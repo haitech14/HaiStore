@@ -196,7 +196,7 @@ export function CartQuoteDialog({ open, onOpenChange, items }: CartQuoteDialogPr
         </DialogContent>
       </Dialog>
 
-      <ProductQuotePdfViewer preview={pdfPreview} onOpenChange={handlePdfPreviewClose} />
+      <ProductQuotePdfViewer preview={pdfPreview} onOpenChange={handlePdfPreviewClose} autoDownload />
     </>
   );
 }

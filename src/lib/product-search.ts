@@ -4,6 +4,7 @@ import { productMatchesCategoryFilter, productMatchesCategoryFilterTree } from '
 import type { Product } from '@/types/product';
 import type { StoreCategoryTreeNode } from '@/types/store-category';
 import {
+  compareProductSearchRelevance,
   normalizeCatalogSearchText,
   productMatchesSearchQuery,
   productSearchHaystack,
@@ -11,7 +12,7 @@ import {
 } from '../../shared/catalog-search.js';
 
 export const MIN_PRODUCT_SEARCH_LENGTH = 3;
-export const PRODUCT_SEARCH_INITIAL_VISIBLE = 5;
+export const PRODUCT_SEARCH_INITIAL_VISIBLE = 12;
 export const PRODUCT_SEARCH_LOAD_MORE_STEP = 5;
 export const PRODUCT_SEARCH_MAX_LIMIT = 24;
 /** @deprecated Usar PRODUCT_SEARCH_INITIAL_VISIBLE + paginación en el panel. */
@@ -111,34 +112,35 @@ function getSearchCategorySortRank(category: string): number {
   const normalized = normalizeSearchCategoryLabel(category);
   if (!normalized) return 999;
 
-  // Orden fijo solicitado:
-  // 1) Multifuncionales
-  // 2) Impresoras
-  // 3) Tóner originales
-  // 4) Tóner compatibles / repuestos
-  // 5) Repuestos / etc.
-  // 6) Accesorios / etc.
   if (/multifuncion/.test(normalized)) return 0;
   if (/impresor/.test(normalized)) return 1;
-
-  // Otros equipos (plotter/copiadora/escáner/etc) justo después de impresoras.
   if (/(formato ancho|plotter|copiadora|esc[aá]ner|scanner|equipo)/.test(normalized)) return 2;
 
-  // Tóner: separar original vs compatible/repuesto.
   if (isTonerCategory(normalized)) {
     if (/(original|genuin|oem|oficial)/.test(normalized)) return 3;
-    if (/(compatible|compatibl|alternativ|gen[eé]ric|repuesto|remplazo|reemplazo)/.test(normalized))
+    if (/(compatible|compatibl|alternativ|gen[eé]ric|repuesto|remplazo|reemplazo)/.test(normalized)) {
       return 4;
+    }
     return 5;
   }
 
-  // Consumibles (no tóner) antes que repuestos.
-  if (/(consumible|suministro|cartucho|tinta|drum|unidad|rodillo|filtro)/.test(normalized)) return 6;
+  if (/(consumible|suministro|cartucho|tinta|drum|unidad|rodillo|filtro)/.test(normalized)) return 5;
 
-  if (/repuesto|refacci[oó]n|pieza/.test(normalized)) return 7;
+  if (/repuesto|refacci[oó]n|pieza|partes/.test(normalized)) {
+    if (/(compatible|compatibl|alternativ|gen[eé]ric)/.test(normalized)) return 7;
+    return 6;
+  }
+
   if (/accesorio|cable|adaptador|bandeja|cassette|charola/.test(normalized)) return 8;
 
   return 9;
+}
+
+function compareProductsForSearchPanel(a: Product, b: Product, query?: string): number {
+  if (query?.trim()) {
+    return compareProductSearchRelevance(a, b, query);
+  }
+  return a.name.localeCompare(b.name, 'es');
 }
 
 /** Emoji por división de inventario (equipos primero en el orden de grupos). */
@@ -171,7 +173,7 @@ export function groupSearchProductsByCategory(
     if (query?.trim()) {
       return sortProductsBySearchRelevance(items, query);
     }
-    return [...items].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+    return [...items].sort((a, b) => compareProductsForSearchPanel(a, b));
   };
 
   return Array.from(groups.entries())

@@ -162,6 +162,12 @@ export function invalidatePublicCatalogCache() {
   searchResultCache.clear();
   publicCatalogById.clear();
   clearProductSearchHaystackCache();
+  void import('./store-categories-store.js')
+    .then(({ invalidateStoreCategoriesTreeCache }) => invalidateStoreCategoriesTreeCache())
+    .catch(() => {});
+  void import('./catalog-query.js')
+    .then(({ invalidateCategoryCatalogCache }) => invalidateCategoryCatalogCache?.())
+    .catch(() => {});
 }
 
 function indexPublicCatalogById(role, products) {

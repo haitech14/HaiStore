@@ -312,7 +312,20 @@ export function productMatchesCatalogFamily(product, family) {
     case 'multifuncionales':
       return haystack.includes('multifuncional');
     case 'impresoras':
-      return haystack.includes('impresor') && !haystack.includes('multifuncional');
+      // Evitar falsos positivos como "impresiones" en tóner/repuestos.
+      if (productMatchesCatalogFamily(product, 'toner-suministros')) return false;
+      if (productMatchesCatalogFamily(product, 'repuestos')) return false;
+
+      // Mantener solo los modelos permitidos en "Impresoras" (según requerimiento de tienda).
+      // SP 3710DN, P 311, P502, P800, P801, P C600.
+      return (
+        /\bsp\s*3710\s*dn\b/i.test(haystack) ||
+        /\bp\s*311\b/i.test(haystack) ||
+        /\bp\s*502\b/i.test(haystack) ||
+        /\bp\s*800\b/i.test(haystack) ||
+        /\bp\s*801\b/i.test(haystack) ||
+        /\bp\s*-?\s*c\s*600\b/i.test(haystack)
+      );
     case 'toner-suministros':
       return (
         (haystack.includes('toner') ||

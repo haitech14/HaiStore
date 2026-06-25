@@ -189,7 +189,8 @@ export function mergeRepuestoEntriesToProduct(entries) {
       public: first.publico,
       tecnico: first.dist,
       mayorista: first.mayo,
-      distribuidor: 0,
+      // "Dist" en Excel corresponde al precio Técnico (opción 2) y se clona para Distribuidor.
+      distribuidor: first.dist,
     },
     purchase_price_usd: first.canal,
     suppliers,

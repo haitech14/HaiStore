@@ -1,16 +1,19 @@
-import { Link, NavLink } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 import { CategoriesMegaMenu } from '@/components/layout/categories-mega-menu';
 import { HeaderQuoteWhatsAppButton } from '@/components/layout/header-quote-whatsapp-button';
 import {
-  MAIN_NAV_BADGE_CLASS,
   MAIN_NAV_BAR_CLASS,
   MAIN_NAV_LINKS_ROW_CLASS,
   MAIN_NAV_ROW_CLASS,
   mainNavLinkClass,
 } from '@/components/layout/main-nav-styles';
-import { categoryLandingPath, categoryPath } from '@/lib/category-path';
+// @ts-expect-error módulo JS compartido sin declaración de tipos
+import { MOST_VIEWED_OFFER_ATTR_KEY } from '../../../shared/catalog-most-viewed-offers.js';
+import { categoryLandingPath, storeMostViewedOffersPath } from '@/lib/category-path';
+import { prefetchCategoryPage } from '@/lib/prefetch-category-page';
 import { serviceHubPath } from '@/lib/service-hub';
+import { queryClient } from '@/providers';
 
 export type HeaderMainNavLink = {
   id: string;
@@ -26,28 +29,30 @@ export type HeaderMainNavLink = {
 
 export const headerMainNavLinks: HeaderMainNavLink[] = [
   {
-    id: 'fotocopiadoras',
-    to: categoryLandingPath('multifuncionales'),
-    label: 'Fotocopiadoras',
-    matchActive: ({ pathname }) => pathname.startsWith('/categoria/multifuncionales'),
+    id: 'tienda',
+    to: '/tienda',
+    label: 'Tienda',
+    matchActive: ({ pathname, search }) => {
+      if (pathname !== '/tienda' && !pathname.startsWith('/tienda/producto/')) return false;
+      const attrs = (new URLSearchParams(search).get('attrs') ?? '')
+        .split('|')
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+      if (attrs.includes(MOST_VIEWED_OFFER_ATTR_KEY)) return false;
+      return pathname === '/tienda' || pathname.startsWith('/tienda/producto/');
+    },
   },
   {
-    id: 'impresoras',
-    to: categoryLandingPath('impresoras'),
-    label: 'Impresoras',
-    matchActive: ({ pathname }) => pathname.startsWith('/categoria/impresoras'),
+    id: 'servicios',
+    to: '/servicios',
+    label: 'Servicios',
+    matchActive: ({ pathname }) => pathname.startsWith('/servicios'),
   },
   {
-    id: 'toner',
-    to: categoryLandingPath('toner-suministros'),
-    label: 'Tóner',
-    matchActive: ({ pathname }) => pathname.startsWith('/categoria/toner-suministros'),
-  },
-  {
-    id: 'repuestos',
-    to: categoryLandingPath('repuestos'),
-    label: 'Repuestos',
-    matchActive: ({ pathname }) => pathname.startsWith('/categoria/repuestos'),
+    id: 'software',
+    to: categoryLandingPath('software'),
+    label: 'Software',
+    matchActive: ({ pathname }) => pathname.startsWith('/categoria/software'),
   },
   {
     id: 'servicio-tecnico',
@@ -60,23 +65,27 @@ export const headerMainNavLinks: HeaderMainNavLink[] = [
     },
   },
   {
-    id: 'marcas',
-    to: '/tienda',
-    label: 'Marcas',
-    matchActive: ({ pathname, search }) =>
-      pathname === '/tienda' && new URLSearchParams(search).has('marca'),
-  },
-  {
     id: 'ofertas',
-    to: '/tienda',
+    to: storeMostViewedOffersPath(),
     label: 'Ofertas',
-    matchActive: ({ pathname }) => pathname === '/tienda',
-    badge: {
-      label: 'Nuevas',
-      to: categoryPath('multifuncionales', 'multifuncionales-nuevas'),
+    matchActive: ({ pathname, search }) => {
+      if (pathname !== '/tienda' && !pathname.startsWith('/tienda/producto/')) return false;
+      const attrs = (new URLSearchParams(search).get('attrs') ?? '')
+        .split('|')
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+      return attrs.includes(MOST_VIEWED_OFFER_ATTR_KEY);
     },
   },
 ];
+
+const PREFETCH_CATEGORY_SLUGS = new Set(['software']);
+
+function prefetchCategoryFromNav(to: string) {
+  const match = to.match(/^\/categoria\/([^/?#]+)/);
+  if (!match?.[1] || !PREFETCH_CATEGORY_SLUGS.has(match[1])) return;
+  void prefetchCategoryPage(queryClient, { slug: match[1] });
+}
 
 function navLinkProps(item: HeaderMainNavLink) {
   if (!item.matchActive) {
@@ -91,6 +100,23 @@ function navLinkProps(item: HeaderMainNavLink) {
   };
 }
 
+function CategoryNavLink({ item }: { item: HeaderMainNavLink }) {
+  const prefetch = () => {
+    prefetchCategoryFromNav(item.to);
+  };
+
+  return (
+    <NavLink
+      {...navLinkProps(item)}
+      className={({ isActive }) => mainNavLinkClass(isActive)}
+      onMouseEnter={prefetch}
+      onFocus={prefetch}
+    >
+      {item.label}
+    </NavLink>
+  );
+}
+
 export function HeaderCategoryNav() {
   return (
     <nav aria-label="Menú principal" className={MAIN_NAV_BAR_CLASS}>
@@ -101,14 +127,7 @@ export function HeaderCategoryNav() {
           <ul className="flex min-w-0 items-center gap-5 sm:gap-6 lg:gap-7">
             {headerMainNavLinks.map((item) => (
               <li key={item.id} className="flex shrink-0 items-center gap-2">
-                <NavLink {...navLinkProps(item)} className={({ isActive }) => mainNavLinkClass(isActive)}>
-                  {item.label}
-                </NavLink>
-                {item.badge ? (
-                  <Link to={item.badge.to} className={MAIN_NAV_BADGE_CLASS}>
-                    {item.badge.label}
-                  </Link>
-                ) : null}
+                <CategoryNavLink item={item} />
               </li>
             ))}
           </ul>

@@ -85,7 +85,19 @@ export function resolveHomeFeaturedProducts(
     add(product);
   }
 
-  return shuffleProductsDaily(pool)
-    .slice(0, limit)
-    .map((product) => enrichFeaturedFromCatalog(productToFeatured(product)));
+  // Mantener los IDs configurados primero (orden estable),
+  // y rellenar con el resto para completar el límite.
+  const pinned: Product[] = [];
+  const pinnedIds = new Set<string>();
+  for (const id of FEATURED_PRODUCT_IDS) {
+    const product = byId.get(id);
+    if (!product || pinnedIds.has(product.id)) continue;
+    pinnedIds.add(product.id);
+    pinned.push(product);
+  }
+
+  const unpinned = pool.filter((product) => !pinnedIds.has(product.id));
+  const ordered = [...pinned, ...shuffleProductsDaily(unpinned)].slice(0, limit);
+
+  return ordered.map((product) => enrichFeaturedFromCatalog(productToFeatured(product)));
 }

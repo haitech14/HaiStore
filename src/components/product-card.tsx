@@ -4,11 +4,13 @@ import { ImageOff, ShoppingCart } from 'lucide-react';
 import { AddToCartButton, getAddToCartLabel } from '@/components/cart/add-to-cart-button';
 import { CatalogPreviewPriceBlock } from '@/components/product/catalog-preview-price-block';
 import { ProductCardTitle } from '@/components/product/product-card-title';
+import { ProductCardImageConditionBadge } from '@/components/product/product-card-image-condition-badge';
 import { ProductWhatsAppButton } from '@/components/product-whatsapp-button';
 import { ProductCardHoverImage, PRODUCT_CARD_IMAGE_CLASS } from '@/components/product/product-card-hover-image';
 import { useCatalogDisplayPrice } from '@/hooks/use-catalog-display-price';
 import {
   buildProductCardImageCandidates,
+  buildProductCardStoredImageCandidates,
   resolveProductCardHoverImageFromProduct,
 } from '@/lib/product-card-images';
 import { productPath } from '@/lib/product-path';
@@ -27,6 +29,10 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
   const outOfStock = product.stock <= 0;
   const detailHref = productPath(product);
   const imageCandidates = useMemo(() => buildProductCardImageCandidates(product), [product]);
+  const storedImageCandidates = useMemo(
+    () => buildProductCardStoredImageCandidates(product),
+    [product],
+  );
   const hoverImageSrc = useMemo(() => resolveProductCardHoverImageFromProduct(product), [product]);
   const displayPrice = useCatalogDisplayPrice(product);
 
@@ -65,10 +71,12 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
               <span className="sr-only">Ver ficha de {product.name}</span>
             </Link>
             <div
-              className="flex aspect-square items-center justify-center rounded-lg bg-muted/50 p-2.5 sm:p-3"
+              className="relative flex aspect-square items-center justify-center rounded-lg bg-muted/50 p-2.5 sm:p-3"
             >
+              <ProductCardImageConditionBadge product={product} />
               <ProductCardHoverImage
                 candidates={imageCandidates}
+                storedCandidates={storedImageCandidates}
                 hoverSrc={hoverImageSrc}
                 alt={product.name}
                 className="size-full"
@@ -90,7 +98,11 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
               to={detailHref}
               className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
             >
-              <ProductCardTitle product={product} />
+              <ProductCardTitle
+                product={product}
+                stock={product.stock}
+                outOfStock={outOfStock}
+              />
             </Link>
             <div className="relative z-[3] pointer-events-auto">
               <CatalogPreviewPriceBlock
@@ -98,9 +110,6 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
                 displayPrice={displayPrice}
                 badgeClassName="mb-1"
               />
-              <p className={cn('mt-1 text-xs', outOfStock ? 'text-destructive' : 'text-muted-foreground')}>
-                {outOfStock ? 'Sin stock' : `${product.stock} disponibles`}
-              </p>
             </div>
           </div>
 
@@ -123,10 +132,12 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
               <span className="sr-only">Ver ficha de {product.name}</span>
             </Link>
             <div
-              className="flex aspect-[4/3] items-center justify-center rounded-lg bg-muted/50 p-2.5 sm:aspect-square sm:p-3"
+              className="relative flex aspect-[4/3] items-center justify-center rounded-lg bg-muted/50 p-2.5 sm:aspect-square sm:p-3"
             >
+              <ProductCardImageConditionBadge product={product} />
               <ProductCardHoverImage
                 candidates={imageCandidates}
+                storedCandidates={storedImageCandidates}
                 hoverSrc={hoverImageSrc}
                 alt={product.name}
                 className="size-full"
@@ -147,14 +158,15 @@ export function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
             to={detailHref}
             className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
           >
-            <ProductCardTitle product={product} />
+            <ProductCardTitle
+              product={product}
+              stock={product.stock}
+              outOfStock={outOfStock}
+            />
           </Link>
 
           <div className="relative z-[3] mt-auto space-y-1 pt-0.5">
             <CatalogPreviewPriceBlock productId={product.id} displayPrice={displayPrice} />
-            <p className={cn('text-xs', outOfStock ? 'text-destructive' : 'text-muted-foreground')}>
-              {outOfStock ? 'Sin stock' : `${product.stock} disponibles`}
-            </p>
           </div>
         </div>
       </div>

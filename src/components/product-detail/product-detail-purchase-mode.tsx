@@ -1,4 +1,4 @@
-import { CalendarClock, ShoppingBag } from 'lucide-react';
+import { CalendarClock, ShoppingBag, Wrench } from 'lucide-react';
 import { useMemo } from 'react';
 
 import { cn } from '@/lib/utils';
@@ -56,6 +56,9 @@ interface ProductDetailPurchaseModeProps {
   purchaseMode: PurchaseMode;
   onPurchaseModeChange: (mode: PurchaseMode) => void;
   rentalPlans: RentalPlanOption[];
+  maintenancePlanMonthlyPen?: number | null;
+  showMaintenancePlan?: boolean;
+  onMaintenancePlanClick?: () => void;
   className?: string;
 }
 
@@ -63,6 +66,9 @@ export function ProductDetailPurchaseMode({
   purchaseMode,
   onPurchaseModeChange,
   rentalPlans,
+  maintenancePlanMonthlyPen,
+  showMaintenancePlan = false,
+  onMaintenancePlanClick,
   className,
 }: ProductDetailPurchaseModeProps) {
   const minRentalPen = useMemo(() => {
@@ -70,9 +76,20 @@ export function ProductDetailPurchaseMode({
     return Math.min(...rentalPlans.map((plan) => plan.monthlyPricePen));
   }, [rentalPlans]);
 
-  if (rentalPlans.length === 0) return null;
+  const hasRentalPlans = rentalPlans.length > 0;
+  const hasMaintenancePlan = showMaintenancePlan && (maintenancePlanMonthlyPen ?? 0) >= 0;
+  if (!hasRentalPlans && !hasMaintenancePlan) return null;
 
   const legendId = 'purchase-mode-legend';
+  const secondaryTitle = hasRentalPlans ? 'Alquiler' : 'Plan de Mantenimiento';
+  const secondarySubtitle = hasRentalPlans
+    ? minRentalPen != null
+      ? `Desde S/ ${minRentalPen.toLocaleString('es-PE')}/mes`
+      : 'Consultar planes'
+    : maintenancePlanMonthlyPen != null
+      ? `Desde S/ ${maintenancePlanMonthlyPen.toLocaleString('es-PE')}/mes`
+      : 'Cotización mensual';
+  const SecondaryIcon = hasRentalPlans ? CalendarClock : Wrench;
 
   return (
     <fieldset className={cn('space-y-1.5 border-0 p-0', className)}>
@@ -93,14 +110,15 @@ export function ProductDetailPurchaseMode({
         />
         <PurchaseModeCard
           selected={purchaseMode === 'rent'}
-          title="Alquiler mensual"
-          subtitle={
-            minRentalPen != null
-              ? `Desde S/ ${minRentalPen.toLocaleString('es-PE')}/mes`
-              : 'Consultar planes'
-          }
-          icon={CalendarClock}
-          onSelect={() => onPurchaseModeChange('rent')}
+          title={secondaryTitle}
+          subtitle={secondarySubtitle}
+          icon={SecondaryIcon}
+          onSelect={() => {
+            onPurchaseModeChange('rent');
+            if (!hasRentalPlans && onMaintenancePlanClick) {
+              onMaintenancePlanClick();
+            }
+          }}
         />
       </div>
     </fieldset>

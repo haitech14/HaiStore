@@ -152,7 +152,7 @@ export function ProductDetailResources({
         onGenerated={setPdfPreview}
       />
 
-      <ProductQuotePdfViewer preview={pdfPreview} onOpenChange={handlePreviewClose} />
+      <ProductQuotePdfViewer preview={pdfPreview} onOpenChange={handlePreviewClose} autoDownload />
 
       {fichaLink?.href && fichaCanPreview ? (
         <AttachmentPdfViewer

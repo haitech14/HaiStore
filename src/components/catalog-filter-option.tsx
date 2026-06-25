@@ -10,6 +10,8 @@ interface CatalogFilterOptionProps {
   /** Una sola opción activa (estilo radio para Producción). */
   mode?: 'checkbox' | 'radio';
   disabled?: boolean;
+  /** Lista compacta sin borde por ítem (para sidebar). */
+  compact?: boolean;
 }
 
 export function CatalogFilterOption({
@@ -20,19 +22,30 @@ export function CatalogFilterOption({
   onToggle,
   mode = 'checkbox',
   disabled = false,
+  compact = false,
 }: CatalogFilterOptionProps) {
   return (
     <label
       htmlFor={id}
       className={cn(
-        'flex min-h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors',
-        active
-          ? 'border-red-600 bg-red-50 text-red-700'
-          : 'border-border bg-background hover:border-red-300',
+        'flex w-full cursor-pointer items-center justify-between gap-2 text-left transition-colors',
+        compact
+          ? cn(
+              'min-h-9 px-2.5 py-1.5 text-xs',
+              active
+                ? 'bg-red-50 font-medium text-red-700'
+                : 'text-foreground hover:bg-muted/50',
+            )
+          : cn(
+              'min-h-11 rounded-md border px-3 py-2 text-sm',
+              active
+                ? 'border-red-600 bg-red-50 text-red-700'
+                : 'border-border bg-background hover:border-red-300',
+            ),
         disabled && 'cursor-not-allowed opacity-50',
       )}
     >
-      <span className="flex min-w-0 flex-1 items-start gap-2">
+      <span className="flex min-w-0 flex-1 items-center gap-2">
         <Checkbox
           id={id}
           checked={active}
@@ -42,11 +55,20 @@ export function CatalogFilterOption({
             if (checked !== active) onToggle();
           }}
           aria-label={label}
-          className={cn('mt-0.5 shrink-0', mode === 'radio' && 'rounded-full')}
+          className={cn('shrink-0', mode === 'radio' && 'rounded-full')}
         />
-        <span className="line-clamp-3 text-pretty leading-snug">{label}</span>
+        <span className={cn('line-clamp-2 text-pretty leading-snug', compact && 'leading-tight')}>
+          {label}
+        </span>
       </span>
-      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{count}</span>
+      <span
+        className={cn(
+          'shrink-0 tabular-nums text-muted-foreground',
+          compact ? 'text-[0.65rem]' : 'text-xs',
+        )}
+      >
+        {count}
+      </span>
     </label>
   );
 }

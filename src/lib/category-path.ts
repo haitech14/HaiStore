@@ -3,6 +3,8 @@ export const CATEGORY_PRODUCTS_ID = 'categoria-productos';
 
 import type { ProductCondition } from '@/lib/product-condition';
 import { ALL_SUBCATEGORIES_QUERY } from '@/lib/store-category-display';
+// @ts-expect-error módulo JS compartido sin declaración de tipos
+import { MOST_VIEWED_OFFER_ATTR_KEY } from '../../shared/catalog-most-viewed-offers.js';
 
 function categoryQueryString(subSlug?: string | null, condition?: ProductCondition | null): string {
   const params = new URLSearchParams();
@@ -32,8 +34,10 @@ export function categoryPathWithCondition(
   return `/categoria/${slug}${categoryQueryString(subSlug, condition)}#${CATEGORY_PRODUCTS_ID}`;
 }
 
-export function categoryPathAll(slug: string, subSlug?: string | null): string {
-  return `/categoria/${slug}${categoryQueryString(subSlug)}#${CATEGORY_PRODUCTS_ID}`;
+export function storeMostViewedOffersPath(): string {
+  const params = new URLSearchParams();
+  params.set('attrs', MOST_VIEWED_OFFER_ATTR_KEY);
+  return `/tienda?${params.toString()}#${CATEGORY_PRODUCTS_ID}`;
 }
 
 export function scrollToCategoryHero(behavior: ScrollBehavior = 'smooth') {

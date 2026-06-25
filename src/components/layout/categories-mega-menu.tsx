@@ -19,6 +19,9 @@ import {
 import { cn } from '@/lib/utils';
 
 const HOVER_CLOSE_DELAY_MS = 180;
+/** Ancho del panel «Todas las categorías» (más compacto que el contenedor en pantallas anchas). */
+const MEGA_MENU_MIN_WIDTH = 720;
+const MEGA_MENU_MAX_WIDTH = 860;
 
 interface CategoriesMegaMenuProps {
   triggerVariant?: 'button' | 'nav' | 'categories-button';
@@ -55,7 +58,10 @@ export function CategoriesMegaMenu({ triggerVariant = 'button' }: CategoriesMega
     const rightMargin = containerRect
       ? Math.max(12, window.innerWidth - containerRect.right)
       : 12;
-    setMenuWidth(Math.max(880, window.innerWidth - left - rightMargin));
+    const available = window.innerWidth - left - rightMargin;
+    setMenuWidth(
+      Math.min(MEGA_MENU_MAX_WIDTH, Math.max(MEGA_MENU_MIN_WIDTH, available)),
+    );
   }, []);
 
   useEffect(() => {

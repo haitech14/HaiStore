@@ -97,7 +97,7 @@ function formatStockLine(stock: number): string {
   const status = getInventoryStockStatus(stock);
   const label = INVENTORY_STOCK_STATUS_LABELS[status];
   if (stock <= 0) return label;
-  return `${stock} uds. · ${label}`;
+  return `${stock} unids. · ${label}`;
 }
 
 function formatProductResult(

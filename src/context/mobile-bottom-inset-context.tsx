@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 
-/** Altura aproximada de la barra fija de compra en móvil (px). */
-export const MOBILE_PURCHASE_BAR_HEIGHT_PX = 76;
+/** Altura aproximada de la barra fija de compra en ficha (px). */
+export const MOBILE_PURCHASE_BAR_HEIGHT_PX = 88;
 
 interface MobileBottomInsetContextValue {
   insetPx: number;

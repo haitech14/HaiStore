@@ -219,12 +219,14 @@ export function ProductDetailRentalBanner({
               <dl className="space-y-2 text-sm">
                 <BreakdownLine label="Cuota fija mensual" amountPen={quote.baseMonthlyPen} />
 
-                {quote.excessChargesPen > 0 ? (
-                  <BreakdownLine
-                    label={`Excedente copia negro (${quote.extraPages.toLocaleString('es-PE')} × S/ ${RENTAL_EXCESS_COPY_COST_PEN.toFixed(2)})`}
-                    amountPen={quote.excessChargesPen}
-                  />
-                ) : null}
+                <BreakdownLine
+                  label={
+                    quote.excessChargesPen > 0
+                      ? `Cuota variable mensual (${quote.extraPages.toLocaleString('es-PE')} × S/ ${RENTAL_EXCESS_COPY_COST_PEN.toFixed(2)})`
+                      : 'Cuota variable mensual'
+                  }
+                  amountPen={quote.excessChargesPen}
+                />
 
                 <div className="border-t border-border/60 pt-2">
                   <div className="flex items-center justify-between gap-3 font-bold text-foreground">
@@ -268,7 +270,7 @@ export function ProductDetailRentalBanner({
         onGenerated={setQuotePdfPreview}
       />
 
-      <ProductQuotePdfViewer preview={quotePdfPreview} onOpenChange={handleQuotePdfPreviewClose} />
+      <ProductQuotePdfViewer preview={quotePdfPreview} onOpenChange={handleQuotePdfPreviewClose} autoDownload />
     </>
   );
 }

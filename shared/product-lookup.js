@@ -11,8 +11,16 @@ export const PRODUCT_ID_ALIASES = {
 export function resolveCanonicalProductId(lookupKey) {
   const normalized = String(lookupKey ?? '').trim();
   if (!normalized) return undefined;
-  const alias = PRODUCT_ID_ALIASES[normalized.toLowerCase()];
-  return alias ?? normalized;
+  const lower = normalized.toLowerCase();
+  const alias = PRODUCT_ID_ALIASES[lower];
+  if (alias) return alias;
+  if (lower.startsWith('toner-compat-')) {
+    return normalized.slice('toner-'.length);
+  }
+  if (lower.startsWith('toner-')) {
+    return normalized.slice('toner-'.length);
+  }
+  return normalized;
 }
 
 /** Extrae SKU numérico de ids como toner-419078 o ricoh-acc-418080. */

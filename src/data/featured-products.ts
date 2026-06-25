@@ -22,6 +22,8 @@ export interface FeaturedProduct {
 /** Orden del carrusel en inicio (debe existir en inventory-catalog.json). */
 export const FEATURED_PRODUCT_IDS: string[] = [
   'ricoh-im-430f',
+  'bfb264b8-70dc-4ad4-9686-2df02df8c75e',
+  'ab878d89-61e0-4e51-a941-03455e1da407',
   'ricoh-im-c3000',
   'ricoh-sp-330dn',
   'konica-bizhub-c300i',
@@ -36,6 +38,8 @@ const FEATURED_META: Record<
   Pick<FeaturedProduct, 'rating' | 'reviews' | 'isNew'>
 > = {
   'ricoh-im-430f': { rating: 5, reviews: 48 },
+  'bfb264b8-70dc-4ad4-9686-2df02df8c75e': { rating: 5, reviews: 12, isNew: true },
+  'ab878d89-61e0-4e51-a941-03455e1da407': { rating: 5, reviews: 9, isNew: true },
   'ricoh-im-c3000': { rating: 5, reviews: 36 },
   'ricoh-sp-330dn': { rating: 5, reviews: 52 },
   'konica-bizhub-c300i': { rating: 5, reviews: 29 },
@@ -58,6 +62,15 @@ export const featuredProducts: FeaturedProduct[] = catalogFeaturedProducts;
 
 export function getFeaturedProductById(id: string): FeaturedProduct | undefined {
   return catalogFeaturedProducts.find((product) => product.id === id);
+}
+
+/** Solo metadatos de vitrina (sin precios del JSON estático). */
+export function getFeaturedDisplayMeta(
+  id: string,
+): Pick<FeaturedProduct, 'rating' | 'reviews' | 'isNew'> | undefined {
+  const meta = FEATURED_META[id];
+  if (!meta) return undefined;
+  return meta;
 }
 
 export function featuredToProduct(featured: FeaturedProduct): Product {

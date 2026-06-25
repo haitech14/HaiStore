@@ -12,6 +12,12 @@ export const MOBILE_CATALOG_PRODUCTS_PER_PAGE =
 /** Productos por página con grilla por defecto (6 columnas × 5 filas). */
 export const CATALOG_PRODUCTS_PER_PAGE = 6 * CATALOG_MAX_GRID_ROWS;
 
+/** Máximo al cargar secciones por formato (paridad con tope server-side de 100). */
+export const CATALOG_FORMAT_SECTION_MAX = 100;
+
+/** Máximo de filas en vista tabla (tipo hoja de cálculo). */
+export const CATALOG_TABLE_VIEW_MAX = 500;
+
 export function getCatalogProductsPerPage(gridColumns: CatalogGridColumns = 6): number {
   return Math.max(1, gridColumns) * CATALOG_MAX_GRID_ROWS;
 }

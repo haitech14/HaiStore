@@ -145,8 +145,13 @@ export function suggestCrossSellProductIds(
   const catalogProducts = catalog.map(toCatalogProduct);
   const ids: string[] = [];
   const knownOriginalId = resolveKnownOriginalTonerProductId(equipmentProduct);
-  if (knownOriginalId && catalogProducts.some((row) => row.id === knownOriginalId)) {
+  if (knownOriginalId && !ids.includes(knownOriginalId)) {
     ids.push(knownOriginalId);
+  }
+
+  const knownCompatibleId = resolveKnownCompatibleTonerProductId(equipmentProduct);
+  if (knownCompatibleId && !ids.includes(knownCompatibleId)) {
+    ids.push(knownCompatibleId);
   }
 
   const groups = resolveEquipmentConsumables(equipmentProduct, catalogProducts);

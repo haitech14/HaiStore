@@ -2,7 +2,15 @@ import { useMemo, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Minus, Plus, ShoppingCart, Zap } from 'lucide-react';
 
-import { AddToCartButton, getAddToCartLabel, isProductOutOfStock } from '@/components/cart/add-to-cart-button';
+import {
+  AddToCartButton,
+  adjustProductQuantity,
+  formatOrderQuantityHint,
+  getAddToCartLabel,
+  hasOnRequestQuantity,
+  isProductOutOfStock,
+  ON_REQUEST_PRODUCT_BUTTON_CLASS,
+} from '@/components/cart/add-to-cart-button';
 import { ProductBulkDiscountIncentives } from '@/components/product-detail/product-bulk-discount-incentives';
 import { ProductDetailRolePriceLines } from '@/components/product-detail/product-detail-role-prices';
 import type { QuotePdfPreview } from '@/components/product-detail/product-quote-pdf-viewer';
@@ -21,6 +29,7 @@ import {
 } from '@/components/product-detail/product-detail-rental-configurator';
 import { ProductDetailPurchaseMode } from '@/components/product-detail/product-detail-purchase-mode';
 import type { PurchaseMode } from '@/components/product-detail/product-detail-optional-products';
+import type { SeminuevaPreparationType } from '@/lib/seminueva-preparation';
 import type { CartConfigurationLine } from '@/types/product';
 import type { ProductDetailViewModel } from '@/types/product-detail';
 import type { Product } from '@/types/product';
@@ -37,6 +46,13 @@ interface ProductDetailPurchaseCardProps {
   purchaseMode?: PurchaseMode;
   onPurchaseModeChange?: (mode: PurchaseMode) => void;
   rentalEstimate?: EquipmentRentalEstimate | null;
+  maintenancePlanMonthlyPen?: number | null;
+  preparationType?: SeminuevaPreparationType;
+  preparationSurchargeUsd?: number;
+  showRentalAction?: boolean;
+  onRentalClick?: () => void;
+  showMaintenancePlanAction?: boolean;
+  onMaintenancePlanClick?: () => void;
 }
 
 export function ProductDetailPurchaseCard({
@@ -51,6 +67,13 @@ export function ProductDetailPurchaseCard({
   purchaseMode,
   onPurchaseModeChange,
   rentalEstimate = null,
+  maintenancePlanMonthlyPen,
+  preparationType,
+  preparationSurchargeUsd = 0,
+  showRentalAction = false,
+  onRentalClick,
+  showMaintenancePlanAction = false,
+  onMaintenancePlanClick,
 }: ProductDetailPurchaseCardProps) {
   const { addItem } = useCart();
   const navigate = useNavigate();
@@ -61,8 +84,8 @@ export function ProductDetailPurchaseCard({
   );
   const displayUsd = fullPrices.public;
   const outOfStock = isProductOutOfStock(product);
-  const stockDisplay = outOfStock ? 0 : product.stock;
-  const maxQuantity = outOfStock ? 99 : Math.max(1, stockDisplay || 99);
+  const includesOnRequest = hasOnRequestQuantity(product, quantity);
+  const orderHint = formatOrderQuantityHint(product, quantity);
   const hasVolumeDiscount =
     volumePricing.tier != null && volumePricing.savingsUsd > 0.001;
   const isRentMode = purchaseMode === 'rent' && detail.rentalPlans.length > 0;
@@ -104,17 +127,27 @@ export function ProductDetailPurchaseCard({
   const showNormalPrice =
     normalPriceUsd != null && normalPriceUsd > offerUnitUsd + 0.001;
 
+  const hasCustomUnitPrice =
+    hasVolumeDiscount || preparationSurchargeUsd > 0;
+
   const cartAddOptions = useMemo(
     () => ({
       quantity,
-      ...(hasVolumeDiscount ? { volumeUnitPriceUsd: volumePricing.unitUsd } : {}),
+      ...(hasCustomUnitPrice ? { volumeUnitPriceUsd: volumePricing.unitUsd } : {}),
       ...(equipmentConfiguration != null ? { configuration: equipmentConfiguration } : {}),
+      ...(preparationType === 'semirepotenciada' ? { preparationType } : {}),
     }),
-    [quantity, hasVolumeDiscount, volumePricing.unitUsd, equipmentConfiguration],
+    [
+      quantity,
+      hasCustomUnitPrice,
+      volumePricing.unitUsd,
+      equipmentConfiguration,
+      preparationType,
+    ],
   );
 
   const adjustQuantity = (delta: number) => {
-    onQuantityChange(Math.max(1, Math.min(maxQuantity, quantity + delta)));
+    onQuantityChange(adjustProductQuantity(product, quantity, delta));
   };
 
   const handleBuyNow = () => {
@@ -122,7 +155,8 @@ export function ProductDetailPurchaseCard({
     navigate('/checkout');
   };
 
-  const addToCartLabel = getAddToCartLabel(product);
+  const addToCartLabel = getAddToCartLabel(product, 'default', quantity);
+  const buyNowLabel = includesOnRequest ? 'Comprar a pedido' : 'Comprar ahora';
 
   const priceBlock = isRentMode && activeRentalEstimate ? (
     <div>
@@ -191,6 +225,7 @@ export function ProductDetailPurchaseCard({
             fullPrices={fullPrices}
             bulkDiscountTiers={detail.bulkDiscountTiers}
             equipmentExtrasUsd={equipmentExtrasUsd}
+            preparationSurchargeUsd={preparationSurchargeUsd}
           />
         </div>
       {quantity > 1 ? (
@@ -233,6 +268,9 @@ export function ProductDetailPurchaseCard({
             purchaseMode={purchaseMode}
             onPurchaseModeChange={onPurchaseModeChange}
             rentalPlans={detail.rentalPlans}
+            maintenancePlanMonthlyPen={maintenancePlanMonthlyPen}
+            showMaintenancePlan={showMaintenancePlanAction && Boolean(onMaintenancePlanClick)}
+            onMaintenancePlanClick={onMaintenancePlanClick}
             className="mb-3"
           />
         ) : null}
@@ -266,13 +304,13 @@ export function ProductDetailPurchaseCard({
               className="flex w-8 items-center justify-center border-x border-border text-sm font-semibold text-foreground"
               aria-live="polite"
               aria-atomic="true"
+              title={orderHint ?? undefined}
             >
               {quantity}
             </span>
             <button
               type="button"
               onClick={() => adjustQuantity(1)}
-              disabled={quantity >= maxQuantity}
               aria-label="Aumentar cantidad"
               className="flex size-11 items-center justify-center text-foreground transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:opacity-40"
             >
@@ -284,7 +322,12 @@ export function ProductDetailPurchaseCard({
             product={product}
             addOptions={cartAddOptions}
             size="lg"
-            className="h-11 min-h-11 min-w-0 flex-1 gap-2 rounded-lg bg-red-600 text-sm font-semibold text-white shadow-sm hover:bg-red-500 focus-visible:ring-red-600 disabled:opacity-50"
+            className={cn(
+              'h-11 min-h-11 min-w-0 flex-1 gap-2 rounded-lg text-sm font-semibold shadow-sm disabled:opacity-50',
+              includesOnRequest
+                ? ON_REQUEST_PRODUCT_BUTTON_CLASS
+                : 'bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-600',
+            )}
           >
             <ShoppingCart className="size-4 shrink-0" aria-hidden="true" />
             {addToCartLabel}
@@ -292,19 +335,45 @@ export function ProductDetailPurchaseCard({
         </div>
 
         <div className="mt-2.5 flex flex-col gap-2.5">
-          <Button
-            type="button"
-            size="lg"
-            onClick={handleBuyNow}
-            className="h-11 min-h-11 w-full gap-2 rounded-lg border-0 bg-[#0f1f3d] text-sm font-semibold text-white hover:bg-[#0f1f3d]/90 focus-visible:ring-[#0f1f3d]"
+          <div
+            className={cn(
+              'flex gap-2.5',
+              (showRentalAction || showMaintenancePlanAction) && 'flex-col sm:flex-row',
+            )}
           >
-            <Zap className="size-4 shrink-0" aria-hidden="true" />
-            {outOfStock ? 'Comprar a pedido' : 'Comprar ahora'}
-          </Button>
+            <Button
+              type="button"
+              size="lg"
+              onClick={handleBuyNow}
+              className={cn(
+                'h-11 min-h-11 gap-2 rounded-lg border-0 bg-[#0f1f3d] text-sm font-semibold text-white hover:bg-[#0f1f3d]/90 focus-visible:ring-[#0f1f3d]',
+                (showRentalAction || showMaintenancePlanAction) && 'min-w-0 flex-1',
+                !showRentalAction && !showMaintenancePlanAction && 'w-full',
+              )}
+            >
+              <Zap className="size-4 shrink-0" aria-hidden="true" />
+              {buyNowLabel}
+            </Button>
 
-          {outOfStock ? (
+            {showMaintenancePlanAction && onMaintenancePlanClick ? (
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                onClick={onMaintenancePlanClick}
+                className="h-11 min-h-11 min-w-0 flex-1 gap-2 rounded-lg border-border px-2.5 text-xs font-semibold leading-tight sm:px-4 sm:text-sm"
+              >
+                Solicitar Plan de Mantenimiento
+              </Button>
+            ) : null}
+          </div>
+
+          {includesOnRequest ? (
             <p className="text-center text-xs text-muted-foreground">
-              Sin stock inmediato · confirmamos plazo al procesar tu pedido.
+              {orderHint}
+              {outOfStock
+                ? ' · confirmamos plazo al procesar tu pedido.'
+                : ' · el excedente se confirma al procesar tu pedido.'}
             </p>
           ) : null}
 

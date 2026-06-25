@@ -4,6 +4,7 @@ import { Link, Navigate, createBrowserRouter, isRouteErrorResponse, useRouteErro
 import { RootLayout } from '@/components/layout/root-layout';
 import { lazyWithRetry } from '@/lib/lazy-with-retry';
 import { prefetchHomeCatalog } from '@/lib/prefetch-home-catalog';
+import { prefetchCategoryPage } from '@/lib/prefetch-category-page';
 import { queryClient } from '@/providers';
 
 const HomePage = lazyWithRetry(() => import('@/pages/home').then((m) => ({ default: m.HomePage })), 'inicio');
@@ -384,7 +385,14 @@ export const router = createBrowserRouter([
         path: 'servicios-corporativos',
         element: <Navigate to="/servicios?seccion=servicios-corporativos" replace />,
       },
-      { path: 'categoria/:slug', element: withSuspense(<CategoryPage />) },
+      { path: 'categoria/:slug', loader: ({ params, request }) => {
+          const url = new URL(request.url);
+          const subSlug = url.searchParams.get('sub');
+          return prefetchCategoryPage(queryClient, {
+            slug: params.slug ?? '',
+            subSlug,
+          });
+        }, element: withSuspense(<CategoryPage />) },
       { path: 'tienda/producto/:id', element: withSuspense(<ProductDetailPage />) },
       { path: 'checkout', element: withSuspense(<CheckoutPage />) },
       { path: 'checkout/exito/:orderNumber', element: withSuspense(<CheckoutSuccessPage />) },

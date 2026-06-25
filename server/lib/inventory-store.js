@@ -22,6 +22,10 @@ import {
 } from '../../shared/product-storefront-detail.js';
 import { normalizeVolumeRolePrices } from '../../shared/product-volume-role-prices.js';
 import { normalizeCompatibleTonerProductFields } from '../../shared/compatible-toner.js';
+import {
+  isCompatibleTonerProduct,
+  normalizeCompatibleTonerProductCode,
+} from '../../shared/compatible-toner-product-code.js';
 import { normalizeProductCode } from '../../shared/product-code-prefix.js';
 import { deriveProductSlug } from '../../shared/product-slug.js';
 import { normalizeMerchandisingOptionalProducts } from '../../shared/merchandising-optional-product.js';
@@ -188,9 +192,10 @@ export function migrateInventoryProduct(product, warehouses = normalizeWarehouse
     volume_role_prices: normalizeVolumeRolePrices(
       normalizedToner.volume_role_prices ?? product.volume_role_prices,
     ),
-    code:
-      normalizeProductCode(normalizedToner.code) ||
-      String(normalizedToner.id ?? '').toUpperCase().replace(/-/g, ''),
+    code: isCompatibleTonerProduct(normalizedToner)
+      ? normalizeCompatibleTonerProductCode(normalizedToner)
+      : normalizeProductCode(normalizedToner.code) ||
+        String(normalizedToner.id ?? '').toUpperCase().replace(/-/g, ''),
     slug: String(normalizedToner.slug ?? '').trim() || undefined,
     suppliers,
     attachments,
@@ -311,8 +316,15 @@ async function readInventoryFromLocalFile() {
   const deletedProductIds = getDeletedProductIds(data);
   const deleted = new Set(deletedProductIds);
   const warehouses = normalizeWarehouses(data.warehouses);
+  const isPlaceholderProduct = (product) => {
+    const id = String(product?.id ?? '').trim().toLowerCase();
+    const code = String(product?.code ?? '').trim().toUpperCase();
+    const name = String(product?.name ?? '');
+    return id === 'codigo' || code === 'CODIGO' || /\bDESCRIPCION\b/i.test(name);
+  };
   const products = (data.products ?? [])
     .filter((product) => !deleted.has(product.id))
+    .filter((product) => !isPlaceholderProduct(product))
     .map((product) => migrateInventoryProduct(product, warehouses));
 
   return { products, deletedProductIds, warehouses };
@@ -321,11 +333,20 @@ async function readInventoryFromLocalFile() {
 function mergeInventoryProductLists(supabaseProducts, fileProducts, warehouses) {
   const byId = new Map();
 
+  const isPlaceholderProduct = (product) => {
+    const id = String(product?.id ?? '').trim().toLowerCase();
+    const code = String(product?.code ?? '').trim().toUpperCase();
+    const name = String(product?.name ?? '');
+    return id === 'codigo' || code === 'CODIGO' || /\bDESCRIPCION\b/i.test(name);
+  };
+
   for (const product of fileProducts) {
+    if (isPlaceholderProduct(product)) continue;
     byId.set(product.id, migrateInventoryProduct(product, warehouses));
   }
 
   for (const product of supabaseProducts) {
+    if (isPlaceholderProduct(product)) continue;
     byId.set(product.id, migrateInventoryProduct(product, warehouses));
   }
 
@@ -400,9 +421,16 @@ async function loadInventoryUncached() {
     const deletedProductIds = getDeletedProductIds(data);
     const deleted = new Set(deletedProductIds);
     const warehouses = normalizeWarehouses(data.warehouses);
+    const isPlaceholderProduct = (product) => {
+      const id = String(product?.id ?? '').trim().toLowerCase();
+      const code = String(product?.code ?? '').trim().toUpperCase();
+      const name = String(product?.name ?? '');
+      return id === 'codigo' || code === 'CODIGO' || /\bDESCRIPCION\b/i.test(name);
+    };
 
     const migrated = (data.products ?? [])
       .filter((product) => !deleted.has(product.id))
+      .filter((product) => !isPlaceholderProduct(product))
       .map((product) => migrateInventoryProduct(product, warehouses));
 
     const { products, changed: sortChanged } = ensureProductSortOrders(migrated);

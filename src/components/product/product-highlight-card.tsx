@@ -10,11 +10,13 @@ import {
   ProductCardHoverImage,
 } from '@/components/product/product-card-hover-image';
 import { ProductCardTitle } from '@/components/product/product-card-title';
+import { ProductCardImageConditionBadge } from '@/components/product/product-card-image-condition-badge';
 import { ProductQuantityAddFooter } from '@/components/product/product-quantity-add-footer';
 import { useCatalogDisplayPrice } from '@/hooks/use-catalog-display-price';
 import { catalogRowToFeatured, getCatalogProductById } from '@/lib/catalog-featured';
 import {
   buildProductCardImageCandidates,
+  buildProductCardStoredImageCandidates,
   resolveProductCardHoverImageFromProduct,
 } from '@/lib/product-card-images';
 import { productPath } from '@/lib/product-path';
@@ -37,6 +39,10 @@ export function ProductHighlightCard({ product }: ProductHighlightCardProps) {
     [catalogProduct],
   );
   const imageCandidates = useMemo(() => buildProductCardImageCandidates(product), [product]);
+  const storedImageCandidates = useMemo(
+    () => buildProductCardStoredImageCandidates(product),
+    [product],
+  );
   const hoverImageSrc = useMemo(() => resolveProductCardHoverImageFromProduct(product), [product]);
   const [quantity, setQuantity] = useState(1);
   const displayPrice = useCatalogDisplayPrice(product);
@@ -62,8 +68,10 @@ export function ProductHighlightCard({ product }: ProductHighlightCardProps) {
         className="relative block aspect-square w-full overflow-hidden bg-white p-1 sm:p-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
         aria-label={`Ver ficha de ${product.name}`}
       >
+        <ProductCardImageConditionBadge product={titleProduct} />
         <ProductCardHoverImage
           candidates={imageCandidates}
+          storedCandidates={storedImageCandidates}
           hoverSrc={hoverImageSrc}
           alt={product.name}
           className="size-full"

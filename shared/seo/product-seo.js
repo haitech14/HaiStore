@@ -26,7 +26,29 @@ export function usdToPenSeo(usd, rate = DEFAULT_USD_TO_PEN_SEO) {
   return Math.round(Number(usd) * rate);
 }
 
+function isConsumableOrAccessoryProductSeo(product) {
+  const cat = String(product?.category ?? '').toLowerCase();
+  const name = String(product?.name ?? '').toLowerCase();
+  return (
+    cat.includes('toner') ||
+    cat.includes('tóner') ||
+    cat.includes('suministro') ||
+    cat.includes('repuesto') ||
+    cat.includes('accesorio') ||
+    cat.includes('consumible') ||
+    cat.includes('partes') ||
+    cat.includes('refacci') ||
+    name.includes('toner') ||
+    name.includes('tóner') ||
+    name.includes('cartucho') ||
+    name.includes('grapa') ||
+    name.includes('staple')
+  );
+}
+
 export function isPrinterProductSeo(product) {
+  if (isConsumableOrAccessoryProductSeo(product)) return false;
+
   const text = `${product?.category ?? ''} ${product?.name ?? ''}`.toLowerCase();
   return (
     text.includes('impres') ||
@@ -271,41 +293,10 @@ function explicitIntro(product) {
 }
 
 /**
- * Párrafo SEO automático en el hero. Solo si no hay descripción de inventario.
+ * Párrafo SEO automático en el hero (desactivado en vitrina).
  */
-export function buildProductSeoBodyParagraph(product) {
-  if (hasProductInventoryDescription(product)) {
-    return null;
-  }
-
-  if (!isPrinterProductSeo(product)) {
-    return null;
-  }
-
-  const brand = resolveProductHeroBrandSeo(product) ?? 'RICOH';
-  const model = extractProductModel(product);
-  const condition = resolveProductEquipmentConditionLabelSeo(product);
-  const speed = resolveSpeedSpec(product);
-  const connectivity = resolveConnectivitySpec(product);
-  const priceUsd = Number(product?.price ?? product?.prices?.public ?? 0);
-  const penLabel = priceUsd > 0 ? formatPenSeo(priceUsd) : null;
-
-  const modelPhrase = model ? `${brand} ${model}` : brand;
-  const conditionPhrase = condition ? ` ${condition.toLowerCase()}` : '';
-  const speedPhrase = speed ? ` hasta ${speed}` : '';
-  const connPhrase = connectivity
-    ? ` Conectividad ${connectivity.toLowerCase()}.`
-    : ' Compatible con impresión móvil, red y nube.';
-
-  const pricePhrase = penLabel ? ` Precio desde ${penLabel}.` : '';
-
-  return (
-    `La ${resolveEquipmentTypeLabel(product).toLowerCase()}${conditionPhrase} ${modelPhrase} ` +
-    `está diseñada para oficinas que necesitan fiabilidad y rendimiento${speedPhrase}. ` +
-    `Imprime, copia, escanea y faxea en un solo equipo con tóner original ${brand}, ` +
-    `garantía oficial de 12 meses y soporte técnico Haitech en Lima y provincias.${connPhrase}` +
-    `${pricePhrase} Envío a todo el Perú y cotización online.`
-  );
+export function buildProductSeoBodyParagraph(_product) {
+  return null;
 }
 
 export function buildProductOgProductMeta(product) {

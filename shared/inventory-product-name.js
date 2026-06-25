@@ -1,19 +1,24 @@
 /** Códigos de color Ricoh en cartuchos → sufijo legible. */
 export const TONER_COLOR_CODE_LABELS = {
   BK: 'Negro',
+  BLACK: 'Negro',
   CY: 'Cyan',
+  CYAN: 'Cyan',
   MG: 'Magenta',
+  MAGENTA: 'Magenta',
   YW: 'Amarillo',
+  YELLOW: 'Amarillo',
 };
 
-const TONER_COLOR_CODE_PATTERN = /\b(BK|CY|MG|YW)\b/i;
+const TONER_COLOR_CODE_PATTERN = /\b(BLACK|YELLOW|MAGENTA|CYAN|BK|CY|MG|YW)\b/i;
 const TONER_COLOR_SUFFIX_PATTERN = /\s+(Negro|Cyan|Magenta|Amarillo|Yellow)\s*$/i;
 const PRINT_CARTRIDGE_LABEL_PATTERN = /\bPRINT\s*CARTRIDGE\b|\bPRINT\s*CART\b/gi;
 
-/** Sustituye «Print Cartridge» / «PRINT CART» por «Toner Cartucho Original». */
+/** Sustituye «Print Cartridge» / «PRINT CART» por «Toner Cartucho Original RICOH». */
 export function normalizeTonerCartridgeProductLabel(name) {
   return String(name ?? '')
-    .replace(PRINT_CARTRIDGE_LABEL_PATTERN, 'Toner Cartucho Original')
+    .replace(PRINT_CARTRIDGE_LABEL_PATTERN, 'Toner Cartucho Original RICOH')
+    .replace(/\bToner Cartucho Original RICOH\s+RICOH\b/gi, 'Toner Cartucho Original RICOH')
     .replace(/\s{2,}/g, ' ')
     .trim();
 }

@@ -58,6 +58,10 @@ export interface HomeHeroSlide {
   compactMaxHeightClass?: string;
   /** Anclaje `object-*` para recortar arriba y conservar la base del arte. */
   objectPositionClass?: string;
+  /** Altura de la imagen dentro del contenedor (p. ej. `h-[96%]`). */
+  compactImageFrameClass?: string;
+  /** Zoom Tailwind opcional por slide (`scale-*`). */
+  compactImageZoomClass?: string;
   /** Muestra botones flotantes sobre el banner compacto. */
   ctaOverlay?: boolean;
   sealTitle?: string;
@@ -84,11 +88,22 @@ const HOME_HERO_COMPACT_SHARED = {
   imageWidth: 2172,
   imageHeight: 724,
   objectFit: 'cover' as const,
-  heroVerticalCrop: 0.96,
-  objectPositionClass: 'object-[center_58%]',
+  heroVerticalCrop: 0.84,
+  objectPositionClass: 'object-[center_50%]',
   compactMaxHeightClass: CATEGORY_STRIP_HERO_HEIGHT_CLASS,
   ctaOverlay: false,
   linkHref: HOME_HERO_WHATSAPP_LINK,
+};
+
+/** Banner hero Fiestas Patrias — promociones generales (referencia de encuadre). */
+export const FIESTAS_PATRIAS_BANNER_HERO_SLIDE: HomeHeroSlide = {
+  ...HOME_HERO_COMPACT_SHARED,
+  id: 'fiestas-patrias-banner',
+  backgroundImage: '/categories/fiestaspatriasbanner.png',
+  imageWidth: 1983,
+  imageHeight: 793,
+  imageAlt:
+    'Promociones por Fiestas Patrias — Fotocopiadoras Ricoh para tu oficina. Rendimiento, velocidad y calidad profesional.',
 };
 
 /** Banner hero Fiestas Patrias — ofertas con precios (promonuevas). */
@@ -96,21 +111,14 @@ export const FIESTAS_PATRIAS_PROMO_NUEVAS_HERO_SLIDE: HomeHeroSlide = {
   ...HOME_HERO_COMPACT_SHARED,
   id: 'fiestas-patrias-promo-nuevas',
   backgroundImage: '/categories/promonuevas-1.png',
+  imageWidth: 2172,
+  imageHeight: 724,
   imageAlt:
     'Ofertas por Fiestas Patrias — Fotocopiadoras Ricoh para tu oficina. Instalación, soporte técnico y garantía.',
 };
 
-/** Banner hero Fiestas Patrias — promociones generales. */
-export const FIESTAS_PATRIAS_BANNER_HERO_SLIDE: HomeHeroSlide = {
-  ...HOME_HERO_COMPACT_SHARED,
-  id: 'fiestas-patrias-banner',
-  backgroundImage: '/categories/fiestaspatriasbanner.png',
-  imageAlt:
-    'Promociones por Fiestas Patrias — Fotocopiadoras Ricoh para tu oficina. Rendimiento, velocidad y calidad profesional.',
-};
-
 /** Slides activos del hero (LCP = primer slide). */
 export const homeHeroSlides: HomeHeroSlide[] = [
-  FIESTAS_PATRIAS_PROMO_NUEVAS_HERO_SLIDE,
   FIESTAS_PATRIAS_BANNER_HERO_SLIDE,
+  FIESTAS_PATRIAS_PROMO_NUEVAS_HERO_SLIDE,
 ];

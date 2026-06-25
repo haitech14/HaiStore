@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Download, FileText } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,8 @@ interface ProductQuotePdfViewerProps {
   title?: string;
   description?: string;
   downloadLabel?: string;
+  /** Descarga el PDF al abrir el visor (p. ej. tras generar cotización). */
+  autoDownload?: boolean;
 }
 
 export function ProductQuotePdfViewer({
@@ -31,14 +34,32 @@ export function ProductQuotePdfViewer({
   title = 'Vista previa de cotización',
   description,
   downloadLabel = 'Descargar PDF',
+  autoDownload = false,
 }: ProductQuotePdfViewerProps) {
+  const autoDownloadedKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!preview || !autoDownload) return;
+    const key = `${preview.filename}:${preview.quoteNumber ?? preview.url}`;
+    if (autoDownloadedKeyRef.current === key) return;
+    autoDownloadedKeyRef.current = key;
+    downloadQuotePdf(preview.blob, preview.filename);
+  }, [autoDownload, preview]);
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      autoDownloadedKeyRef.current = null;
+    }
+    onOpenChange(open);
+  };
+
   const handleDownload = () => {
     if (!preview) return;
     downloadQuotePdf(preview.blob, preview.filename);
   };
 
   return (
-    <Dialog open={Boolean(preview)} onOpenChange={onOpenChange}>
+    <Dialog open={Boolean(preview)} onOpenChange={handleOpenChange}>
       <DialogContent className="flex h-[min(96vh,980px)] max-h-[96vh] w-[min(98vw,1280px)] max-w-[min(98vw,1280px)] flex-col gap-0 overflow-hidden p-0 sm:rounded-xl">
         <div className="shrink-0 border-b px-6 py-4 pr-14">
           <DialogHeader>
@@ -69,7 +90,7 @@ export function ProductQuotePdfViewer({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={() => handleOpenChange(false)}
                 className="sm:min-w-32"
               >
                 Cerrar

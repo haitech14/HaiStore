@@ -748,7 +748,7 @@ export function ProductDetailConfigureEquipment({
             breakdown={quote}
             onGenerated={setQuotePdfPreview}
           />
-          <ProductQuotePdfViewer preview={quotePdfPreview} onOpenChange={handleQuotePdfPreviewClose} />
+          <ProductQuotePdfViewer preview={quotePdfPreview} onOpenChange={handleQuotePdfPreviewClose} autoDownload />
         </>
       ) : null}
     </>

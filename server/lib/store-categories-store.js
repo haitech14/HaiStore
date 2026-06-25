@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { fileURLToPath } from 'url';
 
 import { readInventory } from './inventory-store.js';
+import { listProducts } from './product-catalog.js';
 import { seedProducts } from './seed-products.js';
 
 import {
@@ -13,6 +14,11 @@ import {
   COMPATIBLE_TONER_SUBCATEGORY_ID,
   COMPATIBLE_TONER_SUBCATEGORY_SLUG,
 } from '../../shared/compatible-toner.js';
+import { applyEquipmentSubcategorySlugFilter } from '../../shared/category-inventory-labels.js';
+import {
+  isPrinterEquipmentProduct,
+  productMatchesCategoryFilter,
+} from '../../shared/home-catalog-filter.js';
 import { LANDING_CATEGORY } from '../../shared/landing-categories.js';
 import { getStoreCategoriesPath } from './server-paths.js';
 
@@ -48,13 +54,99 @@ const DEFAULT_CATEGORIES = [
   },
   {
     id: 'cat-toner',
-    name: 'Toner y Suministros',
+    name: 'Suministros',
     slug: 'toner-suministros',
     parentId: null,
     sortOrder: 2,
     inventoryLabels: ['Suministros', 'Toner y Suministros', 'Toner y suministros', 'Tóner y Suministros', 'Toner'],
     image: '/categories/toner-suministros.png',
     tagline: 'Consumibles originales y compatibles',
+  },
+  {
+    id: 'cat-toner-originales',
+    name: 'Toner Originales',
+    slug: 'toner-originales',
+    parentId: 'cat-toner',
+    sortOrder: 0,
+    inventoryLabels: [
+      'Toner Original',
+      'Toner Originales',
+      'Toner, Toner Original',
+      'Toner, Toner Originales',
+      'Toner y Suministros, Toner Original',
+      'Tóner y Suministros, Toner Original',
+      'Suministros, Toner Original',
+      'Suministros, Toner Originales',
+    ],
+    image: '/categories/accesorios-impresoras.png',
+    tagline: 'Cartuchos originales para tu equipo',
+  },
+  {
+    id: COMPATIBLE_TONER_SUBCATEGORY_ID,
+    name: 'Toner Compatible',
+    slug: COMPATIBLE_TONER_SUBCATEGORY_SLUG,
+    parentId: 'cat-toner',
+    sortOrder: 1,
+    inventoryLabels: [CATEGORY_COMPATIBLE_TONER],
+    image: '/categories/toner-suministros.png',
+    tagline: 'Cartuchos y recargas compatibles',
+  },
+  {
+    id: 'cat-toner-remanufacturado',
+    name: 'Toner Remanufacturado',
+    slug: 'toner-remanufacturado',
+    parentId: 'cat-toner',
+    sortOrder: 2,
+    inventoryLabels: [
+      'Toner Remanufacturado',
+      'Toner Remanufacturados',
+      'Toner, Toner Remanufacturado',
+      'Toner, Toner Remanufacturados',
+      'Suministros, Toner Remanufacturado',
+      'Toner y Suministros, Toner Remanufacturado',
+    ],
+    image: '/categories/toner-suministros.png',
+    tagline: 'Alternativas remanufacturadas',
+  },
+  {
+    id: 'cat-toner-recarga',
+    name: 'Toner Recarga',
+    slug: 'toner-recarga',
+    parentId: 'cat-toner',
+    sortOrder: 3,
+    inventoryLabels: [
+      'Toner Recargas',
+      'Recargas',
+      'Recarga',
+      'Toner, Recargas',
+      'Toner, Recarga',
+      'Suministros, Recarga',
+      'Suministros, Toner Recarga',
+      'Toner y Suministros, Recarga',
+      'Toner y Suministros, Toner Recarga',
+    ],
+    image: '/categories/toner-suministros.png',
+    tagline: 'Servicios y recargas de toner',
+  },
+  {
+    id: 'cat-tintas-originales',
+    name: 'Tintas Originales',
+    slug: 'tintas-originales',
+    parentId: 'cat-toner',
+    sortOrder: 10,
+    inventoryLabels: ['Tintas Originales', 'Tinta Original', 'Tinta, Tinta Original', 'Tintas', 'Tinta'],
+    image: '/categories/toner-suministros.png',
+    tagline: 'Tintas originales para impresoras',
+  },
+  {
+    id: 'cat-tintas-compatibles',
+    name: 'Tintas Compatibles',
+    slug: 'tintas-compatibles',
+    parentId: 'cat-toner',
+    sortOrder: 11,
+    inventoryLabels: ['Tintas Compatibles', 'Tinta Compatible', 'Tinta, Tinta Compatible', 'Tintas'],
+    image: '/categories/toner-suministros.png',
+    tagline: 'Tintas compatibles y alternativas',
   },
   {
     id: 'cat-repuestos',
@@ -76,86 +168,6 @@ const DEFAULT_CATEGORIES = [
     image: '/categories/servicio-tecnico.png',
     tagline: 'Mantenimiento, instalación y soporte especializado',
   },
-  {
-    id: 'cat-alquiler',
-    name: 'Alquiler',
-    slug: 'alquiler',
-    parentId: null,
-    sortOrder: 5,
-    inventoryLabels: ['Alquiler'],
-    image: '/categories/alquiler.png',
-    tagline: 'Equipos de impresión y tecnología en modalidad de alquiler',
-  },
-  {
-    id: 'cat-alquiler-laptops',
-    name: 'Alquiler de Laptops',
-    slug: 'alquiler-laptops',
-    parentId: 'cat-alquiler',
-    sortOrder: 0,
-    inventoryLabels: ['Alquiler - Laptops'],
-    image: '/categories/alquiler/laptops.png',
-    tagline: 'Laptops para oficina, capacitaciones y eventos',
-  },
-  {
-    id: 'cat-alquiler-computadoras',
-    name: 'Alquiler de Computadoras',
-    slug: 'alquiler-computadoras',
-    parentId: 'cat-alquiler',
-    sortOrder: 1,
-    inventoryLabels: ['Alquiler - Computadoras'],
-    image: '/categories/alquiler/computadoras.png',
-    tagline: 'Equipos de escritorio para producción continua',
-  },
-  {
-    id: 'cat-alquiler-proyectores',
-    name: 'Alquiler de Proyectores',
-    slug: 'alquiler-proyectores',
-    parentId: 'cat-alquiler',
-    sortOrder: 2,
-    inventoryLabels: ['Alquiler - Proyectores'],
-    image: '/categories/alquiler/proyectores.png',
-    tagline: 'Proyección para salas y eventos corporativos',
-  },
-  {
-    id: 'cat-alquiler-impresoras',
-    name: 'Alquiler de Impresoras',
-    slug: 'alquiler-impresoras',
-    parentId: 'cat-alquiler',
-    sortOrder: 3,
-    inventoryLabels: ['Alquiler - Impresoras'],
-    image: '/categories/alquiler/impresoras.png',
-    tagline: 'Multifuncionales y equipos de oficina',
-  },
-  {
-    id: 'cat-alquiler-plotters',
-    name: 'Alquiler de Plotters',
-    slug: 'alquiler-plotters',
-    parentId: 'cat-alquiler',
-    sortOrder: 4,
-    inventoryLabels: ['Alquiler - Plotters'],
-    image: '/categories/alquiler/plotters.png',
-    tagline: 'Formato ancho para planos y diseño técnico',
-  },
-  {
-    id: 'cat-alquiler-escaneres',
-    name: 'Alquiler de Escáneres',
-    slug: 'alquiler-escaneres',
-    parentId: 'cat-alquiler',
-    sortOrder: 5,
-    inventoryLabels: ['Alquiler - Escáneres'],
-    image: '/categories/alquiler/escaneres.png',
-    tagline: 'Digitalización de documentos a gran velocidad',
-  },
-];
-
-const RENTAL_CATEGORY_IDS = [
-  'cat-alquiler',
-  'cat-alquiler-laptops',
-  'cat-alquiler-computadoras',
-  'cat-alquiler-proyectores',
-  'cat-alquiler-impresoras',
-  'cat-alquiler-plotters',
-  'cat-alquiler-escaneres',
 ];
 
 function slugify(value) {
@@ -210,12 +222,27 @@ async function ensureCategoriesFile() {
   }
 }
 
-function mergeMissingRentalCategories(categories) {
+function migrateRemoveRentalCategories(categories) {
+  const filtered = categories.filter((row) => row.id !== 'cat-alquiler' && row.parentId !== 'cat-alquiler');
+  return filtered.length !== categories.length ? filtered : categories;
+}
+
+const SUPPLY_CATEGORY_IDS = [
+  'cat-toner',
+  'cat-toner-originales',
+  COMPATIBLE_TONER_SUBCATEGORY_ID,
+  'cat-toner-remanufacturado',
+  'cat-toner-recarga',
+  'cat-tintas-originales',
+  'cat-tintas-compatibles',
+];
+
+function mergeMissingSupplyCategories(categories) {
   const byId = new Map(categories.map((row) => [row.id, row]));
   let changed = false;
 
   for (const seed of DEFAULT_CATEGORIES) {
-    if (!RENTAL_CATEGORY_IDS.includes(seed.id)) continue;
+    if (!SUPPLY_CATEGORY_IDS.includes(seed.id)) continue;
     if (byId.has(seed.id)) continue;
     byId.set(seed.id, normalizeCategory(seed));
     changed = true;
@@ -258,6 +285,22 @@ function migrateTonerCategoryDisplayNames(categories) {
       return next;
     }
 
+    if (row.id === 'cat-toner-originales' || row.slug === 'toner-originales') {
+      const labels = new Set(row.inventoryLabels ?? []);
+      labels.add('Suministros, Toner Originales');
+      labels.add('Suministros, Toner Original');
+      labels.add('Toner, Toner Originales');
+      labels.add('Toner, Toner Original');
+      const next = {
+        ...row,
+        inventoryLabels: [...labels],
+      };
+      if (JSON.stringify(row.inventoryLabels ?? []) !== JSON.stringify(next.inventoryLabels)) {
+        changed = true;
+      }
+      return next;
+    }
+
     return row;
   });
 
@@ -284,6 +327,7 @@ function migrateCompatibleTonerSubcategory(categories) {
     const next = {
       ...row,
       name: LANDING_CATEGORY.tonerCompatible,
+      parentId: 'cat-toner',
       inventoryLabels: [...labels],
     };
 
@@ -317,6 +361,66 @@ function migrateCompatibleTonerSubcategory(categories) {
   return changed ? updated : categories;
 }
 
+function migrateSplitTonerRemanufacturadoAndRecarga(categories) {
+  let changed = false;
+
+  const byId = new Map(categories.map((row) => [row.id, row]));
+  const legacy = byId.get('cat-toner-remanufacturado-recargas');
+  if (!legacy) return categories;
+
+  byId.delete('cat-toner-remanufacturado-recargas');
+  changed = true;
+
+  // Asegurar que existen los nodos nuevos (seeded por DEFAULT_CATEGORIES, pero por si acaso).
+  if (!byId.has('cat-toner-remanufacturado')) {
+    byId.set('cat-toner-remanufacturado', normalizeCategory(DEFAULT_CATEGORIES.find((c) => c.id === 'cat-toner-remanufacturado') ?? {
+      id: 'cat-toner-remanufacturado',
+      name: 'Toner Remanufacturado',
+      slug: 'toner-remanufacturado',
+      parentId: 'cat-toner',
+      sortOrder: 2,
+      inventoryLabels: legacy.inventoryLabels ?? [],
+      image: '/categories/toner-suministros.png',
+      tagline: 'Alternativas remanufacturadas',
+    }));
+  }
+  if (!byId.has('cat-toner-recarga')) {
+    byId.set('cat-toner-recarga', normalizeCategory(DEFAULT_CATEGORIES.find((c) => c.id === 'cat-toner-recarga') ?? {
+      id: 'cat-toner-recarga',
+      name: 'Toner Recarga',
+      slug: 'toner-recarga',
+      parentId: 'cat-toner',
+      sortOrder: 3,
+      inventoryLabels: legacy.inventoryLabels ?? [],
+      image: '/categories/toner-suministros.png',
+      tagline: 'Servicios y recargas de toner',
+    }));
+  }
+
+  return [...byId.values()];
+}
+
+function mergeMissingRepuestosCompatiblesCategory(categories) {
+  const exists =
+    categories.some((row) => row.id === 'cat-repuestos-compatibles') ||
+    categories.some((row) => row.slug === 'repuestos-compatibles');
+  if (exists) return categories;
+
+  return [
+    ...categories,
+    normalizeCategory({
+      id: 'cat-repuestos-compatibles',
+      name: 'Repuestos Compatibles',
+      slug: 'repuestos-compatibles',
+      parentId: 'cat-repuestos',
+      sortOrder: 1,
+      inventoryLabels: ['Repuestos Compatibles', 'Repuesto Compatible', 'Repuestos, Repuestos Compatibles'],
+      image: '/categories/repuestos.png',
+      tagline: 'Partes y componentes compatibles',
+    }),
+  ];
+}
+
 export async function readStoreCategories() {
   await ensureCategoriesFile();
   const raw = await fs.readFile(categoriesPath(), 'utf-8');
@@ -324,15 +428,33 @@ export async function readStoreCategories() {
   let categories = (data.categories ?? []).map((row) => normalizeCategory(row));
   let needsWrite = false;
 
-  const merged = mergeMissingRentalCategories(categories);
-  if (merged !== categories) {
-    categories = merged;
+  const rentalsRemoved = migrateRemoveRentalCategories(categories);
+  if (rentalsRemoved !== categories) {
+    categories = rentalsRemoved;
+    needsWrite = true;
+  }
+
+  const supplyMerged = mergeMissingSupplyCategories(categories);
+  if (supplyMerged !== categories) {
+    categories = supplyMerged;
+    needsWrite = true;
+  }
+
+  const repuestosCompat = mergeMissingRepuestosCompatiblesCategory(categories);
+  if (repuestosCompat !== categories) {
+    categories = repuestosCompat;
     needsWrite = true;
   }
 
   const migrated = migrateCompatibleTonerSubcategory(categories);
   if (migrated !== categories) {
     categories = migrated;
+    needsWrite = true;
+  }
+
+  const splitLegacy = migrateSplitTonerRemanufacturadoAndRecarga(categories);
+  if (splitLegacy !== categories) {
+    categories = splitLegacy;
     needsWrite = true;
   }
 
@@ -353,6 +475,7 @@ export async function writeStoreCategories(categories) {
   const normalized = categories.map((row) => normalizeCategory(row));
   await fs.mkdir(path.dirname(categoriesPath()), { recursive: true });
   await fs.writeFile(categoriesPath(), JSON.stringify({ categories: normalized }, null, 2));
+  invalidateStoreCategoriesTreeCache();
   return normalized;
 }
 
@@ -364,27 +487,33 @@ function normalizeInventoryCategory(value) {
     .trim();
 }
 
-function productMatchesLabels(productCategory, labels) {
-  const norm = normalizeInventoryCategory(productCategory);
-  return labels.some((label) => normalizeInventoryCategory(label) === norm);
+function countProductsForLeafCategory(category, products, repuestosFamily) {
+  const labels = (category.inventoryLabels ?? [])
+    .map((label) => String(label).trim())
+    .filter(Boolean);
+  const effectiveLabels = labels.length > 0 ? labels : [category.name];
+
+  let matched = products.filter((product) => {
+    if (repuestosFamily && isPrinterEquipmentProduct(product)) return false;
+    return effectiveLabels.some((label) => productMatchesCategoryFilter(product, label));
+  });
+
+  matched = applyEquipmentSubcategorySlugFilter(matched, category.slug);
+  return matched.length;
 }
 
-function countProductsForCategory(category, products, allCategories) {
-  const labels = new Set(category.inventoryLabels ?? []);
-  const childIds = allCategories.filter((row) => row.parentId === category.id).map((row) => row.id);
+function syncNodeProductCounts(node, products, repuestosFamily) {
+  const inRepuestosFamily = repuestosFamily || node.slug === 'repuestos';
+  const children = (node.children ?? []).map((child) =>
+    syncNodeProductCounts(child, products, inRepuestosFamily),
+  );
 
-  const collectLabels = (id) => {
-    const node = allCategories.find((row) => row.id === id);
-    if (!node) return;
-    for (const label of node.inventoryLabels ?? []) labels.add(label);
-    for (const child of allCategories.filter((row) => row.parentId === id)) {
-      collectLabels(child.id);
-    }
-  };
+  const productCount =
+    children.length > 0
+      ? children.reduce((sum, child) => sum + (child.productCount ?? 0), 0)
+      : countProductsForLeafCategory(node, products, inRepuestosFamily);
 
-  for (const childId of childIds) collectLabels(childId);
-
-  return products.filter((product) => productMatchesLabels(product.category, [...labels])).length;
+  return { ...node, children, productCount };
 }
 
 function buildTree(categories, products) {
@@ -394,10 +523,7 @@ function buildTree(categories, products) {
   for (const category of sorted) {
     const key = category.parentId ?? 'root';
     if (!byParent.has(key)) byParent.set(key, []);
-    byParent.get(key).push({
-      ...category,
-      productCount: countProductsForCategory(category, products, sorted),
-    });
+    byParent.get(key).push({ ...category });
   }
 
   const attachChildren = (parentId) => {
@@ -408,13 +534,33 @@ function buildTree(categories, products) {
     }));
   };
 
-  return attachChildren(null);
+  const tree = attachChildren(null);
+  return tree.map((node) => syncNodeProductCounts(node, products, node.slug === 'repuestos'));
+}
+
+const CATEGORIES_TREE_CACHE_TTL_MS = 5 * 60 * 1000;
+
+/** @type {import('../../src/types/store-category.js').StoreCategoryTreeNode[] | null} */
+let categoriesTreeCache = null;
+let categoriesTreeCacheAt = 0;
+
+export function invalidateStoreCategoriesTreeCache() {
+  categoriesTreeCache = null;
+  categoriesTreeCacheAt = 0;
 }
 
 export async function readStoreCategoriesTree() {
+  const now = Date.now();
+  if (categoriesTreeCache && now - categoriesTreeCacheAt < CATEGORIES_TREE_CACHE_TTL_MS) {
+    return categoriesTreeCache;
+  }
+
   const categories = await readStoreCategories();
-  const { products } = await readInventory();
-  return buildTree(categories, products);
+  const products = await listProducts({ role: 'public', adminView: false });
+  const tree = buildTree(categories, products);
+  categoriesTreeCache = tree;
+  categoriesTreeCacheAt = now;
+  return tree;
 }
 
 function validateParent(categories, categoryId, parentId) {

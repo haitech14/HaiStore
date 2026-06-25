@@ -113,6 +113,18 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  .font-myriad {
+    font-family:
+      'Myriad Pro',
+      'Myriad Pro Regular',
+      'Myriad Variable',
+      'Source Sans 3',
+      ui-sans-serif,
+      system-ui,
+      sans-serif;
+    font-weight: 400;
+  }
+
   .mural-canvas-dots {
     background-color: #d4d4d4;
     background-image: radial-gradient(circle, rgb(0 0 0 / 0.14) 1px, transparent 1px);

@@ -2,7 +2,11 @@ import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/context/auth-context';
-import { featuredToProduct, getFeaturedProductById } from '@/data/featured-products';
+import {
+  featuredToProduct,
+  getFeaturedDisplayMeta,
+  getFeaturedProductById,
+} from '@/data/featured-products';
 import { useProducts } from '@/hooks/use-products';
 import { apiFetch } from '@/lib/api';
 import { getCatalogProductById } from '@/lib/catalog-featured';
@@ -23,7 +27,8 @@ export async function fetchProductById(id: string): Promise<Product | null> {
 export function useProduct(id: string | undefined) {
   const queryClient = useQueryClient();
   const { role, viewAsRoles, effectiveRole } = useAuth();
-  const featured = id ? getFeaturedProductById(id) : undefined;
+  const featuredFallback = id ? getFeaturedProductById(id) : undefined;
+  const featuredMeta = id ? getFeaturedDisplayMeta(id) : undefined;
 
   /** Solo reutiliza el listado si ya está en caché; no dispara /api/products en la ficha. */
   const { data: products } = useProducts({ enabled: false });
@@ -61,14 +66,14 @@ export function useProduct(id: string | undefined) {
   });
 
   const fromCatalogJson = useMemo(() => {
-    if (!id || featured || fetchedProduct) return undefined;
+    if (!id || featuredFallback || fetchedProduct || !isFetched) return undefined;
     const row = getCatalogProductById(id);
     if (!row) return undefined;
     const base = toPublicProduct(normalizeInventoryProduct(row), role);
     return shouldApplyViewAsPriceTransform(viewAsRoles)
       ? applyViewAsPriceToProduct(base, effectiveRole)
       : base;
-  }, [id, featured, fetchedProduct, role, viewAsRoles, effectiveRole]);
+  }, [id, featuredFallback, fetchedProduct, isFetched, role, viewAsRoles, effectiveRole]);
 
   const applyViewAs = (candidate: Product | undefined): Product | undefined => {
     if (!candidate) return undefined;
@@ -77,19 +82,27 @@ export function useProduct(id: string | undefined) {
       : candidate;
   };
 
+  const staticFallbackProduct =
+    isFetched && !fetchingOne
+      ? featuredFallback
+        ? featuredToProduct(featuredFallback)
+        : fromCatalogJson
+      : undefined;
+
   const product: Product | undefined =
     fetchedProduct ??
     applyViewAs(fromList) ??
     applyViewAs(fromQueryCache) ??
-    (featured ? featuredToProduct(featured) : undefined) ??
-    fromCatalogJson;
+    staticFallbackProduct;
 
   const isLoading = Boolean(id && !product && (fetchingOne || !isFetched));
-  const notFound = Boolean(id && !featured && isFetched && !fetchingOne && !product);
+  const notFound = Boolean(
+    id && !featuredFallback && isFetched && !fetchingOne && !product,
+  );
 
   return {
     product,
-    featuredMeta: featured,
+    featuredMeta,
     isLoading,
     notFound,
   };

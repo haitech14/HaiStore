@@ -1,4 +1,5 @@
 import { AdminRolePricesTooltip } from '@/components/admin/admin-role-prices-tooltip';
+import { ON_REQUEST_STOCK_BADGE_CLASS } from '@/components/cart/add-to-cart-button';
 import { DualPrice } from '@/components/product/product-dual-price';
 import { ensureFullPrices } from '@/lib/roles';
 import { cn, penToUsd } from '@/lib/utils';
@@ -50,19 +51,23 @@ export function ProductDetailPriceBlock({
         <p
           className={cn(
             'mt-2 flex items-center gap-1.5 text-xs font-medium sm:text-sm',
-            outOfStock ? 'text-red-600' : 'text-[#0f1f3d]',
+            !outOfStock && 'text-[#0f1f3d]',
           )}
         >
           <span
             className={cn(
               'flex size-5 items-center justify-center rounded-full text-[0.65rem] font-bold',
-              outOfStock ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600',
+              outOfStock
+                ? 'border border-amber-400 bg-amber-100 text-amber-950'
+                : 'bg-emerald-100 text-emerald-600',
             )}
             aria-hidden="true"
           >
             {outOfStock ? '!' : '✓'}
           </span>
-          {outOfStock ? 'Sin stock' : `${stockDisplay} en stock`}
+          <span className={outOfStock ? ON_REQUEST_STOCK_BADGE_CLASS : undefined}>
+            {outOfStock ? 'A pedido' : `${stockDisplay} en stock`}
+          </span>
         </p>
       ) : null}
     </div>

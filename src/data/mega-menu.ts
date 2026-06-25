@@ -107,11 +107,11 @@ export const megaMenuHighlightCategories: readonly MegaMenuHighlightCategory[] =
     href: categoryPath('multifuncionales'),
   },
   {
-    slug: 'toner-suministros',
-    name: 'Suministros',
-    tagline: 'Originales y compatibles',
+    slug: 'toner-compatibles',
+    name: 'Tóner Compatible',
+    tagline: 'Cartuchos alternativos',
     image: '/categories/toner-suministros.png',
-    href: categoryPath('toner-suministros'),
+    href: categoryPath('toner-compatibles'),
   },
   {
     slug: 'repuestos',
@@ -119,13 +119,6 @@ export const megaMenuHighlightCategories: readonly MegaMenuHighlightCategory[] =
     tagline: 'Partes y componentes',
     image: '/categories/repuestos.png',
     href: categoryPath('repuestos'),
-  },
-  {
-    slug: 'alquiler',
-    name: 'Alquiler',
-    tagline: 'Equipos mensuales',
-    image: '/categories/alquiler.png',
-    href: categoryPath('alquiler'),
   },
   {
     slug: 'servicio-tecnico',
@@ -192,7 +185,7 @@ export const megaMenuCategoryImages: Record<string, string> = {
   multifuncionales: '/categories/multifuncionales.png',
   impresoras: '/categories/impresoras.png',
   'formato-ancho': '/categories/formato-ancho.png',
-  'toner-suministros': '/categories/toner-suministros.png',
+  'toner-compatibles': '/categories/toner-suministros.png',
   toner: '/categories/toner-suministros.png',
   repuestos: '/categories/repuestos.png',
   'servicio-tecnico': '/categories/servicio-tecnico.png',
@@ -224,7 +217,7 @@ export interface MegaMenuPartnerBrand {
 export const megaMenuPartnerBrands: readonly MegaMenuPartnerBrand[] = [
   { id: 'ricoh', name: 'Ricoh', logo: '/brands/ricoh.png', href: categoryPath('multifuncionales') },
   { id: 'canon', name: 'Canon', logo: '/brands/canon.png', href: categoryPath('impresoras') },
-  { id: 'hp', name: 'HP', logo: '/brands/hp.png', href: categoryPath('toner-suministros') },
+  { id: 'hp', name: 'HP', logo: '/brands/hp.png', href: categoryPath('toner-compatibles') },
   { id: 'epson', name: 'Epson', logo: '/brands/epson.png', href: categoryPath('impresoras') },
   {
     id: 'konica-minolta',

@@ -6,7 +6,11 @@ import { Icon } from '@mdi/react';
 import { mdiWhatsapp } from '@mdi/js';
 
 import { Button } from '@/components/ui/button';
-import { CATEGORY_STRIP_HERO_VERTICAL_CROP } from '@/lib/category-strip-layout';
+import {
+  CATEGORY_STRIP_HERO_IMAGE_FRAME_CLASS,
+  CATEGORY_STRIP_HERO_IMAGE_ZOOM_CLASS,
+  CATEGORY_STRIP_HERO_VERTICAL_CROP,
+} from '@/lib/category-strip-layout';
 import { heroSingleAssetSources, categoryImageSources } from '@/lib/responsive-image';
 import {
   HOME_HERO_WHATSAPP_LINK,
@@ -93,9 +97,14 @@ function HeroSlideContent({ slide, index }: { slide: HomeHeroSlide; index: numbe
           const heightClass = slide.compactMaxHeightClass ?? '';
           const fixedRowHeight = /\bh-\[/.test(heightClass);
           const { webpSrcSet, fallbackSrc, sizes } = heroSingleAssetSources(slide.backgroundImage);
+          const imageFrameClass = slide.compactImageFrameClass ?? CATEGORY_STRIP_HERO_IMAGE_FRAME_CLASS;
+          const imageZoomClass = slide.compactImageZoomClass ?? CATEGORY_STRIP_HERO_IMAGE_ZOOM_CLASS;
           return (
             <div
-              className={cn('relative w-full overflow-hidden bg-[#0f1f3d]', heightClass)}
+              className={cn(
+                'relative flex w-full items-center justify-center overflow-hidden',
+                heightClass,
+              )}
               style={
                 fixedRowHeight
                   ? undefined
@@ -104,7 +113,7 @@ function HeroSlideContent({ slide, index }: { slide: HomeHeroSlide; index: numbe
                     }
               }
             >
-              <picture className="absolute inset-0 block size-full">
+              <picture className={cn('block', imageFrameClass)}>
                 <source type="image/webp" srcSet={webpSrcSet} sizes={sizes} />
                 <img
                   src={fallbackSrc}
@@ -119,7 +128,11 @@ function HeroSlideContent({ slide, index }: { slide: HomeHeroSlide; index: numbe
                     'size-full',
                     objectFit === 'contain'
                       ? 'object-contain object-center'
-                      : cn('object-cover', slide.objectPositionClass ?? 'object-[center_55%]'),
+                      : cn(
+                          'object-cover',
+                          slide.objectPositionClass ?? 'object-[center_50%]',
+                          imageZoomClass,
+                        ),
                   )}
                 />
               </picture>
@@ -184,7 +197,7 @@ function HeroSlideContent({ slide, index }: { slide: HomeHeroSlide; index: numbe
       'block w-full leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
     return (
-      <div className="relative w-full overflow-hidden bg-[#0f1f3d]">
+      <div className="relative w-full overflow-hidden">
         <h1 id={headingId} className="sr-only">
           {slide.imageAlt}
         </h1>
@@ -412,26 +425,26 @@ export function HeroBanner() {
     <section
       aria-labelledby="hero-titulo"
       aria-roledescription={showCarouselControls ? 'carrusel' : undefined}
-      className="relative w-full bg-[#0f1f3d] leading-none"
+      className="relative w-full leading-none"
       onMouseEnter={pauseAutoplay}
       onFocus={pauseAutoplay}
     >
-      <div className="relative">
+      <div className="relative w-full">
         <div ref={emblaRef} className="overflow-hidden">
-          <ul className="flex">
-            {homeHeroSlides.map((slide, index) => (
-              <li
-                key={slide.id}
-                className="relative min-w-0 flex-[0_0_100%]"
-                aria-hidden={selectedIndex !== index}
-              >
-                <HeroSlideContent slide={slide} index={index} />
-              </li>
-            ))}
-          </ul>
-        </div>
+            <ul className="flex">
+              {homeHeroSlides.map((slide, index) => (
+                <li
+                  key={slide.id}
+                  className="relative min-w-0 flex-[0_0_100%]"
+                  aria-hidden={selectedIndex !== index}
+                >
+                  <HeroSlideContent slide={slide} index={index} />
+                </li>
+              ))}
+            </ul>
+          </div>
 
-        {showCarouselControls ? (
+          {showCarouselControls ? (
           <>
             <button
               type="button"
@@ -456,7 +469,7 @@ export function HeroBanner() {
               <ChevronRight className="size-5" aria-hidden="true" />
             </button>
           </>
-        ) : null}
+          ) : null}
       </div>
     </section>
   );

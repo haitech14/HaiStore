@@ -326,22 +326,20 @@ function buildHeroSpecBullets(
 }
 
 function resolveHeroLead(product: Product, isPrinter: boolean, isSupply: boolean): string {
+  if (isSupply) return '';
   if (isIm430f(product)) return IM430F_HERO_LEAD;
   if (isPrinter) {
     const description = product.description?.trim() ?? '';
     if (description.includes('\n')) return '';
     return description;
   }
-  if (isSupply) return 'Consumible compatible de alta calidad para un rendimiento constante.';
   return product.category ?? 'Producto HaiStore';
 }
 
 function resolveHeroDescription(product: Product, isPrinter: boolean, isSupply: boolean): string {
+  if (isSupply) return '';
   if (isIm430f(product)) return IM430F_HERO_DESCRIPTION;
   if (isPrinter) return '';
-  if (isSupply) {
-    return 'Calidad de impresión consistente y compatibilidad verificada para tu equipo.';
-  }
   return product.description ?? '';
 }
 
@@ -573,13 +571,6 @@ function buildDescriptionContent(product: Product, isPrinter: boolean, isSupply:
     };
   }
 
-  if (isSupply && product.description) {
-    return {
-      paragraphs: [product.description],
-      highlights: [],
-    };
-  }
-
   return null;
 }
 
@@ -602,6 +593,8 @@ function soldCountFromId(id: string): number {
 }
 
 export function isPrinterEquipment(product: Product): boolean {
+  if (isSupplyProduct(product)) return false;
+
   const cat = (product.category ?? '').toLowerCase();
   const name = product.name.toLowerCase();
   return (
@@ -640,11 +633,18 @@ function isSupplyProduct(product: Product): boolean {
   const name = product.name.toLowerCase();
   return (
     cat.includes('toner') ||
+    cat.includes('tóner') ||
     cat.includes('suministro') ||
     cat.includes('repuesto') ||
+    cat.includes('accesorio') ||
+    cat.includes('consumible') ||
+    cat.includes('partes') ||
+    cat.includes('refacci') ||
     name.includes('toner') ||
     name.includes('tóner') ||
-    name.includes('cartucho')
+    name.includes('cartucho') ||
+    name.includes('grapa') ||
+    name.includes('staple')
   );
 }
 
@@ -807,15 +807,6 @@ function buildSupplySpecs(product: Product): ProductSpecRow[] {
       value: 'Para impresoras MP C4503, C5503, C5504, C6003, C6004 series',
     },
     { label: 'Garantía', value: '12 meses' },
-  ];
-}
-
-function buildSupplyBullets(): string[] {
-  return [
-    'Cartucho compatible de alta calidad certificado.',
-    'Rendimiento equivalente al original del fabricante.',
-    'Instalación sencilla en equipos Ricoh MP series.',
-    'Empaque sellado con protección contra daños en transporte.',
   ];
 }
 
@@ -1160,9 +1151,10 @@ function resolvePricing(
 } {
   const pricePen = usdToPen(product.price);
 
-  if (featuredMeta?.oldPrice) {
+  if (featuredMeta?.oldPrice && featuredMeta.oldPrice > product.price) {
     const oldPen = usdToPen(featuredMeta.oldPrice);
-    const discount = featuredMeta.discount ?? Math.round((1 - product.price / featuredMeta.oldPrice) * 100);
+    const discount =
+      featuredMeta.discount ?? Math.round((1 - product.price / featuredMeta.oldPrice) * 100);
     return {
       oldPricePen: oldPen,
       discountPercent: discount,
@@ -1216,7 +1208,7 @@ export function buildProductDetail(
       ? 'Varios'
       : 'Estándar';
   const bullets = isSupply
-    ? buildSupplyBullets()
+    ? []
     : product.description && !isPrinter
       ? [product.description, ...CONSUMER_BULLETS.slice(0, 3)]
       : isIm430f(product)

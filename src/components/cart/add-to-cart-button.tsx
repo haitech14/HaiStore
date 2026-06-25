@@ -11,12 +11,59 @@ export function isProductOutOfStock(product: Product): boolean {
   return product.stock <= 0;
 }
 
+export function getProductAvailableStock(product: Product): number {
+  return Math.max(0, Math.floor(Number(product.stock) || 0));
+}
+
+export interface ProductOrderQuantitySplit {
+  total: number;
+  fromStock: number;
+  onRequest: number;
+}
+
+/** Reparte la cantidad pedida entre stock inmediato y unidades a pedido. */
+export function splitProductOrderQuantity(
+  product: Product,
+  quantity: number,
+): ProductOrderQuantitySplit {
+  const total = Math.max(1, Math.floor(Number(quantity) || 1));
+  const available = getProductAvailableStock(product);
+  const fromStock = available > 0 ? Math.min(total, available) : 0;
+  const onRequest = total - fromStock;
+  return { total, fromStock, onRequest };
+}
+
+export function hasOnRequestQuantity(product: Product, quantity: number): boolean {
+  return splitProductOrderQuantity(product, quantity).onRequest > 0;
+}
+
+export function formatOrderQuantityHint(product: Product, quantity: number): string | null {
+  const { fromStock, onRequest } = splitProductOrderQuantity(product, quantity);
+  if (onRequest <= 0) return null;
+  if (fromStock <= 0) return `${onRequest} a pedido`;
+  return `${fromStock} en stock · ${onRequest} a pedido`;
+}
+
+/** Cantidad mínima 1; sin tope superior en tienda (el excedente va a pedido). */
+export function adjustProductQuantity(_product: Product, current: number, delta: number): number {
+  return Math.max(1, Math.floor(current + delta));
+}
+
+/** Botón / badge de catálogo cuando el producto se compra a pedido (sin stock inmediato). */
+export const ON_REQUEST_PRODUCT_BUTTON_CLASS =
+  'border border-foreground bg-foreground text-background shadow-none hover:bg-foreground/90 hover:text-background focus-visible:ring-ring';
+
+export const ON_REQUEST_STOCK_BADGE_CLASS =
+  'rounded-md border border-foreground/15 bg-foreground px-1.5 py-0.5 font-semibold text-background';
+
 export function getAddToCartLabel(
   product: Product,
   variant: 'default' | 'short' | 'detail' = 'default',
+  quantity = 1,
 ): string {
-  if (isProductOutOfStock(product)) {
-    return variant === 'short' ? 'A pedido' : 'Comprar a Pedido';
+  const { fromStock, onRequest } = splitProductOrderQuantity(product, quantity);
+  if (onRequest > 0 && fromStock === 0) {
+    return variant === 'short' ? 'A pedido' : 'Comprar a pedido';
   }
   if (variant === 'short') return 'Añadir';
   if (variant === 'detail') return 'Agregar al carrito';
@@ -39,7 +86,9 @@ export function AddToCartButton({
   const { addItem } = useCart();
   const [justAdded, setJustAdded] = useState(false);
   const outOfStock = isProductOutOfStock(product);
-  const defaultLabel = getAddToCartLabel(product);
+  const orderQuantity = addOptions?.quantity ?? 1;
+  const defaultLabel = getAddToCartLabel(product, 'default', orderQuantity);
+  const orderHint = formatOrderQuantityHint(product, orderQuantity);
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -59,9 +108,11 @@ export function AddToCartButton({
       aria-label={
         justAdded
           ? `${product.name} agregado al carrito`
-          : outOfStock
-            ? `Comprar ${product.name} a pedido`
-            : `Añadir ${product.name} al carrito`
+          : orderHint
+            ? `Añadir ${orderQuantity} unidades de ${product.name} (${orderHint})`
+            : outOfStock
+              ? `Comprar ${product.name} a pedido`
+              : `Añadir ${product.name} al carrito`
       }
       onClick={handleClick}
       className={cn(

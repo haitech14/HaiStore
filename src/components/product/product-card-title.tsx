@@ -1,3 +1,4 @@
+import { ON_REQUEST_STOCK_BADGE_CLASS } from '@/components/cart/add-to-cart-button';
 import {
   getProductCardTitleContent,
   PRODUCT_CARD_BRAND_ACCENT_CLASS,
@@ -9,7 +10,6 @@ import {
 } from '@/lib/product-card-title';
 import type { ProductBadgeSource } from '@/lib/product-detail-badges';
 import { cn } from '@/lib/utils';
-
 interface ProductCardTitleProps {
   product: ProductBadgeSource & { name: string; category?: string | null };
   className?: string;
@@ -17,40 +17,21 @@ interface ProductCardTitleProps {
   brandTone?: 'default' | 'accent';
   /** Vista tabla de catálogo: tipografía compacta tipo hoja de cálculo. */
   variant?: 'card' | 'table' | 'featured';
-  /** Muestra stock a la derecha del código (vitrina destacada). */
   stock?: number;
   outOfStock?: boolean;
 }
 
-function ProductCardStockLabel({
-  outOfStock,
-  stock,
-}: {
-  outOfStock: boolean;
-  stock: number;
-}) {
+function formatCardStockLabel(outOfStock: boolean, stock: number): string {
   const quantity = outOfStock ? 0 : Math.max(0, Math.floor(Number(stock) || 0));
+  if (quantity <= 0) return 'A pedido';
+  return `${quantity} unids.`;
+}
 
-  if (quantity <= 0) {
-    return (
-      <span className="shrink-0 text-[0.62rem] font-semibold text-orange-600 sm:text-[0.65rem]">
-        A pedido
-      </span>
-    );
-  }
-
-  const isLow = quantity <= 3;
-
-  return (
-    <span
-      className={cn(
-        'shrink-0 text-[0.62rem] font-semibold sm:text-[0.65rem]',
-        isLow ? 'text-amber-800' : 'text-emerald-700',
-      )}
-    >
-      {isLow ? `Últimas unidades · ${quantity} unids.` : `En stock · ${quantity} unids.`}
-    </span>
-  );
+function cardStockClass(outOfStock: boolean, stock: number): string {
+  const quantity = outOfStock ? 0 : Math.max(0, Math.floor(Number(stock) || 0));
+  if (quantity <= 0) return ON_REQUEST_STOCK_BADGE_CLASS;
+  if (quantity <= 3) return 'font-semibold text-amber-800';
+  return 'font-semibold text-emerald-700';
 }
 
 export function ProductCardTitle({
@@ -68,7 +49,7 @@ export function ProductCardTitle({
     isTable
       ? 'truncate text-[0.65rem] font-normal uppercase tracking-wide text-muted-foreground sm:text-[0.7rem]'
       : isFeatured
-        ? 'truncate text-[0.68rem] font-semibold uppercase tracking-wide text-red-600 sm:text-[0.72rem]'
+        ? PRODUCT_CARD_BRAND_ACCENT_CLASS
         : brandTone === 'accent'
           ? PRODUCT_CARD_BRAND_ACCENT_CLASS
           : PRODUCT_CARD_BRAND_CLASS,
@@ -80,14 +61,14 @@ export function ProductCardTitle({
       : cn(PRODUCT_CARD_TITLE_MAIN_CLASS, PRODUCT_CARD_TITLE_CLAMP_CLASS);
 
   const showBrandLine = Boolean(brand);
-  const showStockLine = stock != null;
-  const showMetaLine = Boolean(code) || showStockLine;
+  const showStock = stock != null && !isTable;
+  const showMetaLine = (!isTable && Boolean(code)) || showStock;
 
   return (
     <div className={cn(isTable ? 'space-y-0' : 'space-y-0.5 sm:space-y-1', className)}>
       {showBrandLine ? (
-        <p className="flex min-w-0 items-baseline">
-          <span className={cn(brandClass, 'min-w-0')}>{brand}</span>
+        <p className="min-w-0">
+          <span className={cn(brandClass, 'block leading-none')}>{brand}</span>
         </p>
       ) : null}
       <h3 className={titleClass}>{title}</h3>
@@ -98,8 +79,15 @@ export function ProductCardTitle({
           ) : (
             <span className="min-w-0" aria-hidden="true" />
           )}
-          {showStockLine ? (
-            <ProductCardStockLabel outOfStock={outOfStock} stock={stock ?? 0} />
+          {showStock ? (
+            <span
+              className={cn(
+                'shrink-0 text-[0.62rem] font-semibold tabular-nums sm:text-[0.65rem]',
+                cardStockClass(outOfStock, stock ?? 0),
+              )}
+            >
+              {formatCardStockLabel(outOfStock, stock ?? 0)}
+            </span>
           ) : null}
         </div>
       ) : null}

@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiFetch } from '@/lib/api';
+import {
+  fetchStoreCategoriesTreeWithFallback,
+  STORE_CATEGORIES_QUERY_KEY,
+} from '@/lib/store-categories-fetch';
+import { buildStaticStoreCategoryTree } from '@/lib/static-store-category-tree';
 import type {
   StoreCategory,
   StoreCategoryReorderItem,
@@ -12,9 +17,14 @@ export const EMPTY_STORE_CATEGORY_TREE: StoreCategoryTreeNode[] = [];
 
 export function useStoreCategoriesTree() {
   return useQuery({
-    queryKey: ['store-categories'],
-    queryFn: () => apiFetch<StoreCategoryTreeNode[]>('/api/categories'),
-    staleTime: 1000 * 30,
+    queryKey: [STORE_CATEGORIES_QUERY_KEY],
+    queryFn: fetchStoreCategoriesTreeWithFallback,
+    staleTime: 1000 * 60,
+    gcTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8_000),
+    placeholderData: (previous) => previous ?? buildStaticStoreCategoryTree(),
   });
 }
 
@@ -22,7 +32,7 @@ export function useStoreCategoriesMutations() {
   const queryClient = useQueryClient();
 
   const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ['store-categories'] });
+    void queryClient.invalidateQueries({ queryKey: [STORE_CATEGORIES_QUERY_KEY] });
   };
 
   const syncFromInventory = useMutation({

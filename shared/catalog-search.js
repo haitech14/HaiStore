@@ -130,6 +130,10 @@ function termMatchesHaystack(
     return true;
   }
 
+  if (isModelLikeSearchTerm(term) && compactIncludesBoundedModelTerm(haystackCompact, term)) {
+    return true;
+  }
+
   if (/\d/.test(term)) {
     const tokens = modelTokens ?? extractModelTokens(haystackCompact);
     for (const token of tokens) {
@@ -223,6 +227,247 @@ function isConsumableOrPartProduct(product) {
   );
 }
 
+function buildModelQueryCompact(query) {
+  const terms = searchTerms(query).filter((term) => !KNOWN_BRANDS.includes(term));
+  const compact = compactSearchText(terms.join(''));
+  return /\d/.test(compact) && compact.length >= 3 ? compact : '';
+}
+
+function compactIncludesBoundedModelTerm(haystackCompact, term) {
+  if (!term || !haystackCompact.includes(term)) return false;
+
+  let index = haystackCompact.indexOf(term);
+  while (index !== -1) {
+    const before = index > 0 ? haystackCompact.charAt(index - 1) : '';
+    if (!before || !/[a-z]/.test(before)) return true;
+    index = haystackCompact.indexOf(term, index + 1);
+  }
+
+  return false;
+}
+
+function isModelLikeSearchTerm(term) {
+  return /^[a-z]{1,4}\d+[a-z0-9]*$/i.test(term) || /^\d+[a-z][a-z0-9]*$/i.test(term);
+}
+
+function scoreModelQueryMatch(product, modelQueryCompact) {
+  if (!modelQueryCompact || modelQueryCompact.length < 3) return 0;
+
+  const nameCompact = compactSearchText(product.name ?? '');
+  const primaryCompact = compactSearchText(getNamePrimarySegment(product.name ?? ''));
+  const haystackCompact = compactSearchText(productSearchHaystack(product));
+
+  if (
+    primaryCompact.includes(modelQueryCompact) ||
+    nameCompact.includes(modelQueryCompact) ||
+    haystackCompact.includes(modelQueryCompact)
+  ) {
+    return 85_000;
+  }
+
+  const numericPart = modelQueryCompact.replace(/\D/g, '');
+  if (numericPart.length >= 3 && /[a-z]/i.test(modelQueryCompact)) {
+    if (
+      productHasNumericModelTokenMatch(product, numericPart) &&
+      !nameCompact.includes(modelQueryCompact)
+    ) {
+      return -48_000;
+    }
+  }
+
+  if (compactIncludesBoundedModelTerm(nameCompact, modelQueryCompact)) {
+    return 28_000;
+  }
+
+  if (compactIncludesBoundedModelTerm(haystackCompact, modelQueryCompact)) {
+    return 12_000;
+  }
+
+  return 0;
+}
+
+function isTonerInventoryCategory(category) {
+  const normalized = normalizeCatalogSearchText(category);
+  return (
+    /(toner|t[oó]ner|suministro|consumible|cartucho)/.test(normalized) &&
+    !/repuesto|refacci[oó]n|pieza|partes/.test(normalized)
+  );
+}
+
+function isRepuestoInventoryCategory(category, nameHaystack) {
+  const normalized = normalizeCatalogSearchText(category);
+  return (
+    /repuesto|refacci[oó]n|pieza|partes/.test(normalized) ||
+    /repuesto|refacci[oó]n|pieza|partes/.test(nameHaystack)
+  );
+}
+
+function isOriginalInventoryProduct(product) {
+  const haystack = normalizeCatalogSearchText(
+    `${product.category ?? ''} ${product.name ?? ''} ${product.brand ?? ''}`,
+  );
+  if (/(compatible|compatibl|alternativ|gen[eé]ric|remanufactur|seminueva)/.test(haystack)) {
+    return false;
+  }
+  return /(original|genuin|oem|oficial|nueva|nuevo)/.test(haystack);
+}
+
+function isCompatibleInventoryProduct(product) {
+  const haystack = normalizeCatalogSearchText(`${product.category ?? ''} ${product.name ?? ''}`);
+  return /(compatible|compatibl|alternativ|gen[eé]ric|remanufactur|seminueva)/.test(haystack);
+}
+
+/**
+ * Prioridad de categoría en resultados de búsqueda (menor = más arriba).
+ * Equipos → tóner original → tóner compatible → repuestos original → repuestos compatible → accesorios.
+ */
+export function getProductSearchCategoryRank(product) {
+  const category = normalizeCatalogSearchText(product.category ?? '');
+  const nameHaystack = normalizeCatalogSearchText(`${product.category ?? ''} ${product.name ?? ''}`);
+
+  if (/multifuncion/.test(category)) return 0;
+  if (/impresor/.test(category)) return 1;
+  if (
+    /(formato ancho|plotter|copiadora|esc[aá]ner|scanner|\bequipo\b)/.test(category) ||
+    isPrinterEquipmentProduct(product)
+  ) {
+    return 2;
+  }
+
+  if (isTonerInventoryCategory(category) || isTonerInventoryCategory(nameHaystack)) {
+    if (isOriginalInventoryProduct(product)) return 3;
+    if (isCompatibleInventoryProduct(product)) return 4;
+    return 5;
+  }
+
+  if (isRepuestoInventoryCategory(category, nameHaystack)) {
+    if (isCompatibleInventoryProduct(product)) return 7;
+    return 6;
+  }
+
+  if (/accesorio|cable|adaptador|bandeja|cassette|charola/.test(category)) return 8;
+
+  return 9;
+}
+
+const TONER_SEARCH_SIBLING_RANKS = new Set([3, 4, 5]);
+const REPUESTO_SEARCH_SIBLING_RANKS = new Set([6, 7]);
+const MAX_COLOR_SIBLINGS_PER_GROUP = 4;
+const COLOR_SUFFIX_PATTERN = /\s+(negro|black|cyan|magenta|amarillo|yellow)\s*$/i;
+const REND_PAGES_SUFFIX_PATTERN = /\s+\(\s*[\d.,]+\s*p[aá]ginas\s+al\s+5%\s*\)\s*$/i;
+const REND_LEGACY_SUFFIX_PATTERN = /\s+\(\s*rend[^)]*\)\s*$/i;
+
+/**
+ * Clave para agrupar variantes de color del mismo consumible (tóner / repuesto).
+ * @param {import('../src/types/product').Product | { name?: string | null }} product
+ */
+export function getConsumableSiblingGroupKey(product) {
+  const name = normalizeCatalogSearchText(product.name ?? '');
+  if (!name) return '';
+
+  return name
+    .replace(REND_PAGES_SUFFIX_PATTERN, '')
+    .replace(REND_LEGACY_SUFFIX_PATTERN, '')
+    .replace(COLOR_SUFFIX_PATTERN, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function shouldExpandColorSiblings(rank) {
+  return TONER_SEARCH_SIBLING_RANKS.has(rank) || REPUESTO_SEARCH_SIBLING_RANKS.has(rank);
+}
+
+function getConsumableSiblingClusterKey(product) {
+  const rank = getProductSearchCategoryRank(product);
+  const category = normalizeCatalogSearchText(product.category ?? '');
+  const groupKey = getConsumableSiblingGroupKey(product);
+  if (!shouldExpandColorSiblings(rank) || !groupKey) return '';
+  return `${rank}::${category}::${groupKey}`;
+}
+
+/**
+ * Agrupa variantes de color del conjunto completo de coincidencias.
+ * @param {import('../src/types/product').Product[]} products
+ * @param {string} query
+ */
+function buildSearchResultPicks(products, query) {
+  /** @type {Map<string, import('../src/types/product').Product[]>} */
+  const clusters = new Map();
+  /** @type {import('../src/types/product').Product[]} */
+  const singles = [];
+
+  for (const product of products) {
+    const clusterKey = getConsumableSiblingClusterKey(product);
+    if (!clusterKey) {
+      singles.push(product);
+      continue;
+    }
+    const bucket = clusters.get(clusterKey) ?? [];
+    bucket.push(product);
+    clusters.set(clusterKey, bucket);
+  }
+
+  /** @type {Array<{ rank: number; score: number; products: import('../src/types/product').Product[] }>} */
+  const picks = [];
+
+  for (const members of clusters.values()) {
+    const ordered = sortScoredProductsByRelevance(members, query).slice(
+      0,
+      MAX_COLOR_SIBLINGS_PER_GROUP,
+    );
+    const lead = ordered[0];
+    if (!lead) continue;
+    picks.push({
+      rank: getProductSearchCategoryRank(lead),
+      score: scoreProductSearchRelevance(lead, query),
+      products: ordered,
+    });
+  }
+
+  for (const product of singles) {
+    picks.push({
+      rank: getProductSearchCategoryRank(product),
+      score: scoreProductSearchRelevance(product, query),
+      products: [product],
+    });
+  }
+
+  picks.sort((a, b) => {
+    if (a.rank !== b.rank) return a.rank - b.rank;
+    if (b.score !== a.score) return b.score - a.score;
+    return (a.products[0]?.name ?? '').localeCompare(b.products[0]?.name ?? '', 'es');
+  });
+
+  return picks;
+}
+
+/**
+ * @param {import('../src/types/product').Product[]} result
+ * @param {Set<string>} usedIds
+ * @param {import('../src/types/product').Product[]} products
+ * @param {number} safeLimit
+ */
+function appendUniqueProducts(result, usedIds, products, safeLimit) {
+  for (const product of products) {
+    if (result.length >= safeLimit) break;
+    const id = String(product.id ?? '');
+    if (id && usedIds.has(id)) continue;
+    result.push(product);
+    if (id) usedIds.add(id);
+  }
+}
+
+function compareSearchResultEntries(a, b, query) {
+  const scoreDiff = scoreProductSearchRelevance(b, query) - scoreProductSearchRelevance(a, query);
+  if (Math.abs(scoreDiff) >= 12_000) return scoreDiff;
+
+  const rankDiff = getProductSearchCategoryRank(a) - getProductSearchCategoryRank(b);
+  if (rankDiff !== 0) return rankDiff;
+
+  if (scoreDiff !== 0) return scoreDiff;
+  return (a.name ?? '').localeCompare(b.name ?? '', 'es');
+}
+
 function countTermsMatched(terms, text, compact, { allowFuzzy = true } = {}) {
   if (terms.length === 0) return 0;
   const modelTokens = /\d/.test(terms.join('')) ? extractModelTokens(compact) : null;
@@ -300,7 +545,12 @@ export function scoreProductSearchRelevance(product, query) {
   }
 
   if (equipmentIntent && isConsumableOrPartProduct(product)) {
-    score -= numericModelSearch ? 45_000 : 28_000;
+    score -= numericModelSearch ? 55_000 : 38_000;
+  }
+
+  const modelQueryCompact = buildModelQueryCompact(query);
+  if (modelQueryCompact) {
+    score += scoreModelQueryMatch(product, modelQueryCompact);
   }
 
   if (numericModelSearch && isUnrelatedCategoryForPrinterModelSearch(product)) {
@@ -358,9 +608,7 @@ function resolveProductHaystackFields(product) {
 }
 
 export function compareProductSearchRelevance(a, b, query) {
-  const scoreDiff = scoreProductSearchRelevance(b, query) - scoreProductSearchRelevance(a, query);
-  if (scoreDiff !== 0) return scoreDiff;
-  return (a.name ?? '').localeCompare(b.name ?? '', 'es');
+  return compareSearchResultEntries(a, b, query);
 }
 
 function partitionSearchResultsByEquipmentIntent(products, query) {
@@ -369,7 +617,7 @@ function partitionSearchResultsByEquipmentIntent(products, query) {
   const equipment = [];
   const rest = [];
   for (const product of products) {
-    if (isPrinterEquipmentProduct(product)) {
+    if (isPrinterEquipmentProduct(product) || getProductSearchCategoryRank(product) <= 2) {
       equipment.push(product);
     } else {
       rest.push(product);
@@ -387,17 +635,7 @@ function partitionSearchResultsByEquipmentIntent(products, query) {
 function sortScoredProductsByRelevance(products, query) {
   if (products.length <= 1) return [...products];
 
-  const scored = products.map((product) => ({
-    product,
-    score: scoreProductSearchRelevance(product, query),
-  }));
-
-  scored.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    return (a.product.name ?? '').localeCompare(b.product.name ?? '', 'es');
-  });
-
-  return scored.map((entry) => entry.product);
+  return [...products].sort((a, b) => compareSearchResultEntries(a, b, query));
 }
 
 export function sortProductsBySearchRelevance(products, query) {
@@ -408,11 +646,32 @@ export function sortProductsBySearchRelevance(products, query) {
   return sortScoredProductsByRelevance(products, query);
 }
 
-/** Devuelve los mejores `limit` resultados sin ordenar el resto del array. */
+/** Devuelve los mejores `limit` resultados priorizando precisión, categoría y variantes de color. */
 export function takeTopProductsBySearchRelevance(products, query, limit) {
   const safeLimit = Math.max(Number(limit) || 1, 1);
   const sorted = sortProductsBySearchRelevance(products, query);
-  return sorted.slice(0, safeLimit);
+  if (sorted.length <= safeLimit) {
+    return sorted;
+  }
+
+  const picks = buildSearchResultPicks(sorted, query);
+  const result = [];
+  const usedIds = new Set();
+  const ranksRepresented = new Set();
+
+  for (const pick of picks) {
+    if (result.length >= safeLimit) break;
+    if (ranksRepresented.has(pick.rank)) continue;
+    ranksRepresented.add(pick.rank);
+    appendUniqueProducts(result, usedIds, pick.products, safeLimit);
+  }
+
+  for (const pick of picks) {
+    if (result.length >= safeLimit) break;
+    appendUniqueProducts(result, usedIds, pick.products, safeLimit);
+  }
+
+  return result;
 }
 
 export function productMatchesSearchQuery(product, query) {
@@ -425,7 +684,33 @@ export function productMatchesSearchQuery(product, query) {
 
   const { haystack, haystackCompact, modelTokens } = resolveProductHaystackFields(product);
 
+  const isCodeLikeQuery =
+    terms.length === 1 &&
+    compactQuery.length >= 6 &&
+    /[a-z]/i.test(compactQuery) &&
+    /\d/.test(compactQuery);
+
+  // Cuando el usuario escribe un SKU/código alfanumérico (p. ej. PMD0CZ450K),
+  // la intención suele ser coincidencia exacta por `code` (o `id`), no por modelo/serie.
+  if (isCodeLikeQuery) {
+    const codeCompact = compactSearchText(String(product?.code ?? ''));
+    if (codeCompact && codeCompact === compactQuery) return true;
+    const idCompact = compactSearchText(String(product?.id ?? ''));
+    if (idCompact && idCompact === compactQuery) return true;
+    return false;
+  }
+
   const hasNumericOnlyTerms = terms.length > 0 && terms.every((term) => /^\d+$/.test(term));
+  // Cuando el usuario busca un código numérico largo (p. ej. SKU 842093),
+  // evitamos coincidencias por prefijo/subtoken (p. ej. "842093" -> "8420").
+  // En ese caso, la intención suele ser coincidencia exacta por código.
+  if (hasNumericOnlyTerms && compactQuery.length >= 5) {
+    const codeCompact = compactSearchText(String(product?.code ?? ''));
+    if (codeCompact && codeCompact.includes(compactQuery)) return true;
+    const idCompact = compactSearchText(String(product?.id ?? ''));
+    if (idCompact && idCompact === compactQuery) return true;
+    return false;
+  }
   if (
     !hasNumericOnlyTerms &&
     (haystack.includes(normalizedQuery) || haystackCompact.includes(compactQuery))

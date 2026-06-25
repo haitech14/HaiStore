@@ -172,6 +172,8 @@ export interface CartItem {
   configuration?: CartConfigurationLine;
   /** Precio unitario USD con descuento por volumen al agregar. */
   volumeUnitPriceUsd?: number;
+  /** Tipo de preparado en equipos seminuevos (solo visitantes públicos). */
+  preparationType?: 'acondicionada' | 'semirepotenciada';
 }
 
 export interface UserProfile {

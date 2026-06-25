@@ -93,7 +93,15 @@ export function buildProductImageCandidates(
   return candidates;
 }
 
-/** Segunda imagen de galería para hover en tarjetas (`gallery[1]`, sin duplicar la principal). */
+/** Solo fotos del inventario (principal + galería), sin placeholders por modelo/categoría. */
+export function buildProductStoredImageCandidates(
+  product: ResolveProductImageInput,
+  options?: ResolveProductImageOptions,
+): string[] {
+  return buildProductImageCandidates(product, { ...options, stockFallback: false });
+}
+
+/** Primera imagen adicional de galería para hover en tarjetas (sin duplicar la principal). */
 export function resolveProductCardHoverImage(
   product: ResolveProductImageInput,
   options?: ResolveProductImageOptions,
@@ -106,9 +114,6 @@ export function resolveProductCardHoverImage(
     if (primary && url === primary) return null;
     return url;
   };
-
-  const secondGallery = pick(gallery[1]);
-  if (secondGallery) return secondGallery;
 
   for (const url of gallery) {
     const resolved = pick(url);

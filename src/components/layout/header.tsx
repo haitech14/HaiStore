@@ -44,10 +44,7 @@ const mobileNavItems: MainNavItem[] = headerMainNavLinks.map((item) => {
   return mapped;
 });
 
-const navItems: MainNavItem[] = [
-  { to: '/servicios', label: 'Servicios' },
-  ...mobileNavItems,
-];
+const navItems: MainNavItem[] = mobileNavItems;
 
 function mainNavLinkProps(item: MainNavItem) {
   if (!item.matchActive) {

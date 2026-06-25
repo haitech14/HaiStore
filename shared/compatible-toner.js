@@ -1,18 +1,23 @@
-import { LANDING_CATEGORY, landingInventoryCategory } from './landing-categories.js';
+// Categoría canónica usada en inventario y filtros.
+// Se deja fija para evitar cambios por renombres de la landing.
+export const CATEGORY_COMPATIBLE_TONER = 'Suministros, Toner Compatible';
 
 export const COMPATIBLE_TONER_BRAND_SUFFIX = 'HaiPrint';
 export const COMPATIBLE_TONER_BRAND_SUFFIX_LEGACY = 'Haitone';
 
-export const CATEGORY_COMPATIBLE_TONER = landingInventoryCategory(
-  LANDING_CATEGORY.toner,
-  LANDING_CATEGORY.tonerCompatible,
-);
 export const CATEGORY_COMPATIBLE_TONER_HAITONE_LEGACY = 'Toner Compatibles Haitone';
 export const CATEGORY_COMPATIBLE_TONER_LEGACY = 'Toner Compatibles';
 export const CATEGORY_COMPATIBLE_TONER_HAIPRINT_LEGACY = 'Toner Compatibles HaiPrint';
 
 export const COMPATIBLE_TONER_INVENTORY_LABELS = [
   CATEGORY_COMPATIBLE_TONER,
+  // Legacy / importaciones previas cuando el padre era "Toner y Suministros".
+  'Toner y Suministros, Toner Compatible',
+  // Variante cuando el padre se renombró a "Suministros".
+  'Suministros, Toner Compatible',
+  // Variante previa cuando se normalizaba como "Toner".
+  'Toner, Toner Compatible',
+  'Toner, Toner Compatibles',
   CATEGORY_COMPATIBLE_TONER_HAIPRINT_LEGACY,
   CATEGORY_COMPATIBLE_TONER_HAITONE_LEGACY,
   CATEGORY_COMPATIBLE_TONER_LEGACY,

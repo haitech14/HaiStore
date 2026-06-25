@@ -1,6 +1,7 @@
 import { getCatalogProductById } from '@/lib/catalog-featured';
 import {
   buildProductImageCandidates,
+  buildProductStoredImageCandidates,
   resolveProductCardHoverImage,
   type ResolveProductImageInput,
   type ResolveProductImageOptions,
@@ -41,6 +42,16 @@ export function buildProductCardImageCandidates(
 ): string[] {
   return buildProductImageCandidates(buildProductCardImageSource(product), {
     stockFallback: true,
+    ...options,
+  });
+}
+
+/** Candidatos de inventario para fallback de hover (sin imágenes genéricas por modelo). */
+export function buildProductCardStoredImageCandidates(
+  product: ResolveProductImageInput & { id?: string },
+  options?: ResolveProductImageOptions,
+): string[] {
+  return buildProductStoredImageCandidates(buildProductCardImageSource(product), {
     ...options,
   });
 }

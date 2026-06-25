@@ -8,13 +8,13 @@ import type { EquipmentConfigOption, EquipmentConfigStep } from '@/types/product
 import type { Product } from '@/types/product';
 
 /** Tóner original IM 430F en inventario (código 419078). */
-export const IM430F_ORIGINAL_TONER_PRODUCT_ID = 'toner-419078';
+export const IM430F_ORIGINAL_TONER_PRODUCT_ID = '419078';
 
 /** Tóner original IM 550F / IM 600F en inventario (código 418480). */
-export const IM550F_ORIGINAL_TONER_PRODUCT_ID = 'toner-418480';
+export const IM550F_ORIGINAL_TONER_PRODUCT_ID = '418480';
 
 /** Tóner compatible IM 550 en inventario. */
-export const IM550F_COMPATIBLE_TONER_PRODUCT_ID = 'toner-compat-tc-im-550-intercopy';
+export const IM550F_COMPATIBLE_TONER_PRODUCT_ID = 'compat-tc-im-550-intercopy';
 
 /** Casetera 250 hojas — PB1110 (IM 430F). */
 export const CASETERA_250_PB1110_PRODUCT_ID = 'ricoh-acc-418080';

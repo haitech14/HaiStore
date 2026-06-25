@@ -3,6 +3,12 @@ import {
 } from '@/data/catalog-format-spotlight';
 // @ts-expect-error módulo JS compartido sin declaración de tipos
 import { isHomeCarouselExcludedProduct } from '../../shared/home-excluded-products.js';
+// @ts-expect-error módulo JS compartido sin declaración de tipos
+import {
+  MOST_VIEWED_OFFER_ATTR_KEY,
+  productHasMostViewedOfferAttribute,
+  resolveMostViewedOfferProductIds,
+} from '../../shared/catalog-most-viewed-offers.js';
 import { sortProductsByPublicPriceAsc } from '@/lib/inventory-product-order';
 import type { Product } from '@/types/product';
 
@@ -18,31 +24,32 @@ export const ADF_DOBLE_SCAN_KEY = `${ADF_ATTR}::Doble Scan`;
 export const EXCLUDED_QUICK_ATTRIBUTE_KEYS = new Set([
   `${ADF_ATTR}::No tiene`,
   `${ADF_ATTR}::Estandar`,
+  MOST_VIEWED_OFFER_ATTR_KEY,
 ]);
 
 export const PRODUCTION_FILTER_OPTIONS = [
   {
     key: `${PRODUCCION_ATTR}::Basico (>5000 páginas)`,
     label: 'Basico (>5000 páginas)',
-    sidebarLabel: 'Básico (>5.000 páginas)',
+    sidebarLabel: 'Básico >5k',
     value: 'Basico (>5000 páginas)',
   },
   {
     key: `${PRODUCCION_ATTR}::Mediano (15,000 páginas aprox)`,
     label: 'Mediano (15,000 páginas aprox)',
-    sidebarLabel: 'Mediano (~15.000 páginas)',
+    sidebarLabel: 'Mediano ~15k',
     value: 'Mediano (15,000 páginas aprox)',
   },
   {
     key: `${PRODUCCION_ATTR}::Alta Producción (50,000 páginas aprox)`,
     label: 'Alta Producción (50,000 páginas aprox)',
-    sidebarLabel: 'Alta producción (~50.000 páginas)',
+    sidebarLabel: 'Alta ~50k',
     value: 'Alta Producción (50,000 páginas aprox)',
   },
   {
     key: `${PRODUCCION_ATTR}::Producción (200,000 a 500,000 páginas aprox)`,
     label: 'Producción (200,000 a 500,000 páginas aprox)',
-    sidebarLabel: 'Producción (200k–500k páginas)',
+    sidebarLabel: '200k–500k',
     value: 'Producción (200,000 a 500,000 páginas aprox)',
   },
 ] as const;
@@ -364,6 +371,25 @@ function productMatchesModelPatterns(product: Product, patterns: readonly RegExp
   return patterns.some((pattern) => pattern.test(haystack));
 }
 
+function isCrossListedToA4(product: Product): boolean {
+  return (
+    inferFormatoPapelFromModel(product) === 'A3' &&
+    productMatchesModelPatterns(product, CATALOG_FORMAT_CROSS_LIST_TO_A4_PATTERNS)
+  );
+}
+
+/** Una tarjeta por producto al aplanar subsecciones B/N · A4/A3 del catálogo. */
+export function dedupeCatalogProductsById(products: readonly Product[]): Product[] {
+  const seen = new Set<string>();
+  const result: Product[] = [];
+  for (const product of products) {
+    if (seen.has(product.id)) continue;
+    seen.add(product.id);
+    result.push(product);
+  }
+  return result;
+}
+
 function sortCatalogSubsectionProducts(products: readonly Product[]): Product[] {
   return sortProductsByPublicPriceAsc([...products]);
 }
@@ -464,16 +490,17 @@ export function findProductCatalogFormatPlacement(
 }
 
 export function getCatalogLayoutOrderedProducts(products: readonly Product[]): Product[] {
-  return buildCatalogFormatSections(products).flatMap((section) =>
+  const ordered = buildCatalogFormatSections(products).flatMap((section) =>
     section.subsections.flatMap((subsection) => subsection.products),
   );
+  return dedupeCatalogProductsById(ordered);
 }
 
 export const CATALOG_SPEC_FILTER_TABS = [
-  { key: `${FORMATO_PAPEL_ATTR}::A4`, label: 'Formato A4' },
-  { key: `${FORMATO_PAPEL_ATTR}::A3`, label: 'Formato A3' },
   { key: 'Color::B/N', label: 'B/N' },
   { key: 'Color::Color', label: 'Color' },
+  { key: `${FORMATO_PAPEL_ATTR}::A4`, label: 'Formato A4' },
+  { key: `${FORMATO_PAPEL_ATTR}::A3`, label: 'Formato A3' },
 ] as const;
 
 const FORMAT_FILTER_KEYS = new Set<string>(
@@ -493,6 +520,30 @@ export const CATALOG_SPEC_FILTER_TAB_KEYS = new Set<string>(
 export function shouldShowCatalogSpecFilterTabs(slug: string | undefined): boolean {
   return slug === 'multifuncionales' || slug === 'impresoras' || slug === 'tienda';
 }
+
+/** Sidebar fijo, vista tabla/grilla y toolbar compacto (tóner, repuestos, equipos). */
+export function shouldUseCatalogSidebarLayout(slug: string | undefined): boolean {
+  return (
+    shouldShowCatalogSpecFilterTabs(slug) ||
+    slug === 'toner-suministros' ||
+    slug === 'repuestos' ||
+    slug === 'formato-ancho' ||
+    slug === 'accesorios'
+  );
+}
+
+export type CatalogBrandFilter = {
+  key: string;
+  label: string;
+  count: number;
+};
+
+export {
+  buildBrandFacets,
+  getCatalogBrandLabel,
+  normalizeCatalogBrandKey,
+  productMatchesBrandFilter,
+} from '../../shared/catalog-brand-filter.js';
 
 export function buildCatalogSpecFilterTabs(products: readonly Product[]) {
   return CATALOG_SPEC_FILTER_TABS.map(({ key, label }) => ({
@@ -536,6 +587,10 @@ export function resolveProductCatalogAttributeKeys(product: Product): Set<string
     keys.add(attributeKey(FORMATO_PAPEL_ATTR, resolveFormatoPapel(product)));
   }
 
+  if (isCrossListedToA4(product)) {
+    keys.add(attributeKey(FORMATO_PAPEL_ATTR, 'A4'));
+  }
+
   if (![...keys].some((key) => key.startsWith('Color::'))) {
     keys.add(attributeKey('Color', inferColor(product)));
   }
@@ -558,8 +613,15 @@ export function productMatchesCatalogFilters(
   product: Product,
   attributeKeys: string[],
   productionKey: string | null,
+  catalogContextProducts?: readonly Product[],
 ): boolean {
   const resolved = resolveProductCatalogAttributeKeys(product);
+  if (catalogContextProducts?.length && attributeKeys.includes(MOST_VIEWED_OFFER_ATTR_KEY)) {
+    const offerIds = resolveMostViewedOfferProductIds(catalogContextProducts);
+    if (productHasMostViewedOfferAttribute(product, offerIds)) {
+      resolved.add(MOST_VIEWED_OFFER_ATTR_KEY);
+    }
+  }
   if (attributeKeys.length > 0 && !attributeKeys.every((key) => resolved.has(key))) {
     return false;
   }
@@ -571,5 +633,12 @@ export function countProductsForAttributeKey(
   products: readonly Product[],
   key: string,
 ): number {
+  if (key === MOST_VIEWED_OFFER_ATTR_KEY) {
+    const offerIds = resolveMostViewedOfferProductIds(products);
+    return products.filter((product) => productHasMostViewedOfferAttribute(product, offerIds))
+      .length;
+  }
   return products.filter((product) => resolveProductCatalogAttributeKeys(product).has(key)).length;
 }
+
+export { MOST_VIEWED_OFFER_ATTR_KEY };

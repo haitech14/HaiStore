@@ -17,6 +17,7 @@ interface ProductDetailRolePriceLinesProps {
   fullPrices: ProductRolePrices;
   bulkDiscountTiers: BulkDiscountTier[];
   equipmentExtrasUsd: number;
+  preparationSurchargeUsd?: number;
   className?: string;
 }
 
@@ -26,8 +27,10 @@ function computeRoleTotalUsd(
   fullPrices: ProductRolePrices,
   bulkDiscountTiers: BulkDiscountTier[],
   equipmentExtrasUsd: number,
+  preparationSurchargeUsd = 0,
 ): number {
-  const baseUsd = fullPrices[role];
+  const baseUsd =
+    fullPrices[role] + (role === 'public' ? preparationSurchargeUsd : 0);
   const volume = resolveBulkDiscountPricing(quantity, baseUsd, bulkDiscountTiers, {
     floorPriceUsd: fullPrices.tecnico,
   });
@@ -41,6 +44,7 @@ export function ProductDetailRolePriceLines({
   fullPrices,
   bulkDiscountTiers,
   equipmentExtrasUsd,
+  preparationSurchargeUsd = 0,
   className,
 }: ProductDetailRolePriceLinesProps) {
   const { isAdmin, viewAsRoles, effectiveRole } = useAuth();
@@ -57,8 +61,15 @@ export function ProductDetailRolePriceLines({
 
   const publicTotalUsd = useMemo(
     () =>
-      computeRoleTotalUsd('public', quantity, fullPrices, bulkDiscountTiers, equipmentExtrasUsd),
-    [quantity, fullPrices, bulkDiscountTiers, equipmentExtrasUsd],
+      computeRoleTotalUsd(
+        'public',
+        quantity,
+        fullPrices,
+        bulkDiscountTiers,
+        equipmentExtrasUsd,
+        preparationSurchargeUsd,
+      ),
+    [quantity, fullPrices, bulkDiscountTiers, equipmentExtrasUsd, preparationSurchargeUsd],
   );
 
   const tecnicoTotalUsd = useMemo(
@@ -75,7 +86,11 @@ export function ProductDetailRolePriceLines({
 
   const visitorTotalUsd = useMemo(() => {
     const baseUsd = displayPrice.previewAsRole ? displayPrice.priceUsd : product.price;
-    const volume = resolveBulkDiscountPricing(quantity, baseUsd, bulkDiscountTiers, {
+    const adjustedBase =
+      !displayPrice.previewAsRole && effectiveRole === 'public'
+        ? baseUsd + preparationSurchargeUsd
+        : baseUsd;
+    const volume = resolveBulkDiscountPricing(quantity, adjustedBase, bulkDiscountTiers, {
       floorPriceUsd: fullPrices.tecnico,
     });
     return volume.totalUsd + equipmentExtrasUsd * quantity;
@@ -83,6 +98,8 @@ export function ProductDetailRolePriceLines({
     displayPrice.previewAsRole,
     displayPrice.priceUsd,
     product.price,
+    effectiveRole,
+    preparationSurchargeUsd,
     quantity,
     bulkDiscountTiers,
     fullPrices.tecnico,

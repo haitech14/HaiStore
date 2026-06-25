@@ -4,6 +4,9 @@ import {
   appendHaiPrintProductSuffix,
   CATEGORY_COMPATIBLE_TONER,
 } from '../../shared/compatible-toner.js';
+import {
+  deriveCompatibleTonerNumericCode,
+} from '../../shared/compatible-toner-product-code.js';
 import { normalizeAttributes } from './inventory-attributes.js';
 import { normalizeProductInput } from './inventory-store.js';
 import { roundSalePriceToNinety } from './toner-products-excel.js';
@@ -123,7 +126,7 @@ export function compatibleTonerProductIdFromCode(code) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  return `toner-compat-${slug || 'sin-codigo'}`;
+  return `compat-${slug || 'sin-codigo'}`;
 }
 
 /**
@@ -171,11 +174,14 @@ export function mapCompatibleTonerRow(row, state) {
     }
 
     const name = buildRecargaTitle(descripcion);
-    const code = compatibleTonerCodeFromParts('TR', [descripcion]);
+    const legacySlug = compatibleTonerCodeFromParts('TR', [descripcion]);
+    const id = compatibleTonerProductIdFromCode(legacySlug);
+    const code = deriveCompatibleTonerNumericCode(id);
 
     return {
       product: buildProduct({
         code,
+        id,
         name,
         tipo: 'Recarga',
         modelo: '',
@@ -217,15 +223,18 @@ export function mapCompatibleTonerRow(row, state) {
     marca: carryMarca,
     tone: toneCell,
   });
-  const code = compatibleTonerCodeFromParts('TC', [
+  const legacySlug = compatibleTonerCodeFromParts('TC', [
     carryModelo,
     carryMarca,
     tone === 'BK' ? 'BK' : tone === 'Color' ? 'COLOR' : '',
   ]);
+  const id = compatibleTonerProductIdFromCode(legacySlug);
+  const code = deriveCompatibleTonerNumericCode(id);
 
   return {
     product: buildProduct({
       code,
+      id,
       name,
       tipo: 'Cartucho',
       modelo: carryModelo,
@@ -252,7 +261,7 @@ export function mapCompatibleTonerRow(row, state) {
  *   publico: number;
  * }}
  */
-function buildProduct({ code, name, tipo, modelo, marca, tone, compra, tecnico, publico }) {
+function buildProduct({ code, id, name, tipo, modelo, marca, tone, compra, tecnico, publico }) {
   /** @type {Array<{ name: string; value: string }>} */
   const attributes = [{ name: 'Tipo', value: tipo }];
   if (modelo) attributes.push({ name: 'Modelo de equipo', value: modelo });
@@ -271,7 +280,7 @@ function buildProduct({ code, name, tipo, modelo, marca, tone, compra, tecnico, 
   const displayName = appendHaiPrintProductSuffix(name);
 
   return normalizeProductInput({
-    id: compatibleTonerProductIdFromCode(code),
+    id: id ?? compatibleTonerProductIdFromCode(code),
     code,
     name: displayName,
     description: displayName,

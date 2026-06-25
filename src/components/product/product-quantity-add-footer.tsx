@@ -3,8 +3,11 @@ import { Minus, Plus, ShoppingCart } from 'lucide-react';
 
 import {
   AddToCartButton,
+  adjustProductQuantity,
+  formatOrderQuantityHint,
   getAddToCartLabel,
-  isProductOutOfStock,
+  hasOnRequestQuantity,
+  ON_REQUEST_PRODUCT_BUTTON_CLASS,
 } from '@/components/cart/add-to-cart-button';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/types/product';
@@ -14,6 +17,8 @@ interface ProductQuantityAddFooterProps {
   className?: string;
   size?: 'sm' | 'md';
   onQuantityChange?: (quantity: number) => void;
+  /** Oculta el stepper hasta hover/focus en la tarjeta (`group`). */
+  revealQuantityOnHover?: boolean;
 }
 
 export function ProductQuantityAddFooter({
@@ -21,15 +26,16 @@ export function ProductQuantityAddFooter({
   className,
   size = 'md',
   onQuantityChange,
+  revealQuantityOnHover = true,
 }: ProductQuantityAddFooterProps) {
-  const outOfStock = isProductOutOfStock(product);
   const [quantity, setQuantity] = useState(1);
-  const maxQuantity = outOfStock ? 1 : Math.max(1, product.stock);
-  const cartLabel = outOfStock ? getAddToCartLabel(product, 'short') : 'Añadir';
+  const includesOnRequest = hasOnRequestQuantity(product, quantity);
+  const orderHint = formatOrderQuantityHint(product, quantity);
+  const cartLabel = getAddToCartLabel(product, 'short', quantity);
 
   const adjustQuantity = (delta: number) => {
     setQuantity((current) => {
-      const next = Math.max(1, Math.min(maxQuantity, current + delta));
+      const next = adjustProductQuantity(product, current, delta);
       onQuantityChange?.(next);
       return next;
     });
@@ -52,29 +58,55 @@ export function ProductQuantityAddFooter({
 
   return (
     <div
-      className={cn('flex w-full shrink-0 items-stretch gap-1.5 sm:gap-2', className)}
+      className={cn(
+        'flex w-full shrink-0 items-stretch',
+        revealQuantityOnHover
+          ? 'gap-0 transition-[gap] duration-200 ease-out group-hover:gap-1.5 group-focus-within:gap-1.5 sm:group-hover:gap-2 max-md:gap-1.5 motion-reduce:transition-none'
+          : 'gap-1.5 sm:gap-2',
+        className,
+      )}
     >
       <div
-        className="flex shrink-0 items-center rounded-md border border-border bg-white"
+        className={cn(
+          'flex shrink-0 items-center rounded-md border bg-white',
+          revealQuantityOnHover
+            ? cn(
+                'max-w-0 overflow-hidden border-transparent opacity-0',
+                'transition-[max-width,opacity,border-color] duration-200 ease-out motion-reduce:transition-none',
+                'group-hover:max-w-[7.5rem] group-hover:border-border group-hover:opacity-100',
+                'group-focus-within:max-w-[7.5rem] group-focus-within:border-border group-focus-within:opacity-100',
+                'focus-within:max-w-[7.5rem] focus-within:border-border focus-within:opacity-100',
+                'max-md:max-w-[7.5rem] max-md:border-border max-md:opacity-100',
+              )
+            : 'border-border',
+        )}
         role="group"
-        aria-label={`Cantidad de ${product.name}`}
+        aria-label={
+          orderHint
+            ? `Cantidad de ${product.name}: ${quantity} (${orderHint})`
+            : `Cantidad de ${product.name}`
+        }
       >
         <button
           type="button"
           onClick={() => adjustQuantity(-1)}
-          disabled={outOfStock || quantity <= 1}
+          disabled={quantity <= 1}
           aria-label="Disminuir cantidad"
           className={qtyButtonClass}
         >
           <Minus className="size-3.5" aria-hidden="true" />
         </button>
-        <span className={qtyValueClass} aria-live="polite" aria-atomic="true">
+        <span
+          className={qtyValueClass}
+          aria-live="polite"
+          aria-atomic="true"
+          title={orderHint ?? undefined}
+        >
           {quantity}
         </span>
         <button
           type="button"
           onClick={() => adjustQuantity(1)}
-          disabled={outOfStock || quantity >= maxQuantity}
           aria-label="Aumentar cantidad"
           className={qtyButtonClass}
         >
@@ -87,12 +119,12 @@ export function ProductQuantityAddFooter({
         addOptions={{ quantity }}
         className={cn(
           addButtonClass,
-          outOfStock
-            ? 'border border-border bg-white text-foreground hover:bg-muted/30'
+          includesOnRequest
+            ? ON_REQUEST_PRODUCT_BUTTON_CLASS
             : 'bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-600',
         )}
       >
-        {!outOfStock ? <ShoppingCart className="size-4 shrink-0" aria-hidden="true" /> : null}
+        {!includesOnRequest ? <ShoppingCart className="size-4 shrink-0" aria-hidden="true" /> : null}
         {cartLabel}
       </AddToCartButton>
     </div>

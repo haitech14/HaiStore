@@ -15,6 +15,7 @@ export const categoriesRouter = Router();
 categoriesRouter.get('/', async (_req, res, next) => {
   try {
     const tree = await readStoreCategoriesTree();
+    res.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300');
     res.json(tree);
   } catch (error) {
     next(error);

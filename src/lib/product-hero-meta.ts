@@ -79,7 +79,7 @@ export function resolveProductStockAvailability(
   const quantity = outOfStock ? 0 : Math.max(0, Math.floor(Number(product.stock) || 0));
 
   if (quantity <= 0) {
-    return { label: 'Sin stock', tone: 'unavailable', quantity: 0 };
+    return { label: 'A pedido', tone: 'unavailable', quantity: 0 };
   }
 
   if (quantity <= 3) {

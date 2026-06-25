@@ -1,6 +1,7 @@
 import * as React from 'react';
 
-import { buildEquipmentCartLineId, getPaidEquipmentOptions } from '@/lib/equipment-config-selection';
+import { getPaidEquipmentOptions } from '@/lib/equipment-config-selection';
+import { buildCartLineId, type SeminuevaPreparationType } from '@/lib/seminueva-preparation';
 import { clearStoredCart, readStoredCartItems, writeStoredCartItems } from '@/lib/cart-storage';
 import type { CartConfigurationLine, CartItem, Product } from '@/types/product';
 
@@ -13,6 +14,8 @@ export interface AddToCartOptions {
   accessoryProducts?: Product[];
   /** Precio unitario USD con descuento por volumen. */
   volumeUnitPriceUsd?: number;
+  /** Tipo de preparado en equipos seminuevos. */
+  preparationType?: SeminuevaPreparationType;
 }
 
 interface CartContextValue {
@@ -81,12 +84,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         let next = prev;
 
         const upsertLine = (targetProduct: Product, lineConfiguration?: CartConfigurationLine, lineQuantity = quantity) => {
-          const targetLineId = lineConfiguration
-            ? buildEquipmentCartLineId(
-                targetProduct.id,
-                getPaidEquipmentOptions(lineConfiguration.options),
-              )
-            : targetProduct.id;
+          const paidOptions = lineConfiguration
+            ? getPaidEquipmentOptions(lineConfiguration.options)
+            : [];
+          const preparationType =
+            targetProduct.id === product.id ? options?.preparationType : undefined;
+          const targetLineId = buildCartLineId(
+            targetProduct.id,
+            paidOptions,
+            preparationType,
+          );
           const existing = next.find((item) => item.lineId === targetLineId);
           if (existing) {
             next = next.map((item) =>
@@ -96,6 +103,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                     quantity: item.quantity + lineQuantity,
                     ...(options?.volumeUnitPriceUsd != null && targetProduct.id === product.id
                       ? { volumeUnitPriceUsd: options.volumeUnitPriceUsd }
+                      : {}),
+                    ...(preparationType && targetProduct.id === product.id
+                      ? { preparationType }
                       : {}),
                   }
                 : item,
@@ -108,6 +118,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               ...(lineConfiguration ? { configuration: lineConfiguration } : {}),
               ...(options?.volumeUnitPriceUsd != null && targetProduct.id === product.id
                 ? { volumeUnitPriceUsd: options.volumeUnitPriceUsd }
+                : {}),
+              ...(preparationType && targetProduct.id === product.id
+                ? { preparationType }
                 : {}),
             };
             next = [...next, nextItem];

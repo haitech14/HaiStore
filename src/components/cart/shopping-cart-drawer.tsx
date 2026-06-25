@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { FileText, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 
 import { CartQuoteDialog } from '@/components/cart/cart-quote-dialog';
+import { formatOrderQuantityHint, ON_REQUEST_STOCK_BADGE_CLASS } from '@/components/cart/add-to-cart-button';
 import { DualPrice } from '@/components/product-showcase-card';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/sheet';
 import { useCart, cartLineUnitUsd } from '@/context/cart-context';
 import { getPaidEquipmentOptions } from '@/lib/equipment-config-selection';
+import { SEMINUEVA_PREPARATION_LABELS } from '@/lib/seminueva-preparation';
 import { resolveProductImageUrl } from '@/lib/product-image-url';
 import { productPath } from '@/lib/product-path';
 import { cn, formatUsd } from '@/lib/utils';
@@ -62,11 +64,12 @@ export function ShoppingCartDrawer() {
           ) : (
             <ul className="flex-1 overflow-y-auto px-4 py-3" aria-label="Productos en el carrito">
               {items.map((item) => {
-                const { product, quantity, lineId, configuration } = item;
+                const { product, quantity, lineId, configuration, preparationType } = item;
                 const imageUrl = resolveProductImageUrl(product);
                 const isHighlighted = highlightProductId === product.id;
                 const lineUnitUsd = cartLineUnitUsd(item);
                 const paidOptions = getPaidEquipmentOptions(configuration?.options ?? []);
+                const orderHint = formatOrderQuantityHint(product, quantity);
 
                 return (
                   <li
@@ -111,6 +114,12 @@ export function ShoppingCartDrawer() {
                           {formatUsd(lineUnitUsd)} c/u
                         </p>
 
+                        {orderHint ? (
+                          <p className={cn('mt-1 text-xs', ON_REQUEST_STOCK_BADGE_CLASS)}>
+                            {orderHint}
+                          </p>
+                        ) : null}
+
                         {paidOptions.length > 0 ? (
                           <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
                             {paidOptions.map((option) => (
@@ -122,6 +131,15 @@ export function ShoppingCartDrawer() {
                               </li>
                             ))}
                           </ul>
+                        ) : null}
+
+                        {preparationType === 'semirepotenciada' ? (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Preparado:{' '}
+                            <span className="font-semibold text-[#0f1f3d]">
+                              {SEMINUEVA_PREPARATION_LABELS.semirepotenciada}
+                            </span>
+                          </p>
                         ) : null}
 
                         <div className="mt-2 flex items-center justify-between gap-2">
@@ -138,7 +156,10 @@ export function ShoppingCartDrawer() {
                             </Button>
                             <span
                               className="min-w-8 text-center text-sm font-semibold tabular-nums"
-                              aria-label={`Cantidad: ${quantity}`}
+                              aria-label={
+                                orderHint ? `Cantidad: ${quantity} (${orderHint})` : `Cantidad: ${quantity}`
+                              }
+                              title={orderHint ?? undefined}
                             >
                               {quantity}
                             </span>

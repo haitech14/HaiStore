@@ -1,4 +1,4 @@
-import { ArrowUpDown, Check, Columns3, LayoutGrid, List, Search, SlidersHorizontal } from 'lucide-react';
+import { ArrowUpDown, Check, Columns3, LayoutGrid, List, Search, SlidersHorizontal, Table2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import {
@@ -116,6 +116,21 @@ export function CategoryCatalogToolbar({
         ) : null}
 
         <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
+          <button
+            type="button"
+            aria-label="Filtros del catálogo"
+            aria-pressed={filtersPanelActive}
+            onClick={onToggleSidebarFilters}
+            className={cn(
+              iconButtonClass,
+              // En layout con sidebar fijo, el botón se oculta cuando el panel ya está abierto en desktop.
+              catalogSidebarLayout && filtersOpen && 'lg:hidden',
+              filtersPanelActive && 'border-red-600/30 bg-red-50 text-red-700',
+            )}
+          >
+            <SlidersHorizontal className="size-5" aria-hidden="true" />
+          </button>
+
           <div className="relative min-w-0 flex-1">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -138,103 +153,100 @@ export function CategoryCatalogToolbar({
             ) : null}
           </div>
 
-        {catalogSidebarLayout ? (
-          <>
-            <div
-              className="inline-flex shrink-0 overflow-hidden rounded-md border border-border"
-              role="group"
-              aria-label="Vista del catálogo"
+        <>
+          <div
+            className="inline-flex shrink-0 overflow-hidden rounded-md border border-border"
+            role="group"
+            aria-label="Vista del catálogo"
+          >
+            <button
+              type="button"
+              aria-label="Vista en grilla"
+              aria-pressed={viewMode === 'grid'}
+              onClick={() => handleViewModeChange('grid')}
+              className={cn(
+                iconButtonClass,
+                'rounded-none border-0',
+                viewMode === 'grid' && 'bg-red-600 text-white hover:bg-red-500 hover:text-white',
+              )}
             >
-              <button
-                type="button"
-                aria-label="Vista en grilla"
-                aria-pressed={viewMode === 'grid'}
-                onClick={() => handleViewModeChange('grid')}
-                className={cn(
-                  iconButtonClass,
-                  'rounded-none border-0',
-                  viewMode === 'grid' && 'bg-red-600 text-white hover:bg-red-500 hover:text-white',
-                )}
-              >
-                <LayoutGrid className="size-5" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label="Vista en lista"
-                aria-pressed={viewMode === 'list'}
-                onClick={() => handleViewModeChange('list')}
-                className={cn(
-                  iconButtonClass,
-                  'rounded-none border-0 border-l border-border',
-                  viewMode === 'list' && 'bg-red-600 text-white hover:bg-red-500 hover:text-white',
-                )}
-              >
-                <List className="size-5" aria-hidden="true" />
-              </button>
-            </div>
+              <LayoutGrid className="size-5" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-label="Vista en lista"
+              aria-pressed={viewMode === 'list'}
+              onClick={() => handleViewModeChange('list')}
+              className={cn(
+                iconButtonClass,
+                'rounded-none border-0 border-l border-border',
+                viewMode === 'list' && 'bg-red-600 text-white hover:bg-red-500 hover:text-white',
+              )}
+            >
+              <List className="size-5" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-label="Vista en tabla"
+              aria-pressed={viewMode === 'table'}
+              onClick={() => handleViewModeChange('table')}
+              className={cn(
+                iconButtonClass,
+                'rounded-none border-0 border-l border-border',
+                viewMode === 'table' && 'bg-red-600 text-white hover:bg-red-500 hover:text-white',
+              )}
+            >
+              <Table2 className="size-5" aria-hidden="true" />
+            </button>
+          </div>
 
-            {viewMode === 'grid' ? (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={`Columnas por fila: ${gridColumns}`}
-                    className={cn(iconButtonClass, 'gap-1 px-2 sm:min-w-11')}
-                  >
-                    <Columns3 className="size-5 shrink-0" aria-hidden="true" />
-                    <span className="text-xs font-bold tabular-nums">{gridColumns}</span>
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="end" sideOffset={8} className="w-44 p-2">
-                  <p className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Columnas
-                  </p>
-                  <ul role="listbox" aria-label="Columnas por fila" className="space-y-0.5">
-                    {CATALOG_SIDEBAR_GRID_COLUMNS.map((columns) => {
-                      const isActive = gridColumns === columns;
-                      return (
-                        <li key={columns} role="presentation">
-                          <button
-                            type="button"
-                            role="option"
-                            aria-selected={isActive}
-                            onClick={() => onGridColumnsChange(columns)}
-                            className={cn(
-                              'flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors',
-                              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-inset',
-                              isActive
-                                ? 'bg-red-50 font-medium text-red-700'
-                                : 'text-foreground hover:bg-muted',
-                            )}
-                          >
-                            <span>{columns} columnas</span>
-                            {isActive ? (
-                              <Check className="size-4 shrink-0 text-red-600" aria-hidden="true" />
-                            ) : null}
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </PopoverContent>
-              </Popover>
-            ) : null}
-          </>
-        ) : null}
-
-        <button
-          type="button"
-          aria-label="Filtros del catálogo"
-          aria-pressed={filtersPanelActive}
-          onClick={onToggleSidebarFilters}
-          className={cn(
-            iconButtonClass,
-            catalogSidebarLayout && 'lg:hidden',
-            filtersPanelActive && 'border-red-600/30 bg-red-50 text-red-700',
-          )}
-        >
-          <SlidersHorizontal className="size-5" aria-hidden="true" />
-        </button>
+          {viewMode === 'grid' ? (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Columnas por fila: ${gridColumns}`}
+                  className={cn(iconButtonClass, 'gap-1 px-2 sm:min-w-11')}
+                >
+                  <Columns3 className="size-5 shrink-0" aria-hidden="true" />
+                  <span className="text-xs font-bold tabular-nums">{gridColumns}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" sideOffset={8} className="w-44 p-2">
+                <p className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Columnas
+                </p>
+                <ul role="listbox" aria-label="Columnas por fila" className="space-y-0.5">
+                  {CATALOG_SIDEBAR_GRID_COLUMNS.map((columns) => {
+                    const isActive = gridColumns === columns;
+                    return (
+                      <li key={columns} role="presentation">
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={isActive}
+                          onClick={() => onGridColumnsChange(columns)}
+                          className={cn(
+                            'flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-inset',
+                            isActive
+                              ? 'bg-red-50 font-medium text-red-700'
+                              : 'text-foreground hover:bg-muted',
+                          )}
+                        >
+                          <span>{columns} columnas</span>
+                          {isActive ? (
+                            <Check className="size-4 shrink-0 text-red-600" aria-hidden="true" />
+                          ) : null}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </PopoverContent>
+            </Popover>
+          ) : null}
+        </>
 
         <Popover>
           <PopoverTrigger asChild>
@@ -291,12 +303,12 @@ export function CategoryCatalogToolbar({
         >
           {[
             {
-              label: 'Formato papel',
-              tabs: catalogSpecTabs.filter((tab) => tab.key.includes('Formato papel::')),
-            },
-            {
               label: 'Color',
               tabs: catalogSpecTabs.filter((tab) => tab.key.startsWith('Color::')),
+            },
+            {
+              label: 'Formato papel',
+              tabs: catalogSpecTabs.filter((tab) => tab.key.includes('Formato papel::')),
             },
           ]
             .filter((group) => group.tabs.length > 0)

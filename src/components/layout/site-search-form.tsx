@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, FolderOpen, ImageOff, Loader2, Plus, Search, ShoppingCart, Wrench } from 'lucide-react';
 
-import { AddToCartButton, isProductOutOfStock } from '@/components/cart/add-to-cart-button';
+import { AddToCartButton, isProductOutOfStock, ON_REQUEST_STOCK_BADGE_CLASS } from '@/components/cart/add-to-cart-button';
 import { useAuth } from '@/context/auth-context';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useStoreCategoriesTree } from '@/hooks/use-store-categories';
@@ -87,7 +87,7 @@ function SearchProductSuggestionRow({
     category: product.category,
     name: product.name,
   });
-  const stockLabel = outOfStock ? 'Sin stock' : `Stock: ${product.stock}`;
+  const stockLabel = outOfStock ? 'A pedido' : `Stock: ${product.stock}`;
   const imageUrl = resolveProductImageUrl(product);
   const rolePrices = ensureFullPrices(product.prices ? product.prices : { public: product.price });
   const priceAria = showAdminPrices
@@ -139,7 +139,7 @@ function SearchProductSuggestionRow({
             <span
               className={cn(
                 'font-medium',
-                outOfStock ? 'text-orange-600' : 'text-emerald-700',
+                outOfStock ? ON_REQUEST_STOCK_BADGE_CLASS : 'text-emerald-700',
               )}
             >
               {stockLabel}
@@ -176,7 +176,6 @@ function SearchProductSuggestionRow({
         <AddToCartButton
           product={product}
           addOptions={{ openDrawer: true }}
-          disabled={outOfStock}
           size="icon"
           variant="ghost"
           aria-label={`Añadir ${product.name} al carrito`}
@@ -704,7 +703,7 @@ export function SiteSearchForm({
                 </div>
               ) : null}
             </>
-          )}
+          ) : null}
         </div>
       ) : null}
     </div>

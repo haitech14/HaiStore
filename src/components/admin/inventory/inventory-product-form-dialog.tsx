@@ -76,7 +76,9 @@ export type InventoryProductFormFocusSection =
   | 'title'
   | 'image'
   | 'attributes'
-  | 'category';
+  | 'category'
+  | 'stock'
+  | 'prices';
 
 interface InventoryProductFormDialogProps {
   open: boolean;
@@ -96,6 +98,8 @@ const FOCUS_SECTION_TARGETS: Record<
   image: { id: 'inv-photos-section' },
   attributes: { id: 'inv-attributes-fieldset' },
   category: { id: 'inv-category' },
+  stock: { id: 'inv-stock-total', focusInput: true },
+  prices: { id: 'inv-prices-section' },
 };
 
 export function InventoryProductFormDialog({
@@ -520,6 +524,7 @@ export function InventoryProductFormDialog({
               />
 
               <InventoryFormSection
+                id="inv-prices-section"
                 title="Precios"
                 icon={CircleDollarSign}
                 description="Los precios de venta en soles se redondean a la centésima más cercana terminada en 9 (ej. 10.04 → 10.09). El precio de compra usa el tipo de cambio exacto."

@@ -1,6 +1,6 @@
 import { CategoryPage } from '@/pages/category';
 
-/** Vista principal de tienda: catálogo con banner, filtros y grilla (multifuncionales). */
+/** Vista principal de tienda: todo el catálogo (sin categoría fija). */
 export function StorePage() {
-  return <CategoryPage catalogSlug="multifuncionales" />;
+  return <CategoryPage />;
 }

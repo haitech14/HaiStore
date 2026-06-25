@@ -2,6 +2,8 @@ import { Star } from 'lucide-react';
 
 import { ProductDetailHeroActions } from '@/components/product-detail/product-detail-hero-actions';
 import { ProductDetailHeroTonerSelector } from '@/components/product-detail/product-detail-hero-toner-selector';
+import { ProductDetailPreparationTypeSelector } from '@/components/product-detail/product-detail-preparation-type-selector';
+import { ProductConditionBadge } from '@/components/product/product-condition-badge';
 import { isProductOutOfStock } from '@/components/cart/add-to-cart-button';
 import type { ConfigureTonerCard } from '@/lib/product-configure-toner';
 import {
@@ -10,8 +12,8 @@ import {
   resolveProductHeroCode,
   resolveProductStockAvailability,
 } from '@/lib/product-hero-meta';
-import { buildProductSeoBodyParagraph } from '@/lib/seo';
 import { resolveHeroBulletIcon } from '@/lib/product-storefront-detail';
+import type { SeminuevaPreparationType } from '@/lib/seminueva-preparation';
 import { cn } from '@/lib/utils';
 import type { ProductDetailViewModel, ProductHeroSpecBullet } from '@/types/product-detail';
 import type { Product } from '@/types/product';
@@ -25,6 +27,9 @@ interface ProductDetailHeroInfoProps {
   tonerCards?: ConfigureTonerCard[];
   selectedTonerOptionIds?: Set<string>;
   onTonerToggle?: (card: ConfigureTonerCard) => void;
+  showPreparationTypeSelector?: boolean;
+  preparationType?: SeminuevaPreparationType;
+  onPreparationTypeChange?: (value: SeminuevaPreparationType) => void;
 }
 
 function isRegaloBullet(bullet: ProductHeroSpecBullet): boolean {
@@ -41,16 +46,15 @@ export function ProductDetailHeroInfo({
   tonerCards = [],
   selectedTonerOptionIds,
   onTonerToggle,
+  showPreparationTypeSelector = false,
+  preparationType = 'acondicionada',
+  onPreparationTypeChange,
 }: ProductDetailHeroInfoProps) {
   const outOfStock = isProductOutOfStock(product);
   const brandLabel = resolveProductHeroBrand(product) ?? detail.brandLabel;
   const productCode = resolveProductHeroCode(product) ?? detail.sku;
   const stockAvailability = resolveProductStockAvailability(product, outOfStock);
   const conditionLabel = resolveProductEquipmentConditionLabel(product);
-  const seoBodyParagraph = buildProductSeoBodyParagraph(product);
-  const showAutoSeoParagraph = Boolean(
-    seoBodyParagraph && !detail.heroDescription?.trim(),
-  );
   const displayRating = Number(detail.rating.toFixed(1));
   const fullStars = Math.min(5, Math.max(0, Math.round(displayRating)));
   const renderSpecBullets = (bullets: typeof detail.heroSpecBullets) => {
@@ -114,10 +118,17 @@ export function ProductDetailHeroInfo({
 
   return (
     <div className="flex min-w-0 flex-col">
-      {brandLabel ? (
-        <p className="text-xs font-bold uppercase tracking-wider text-primary">
-          {brandLabel}
-        </p>
+      {brandLabel || conditionLabel ? (
+        <div className="flex w-full items-center gap-2">
+          {brandLabel ? (
+            <p className="text-xs font-bold uppercase tracking-wider text-primary">
+              {brandLabel}
+            </p>
+          ) : null}
+          {conditionLabel ? (
+            <ProductConditionBadge label={conditionLabel} className="ml-auto" />
+          ) : null}
+        </div>
       ) : null}
 
       <h1 className="mt-1 text-pretty text-xl font-bold leading-snug text-[#0f1f3d] sm:text-2xl lg:text-[1.65rem] lg:leading-tight">
@@ -148,34 +159,23 @@ export function ProductDetailHeroInfo({
         </div>
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+      <div className="mt-2 flex w-full items-center gap-2 text-xs sm:text-sm">
+        {productCode ? (
+          <p className="text-muted-foreground">
+            Código: <span className="font-medium font-mono text-foreground">{productCode}</span>
+          </p>
+        ) : null}
         <span
           className={cn(
             'inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold',
-            stockAvailability.tone === 'unavailable' && 'bg-muted text-muted-foreground',
+            stockAvailability.tone === 'unavailable' &&
+              'border border-amber-400 bg-amber-100 text-amber-950',
             stockAvailability.tone === 'low' && 'bg-amber-50 text-amber-800',
             stockAvailability.tone === 'available' && 'bg-emerald-50 text-emerald-700',
           )}
         >
           {stockAvailability.label}
         </span>
-        {conditionLabel ? (
-          <span
-            className={cn(
-              'inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold',
-              conditionLabel === 'Nueva' && 'bg-red-600 text-white',
-              conditionLabel === 'Seminueva' && 'bg-sky-100 text-sky-900',
-              conditionLabel === 'Remanufacturada' && 'bg-muted text-foreground',
-            )}
-          >
-            {conditionLabel}
-          </span>
-        ) : null}
-        {productCode ? (
-          <p className="text-muted-foreground">
-            Código: <span className="font-medium font-mono text-foreground">{productCode}</span>
-          </p>
-        ) : null}
       </div>
 
       {(() => {
@@ -200,21 +200,18 @@ export function ProductDetailHeroInfo({
         </p>
       ) : null}
 
-      {showAutoSeoParagraph ? (
-        <p
-          className={cn(
-            'text-sm leading-relaxed text-muted-foreground',
-            detail.heroLead ? 'mt-2' : 'mt-3',
-          )}
-        >
-          {seoBodyParagraph}
-        </p>
-      ) : null}
-
-      {detail.heroDescription ? (
+      {detail.heroDescription && !detail.isSupplyProduct ? (
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           {detail.heroDescription}
         </p>
+      ) : null}
+
+      {showPreparationTypeSelector && onPreparationTypeChange ? (
+        <ProductDetailPreparationTypeSelector
+          product={product}
+          value={preparationType}
+          onChange={onPreparationTypeChange}
+        />
       ) : null}
 
       {(() => {

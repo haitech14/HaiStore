@@ -26,5 +26,6 @@ export function countCategoryTableColumns(
   const specColumns = 4;
   const priceColumns = getCategoryTableVisiblePriceRoles(isAdmin, userRole, previewRoles).length;
   const purchaseColumn = isAdmin ? 1 : 0;
-  return 1 + 1 + specColumns + 1 + 1 + purchaseColumn + priceColumns + 1;
+  // Código + producto + specs + stock + compra + precios + acciones
+  return 1 + 1 + specColumns + 1 + purchaseColumn + priceColumns + 1;
 }

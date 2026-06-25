@@ -8,6 +8,7 @@ interface StoredCartItem {
   lineId: string;
   configuration?: CartItem['configuration'];
   volumeUnitPriceUsd?: number;
+  preparationType?: CartItem['preparationType'];
 }
 
 export function readStoredCartItems(): CartItem[] {
@@ -34,6 +35,7 @@ export function readStoredCartItems(): CartItem[] {
           lineId: item.lineId,
           ...(item.configuration ? { configuration: item.configuration } : {}),
           ...(item.volumeUnitPriceUsd != null ? { volumeUnitPriceUsd: item.volumeUnitPriceUsd } : {}),
+          ...(item.preparationType ? { preparationType: item.preparationType } : {}),
         }),
       );
   } catch {
@@ -54,6 +56,7 @@ export function writeStoredCartItems(items: CartItem[]): void {
       lineId: item.lineId,
       ...(item.configuration ? { configuration: item.configuration } : {}),
       ...(item.volumeUnitPriceUsd != null ? { volumeUnitPriceUsd: item.volumeUnitPriceUsd } : {}),
+      ...(item.preparationType ? { preparationType: item.preparationType } : {}),
     }));
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(payload));
   } catch {

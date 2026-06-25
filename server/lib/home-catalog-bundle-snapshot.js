@@ -148,12 +148,16 @@ export async function readDefaultHomeBundleSnapshotIfApplicable(options = {}) {
 }
 
 /**
- * Lista bundle: snapshot estático primero, cálculo en caliente como respaldo.
+ * Lista bundle desde inventario en vivo; snapshot estático solo si falla el cálculo.
  */
 export async function listHomeCatalogBundleWithSnapshot(options = {}) {
-  const snapshot = await readDefaultHomeBundleSnapshotIfApplicable(options);
-  if (snapshot) {
-    return snapshot;
+  try {
+    return await listHomeCatalogBundle(options);
+  } catch (error) {
+    const snapshot = await readDefaultHomeBundleSnapshotIfApplicable(options);
+    if (snapshot) {
+      return snapshot;
+    }
+    throw error;
   }
-  return listHomeCatalogBundle(options);
 }

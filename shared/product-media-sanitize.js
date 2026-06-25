@@ -53,7 +53,10 @@ function ownedProductMediaStems(product) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  if (code) stems.add(`toner-${code}`);
+  if (code) {
+    stems.add(code);
+    stems.add(`toner-${code}`);
+  }
 
   return stems;
 }

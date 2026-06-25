@@ -2,6 +2,7 @@ import XLSX from 'xlsx';
 
 import { normalizeAttributes } from './inventory-attributes.js';
 import { appendHaiPrintProductSuffix, CATEGORY_COMPATIBLE_TONER } from '../../shared/compatible-toner.js';
+import { deriveCompatibleTonerNumericCode } from '../../shared/compatible-toner-product-code.js';
 import { compatibleTonerProductIdFromCode, parsePriceCell } from './compatible-toner-excel.js';
 import { normalizeProductInput } from './inventory-store.js';
 import { ensureFullPrices } from './roles.js';
@@ -241,14 +242,15 @@ export function resolveProcessedPriceListLayout(headerRow) {
   const publico = idx('publico');
   const distribuidor = idx('distribuidor', 'dist');
 
-  if (tecnico >= 0 && mayorista >= 0 && publico >= 0) {
+  const tecnicoOrDist = tecnico >= 0 ? tecnico : distribuidor;
+  if (tecnicoOrDist >= 0 && mayorista >= 0 && publico >= 0) {
     return {
       variant: 'explicit-tiers',
       marca: marca >= 0 ? marca : 0,
       modelo: modelo >= 0 ? modelo : 1,
       colores: colores >= 0 ? colores : 2,
       compra: compra >= 0 ? compra : 3,
-      tecnico,
+      tecnico: tecnicoOrDist,
       mayorista,
       publico,
     };
@@ -383,7 +385,9 @@ export function buildProcessedPriceListProduct(row, rates) {
         ? String(row.modelo ?? '').trim()
         : resolveProductName(row.modelo, row.colores)
       : String(row.modelo ?? '').trim();
-  const code = buildProcessedPriceListCode({ ...row, colorLabel });
+  const legacySlug = buildProcessedPriceListCode({ ...row, colorLabel });
+  const id = compatibleTonerProductIdFromCode(legacySlug);
+  const code = deriveCompatibleTonerNumericCode(id);
 
   const purchaseUsd = penToUsd(row.compraPen, rates.purchaseRate);
   const publicUsd = penToUsd(row.publicoPen ?? row.corporativoPen, rates.saleRate);
@@ -407,7 +411,7 @@ export function buildProcessedPriceListProduct(row, rates) {
   const displayName = appendHaiPrintProductSuffix(name);
 
   return normalizeProductInput({
-    id: compatibleTonerProductIdFromCode(code),
+    id,
     code,
     name: displayName,
     description: displayName,

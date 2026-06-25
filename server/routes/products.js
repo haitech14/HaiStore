@@ -314,6 +314,7 @@ productsRouter.get('/by-category', async (req, res, next) => {
       inStockOnly: req.query.inStock === '1' || req.query.inStock === 'true',
       priceMin: req.query.priceMin != null ? Number(req.query.priceMin) : null,
       priceMax: req.query.priceMax != null ? Number(req.query.priceMax) : null,
+      brandKeys: parsePipeList(req.query.brands),
       attributeKeys,
       productionKey: typeof req.query.production === 'string' ? req.query.production : null,
       search: typeof req.query.q === 'string' ? req.query.q : '',
@@ -321,7 +322,7 @@ productsRouter.get('/by-category', async (req, res, next) => {
       page: req.query.page,
       limit: req.query.limit,
     });
-    res.set('Cache-Control', HOME_CACHE_CONTROL);
+    res.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=180');
     res.json(result);
   } catch (error) {
     next(error);

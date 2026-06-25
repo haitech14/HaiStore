@@ -2,7 +2,7 @@ import XLSX from 'xlsx';
 
 import { normalizeAttributes } from './inventory-attributes.js';
 import { normalizeProductInput } from './inventory-store.js';
-import { normalizeTonerCartridgeProductLabel, normalizeTonerColorProductName, moveParentheticalSuffixToEnd } from '../../shared/inventory-product-name.js';
+import { normalizeTonerCartridgeProductLabel, normalizeTonerColorProductName } from '../../shared/inventory-product-name.js';
 import { formatRendLabel } from './repuestos-products-excel.js';
 
 export const CATEGORY_ORIGINAL = 'Toner Original';
@@ -10,6 +10,7 @@ export const CATEGORY_TONER = 'Toner Original';
 export const CATEGORY_SUMINISTROS = 'Suministros';
 export const SUPPLIER_RICOH_PERU = 'Proveedor Ricoh del Peru';
 export const SUPPLIER_RICOH_PERU_2 = 'Proveedor Ricoh del Peru 2';
+export const SUPPLIER_CORP_ROSS = 'Corporacion Ross';
 export const OFERTA_DEFAULT_NOTE =
   'Precio especial solo aplica a compras mayores de 6 unidades';
 
@@ -71,20 +72,37 @@ export function tonerProductIdFromCode(code) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  return `toner-${slug || 'sin-codigo'}`;
+  return slug || 'sin-codigo';
 }
 
 /**
- * Título del producto: descripción + rendimiento + color normalizado.
- * @param {{ descripcion: string; rend: unknown }}
+ * @param {unknown} rend
+ * @returns {string} Texto interior del paréntesis de rendimiento, p. ej. «6,900 páginas al 5%».
  */
-export function buildTonerProductTitle({ descripcion, rend }) {
-  let title = normalizeTonerCartridgeProductLabel(descripcion.trim());
+function formatRendPagesSuffix(rend) {
   const rendLabel = formatRendLabel(rend);
-  if (rendLabel) {
-    title = `${title} (Rend ${rendLabel})`;
+  return rendLabel ? `${rendLabel} páginas al 5%` : '';
+}
+
+/**
+ * Título del producto: descripción + modelo + color + (rendimiento).
+ * @param {{ descripcion: string; rend: unknown; modelo?: string }}
+ */
+export function buildTonerProductTitle({ descripcion, rend, modelo = '' }) {
+  const base = normalizeTonerCartridgeProductLabel(descripcion.trim());
+  const parts = [base];
+  const modeloSuffix = String(modelo ?? '').trim().replace(/\s{2,}/g, ' ');
+  if (modeloSuffix) {
+    parts.push(modeloSuffix);
   }
-  return moveParentheticalSuffixToEnd(normalizeTonerColorProductName(title));
+
+  let title = normalizeTonerColorProductName(parts.join(' '));
+  const rendSuffix = formatRendPagesSuffix(rend);
+  if (rendSuffix) {
+    title = `${title} (${rendSuffix})`;
+  }
+
+  return title;
 }
 
 /**
@@ -139,6 +157,8 @@ function resolveTonerSheetLayout(headerRow) {
   const isV3 = cajaIndex >= 0;
 
   if (isV3) {
+    const distIndex = indexOf('dist');
+    const mayoristaColIndex = indexOf('mayorista');
     return {
       isV3: true,
       modelo: 0,
@@ -146,10 +166,11 @@ function resolveTonerSheetLayout(headerRow) {
       rend: 2,
       descripcion: 3,
       publico: publicoIndices[0] ?? 4,
-      tecnico: publicoIndices[1] ?? publicoIndices[0] ?? 5,
-      distribuidor: indexOf('dist') >= 0 ? indexOf('dist') : 6,
+      tecnico: distIndex >= 0 ? distIndex : 6,
+      // "Dist" en Excel corresponde al precio Técnico (opción 2) y se clona para Distribuidor.
+      distribuidor: distIndex >= 0 ? distIndex : 8,
       caja: cajaIndex,
-      mayorista: indexOf('mayorista') >= 0 ? indexOf('mayorista') : 8,
+      mayorista: cajaIndex,
       canal: indexOf('canal') >= 0 ? indexOf('canal') : 9,
       oferta: indexOf('oferta') >= 0 ? indexOf('oferta') : 10,
       ofertaNote: indexOf('oferta') >= 0 ? indexOf('oferta') + 1 : 11,
@@ -197,7 +218,7 @@ function formatCajaAttribute(cajaPerUnit) {
  * @param {number} oferta
  * @param {string} ofertaNote
  */
-function buildTonerSuppliers(canal, oferta, ofertaNote = '') {
+function buildTonerSuppliers(canal, oferta, ofertaNote = '', { includeRoss = false } = {}) {
   /** @type {Array<{ name: string; purchase_price_usd: number }>} */
   const suppliers = [];
   const canalPrice = parseNumber(canal);
@@ -205,9 +226,18 @@ function buildTonerSuppliers(canal, oferta, ofertaNote = '') {
 
   if (canalPrice > 0) {
     suppliers.push({ name: SUPPLIER_RICOH_PERU, purchase_price_usd: canalPrice });
+    if (includeRoss) {
+      suppliers.push({
+        name: SUPPLIER_CORP_ROSS,
+        purchase_price_usd: Math.round(canalPrice * 1.1 * 100) / 100,
+      });
+    }
   }
   if (ofertaPrice > 0) {
-    suppliers.push({ name: SUPPLIER_RICOH_PERU_2, purchase_price_usd: ofertaPrice });
+    suppliers.push({
+      name: includeRoss ? SUPPLIER_RICOH_PERU : SUPPLIER_RICOH_PERU_2,
+      purchase_price_usd: ofertaPrice,
+    });
   }
 
   return {
@@ -266,33 +296,40 @@ export function mapTonerExcelRowToProduct(row, carryModelo = '', layout = resolv
   if (rendLabel) {
     attributes.push({ name: 'Rendimiento (5%)', value: rendLabel });
   }
-  const cajaLabel = formatCajaAttribute(cajaRaw);
-  if (cajaLabel) {
-    attributes.push({ name: 'Precio caja (4 u.)', value: cajaLabel });
+  if (!layout.isV3) {
+    const cajaLabel = formatCajaAttribute(cajaRaw);
+    if (cajaLabel) {
+      attributes.push({ name: 'Precio caja (4 u.)', value: cajaLabel });
+    }
   }
 
   const { suppliers, ofertaNote: resolvedOfertaNote } = buildTonerSuppliers(
     canal,
     oferta,
     ofertaNote,
+    { includeRoss: layout.isV3 },
   );
   if (resolvedOfertaNote) {
     attributes.push({ name: 'Nota oferta', value: resolvedOfertaNote });
   }
 
-  const tecnicoRounded = roundSalePriceToNinety(
-    tecnicoRaw > 0 ? tecnicoRaw : distribuidorRaw,
-  );
+  const tecnicoRounded = layout.isV3
+    ? roundSalePriceToNinety(tecnicoRaw)
+    : roundSalePriceToNinety(tecnicoRaw > 0 ? tecnicoRaw : distribuidorRaw);
+  const distribuidorRounded = layout.isV3
+    ? tecnicoRounded
+    : roundSalePriceToNinety(distribuidorRaw);
   const prices = {
     public: roundSalePriceToNinety(publicoRaw),
     tecnico: tecnicoRounded,
-    distribuidor: roundSalePriceToNinety(distribuidorRaw),
+    distribuidor: distribuidorRounded,
     mayorista: roundSalePriceToNinety(mayoristaRaw),
   };
 
   const name = buildTonerProductTitle({
     descripcion: description,
     rend: rendValue,
+    modelo: modeloForProduct,
   });
   const productDescription = buildTonerProductDescription({
     descripcion: description,
@@ -323,6 +360,29 @@ export function mapTonerExcelRowToProduct(row, carryModelo = '', layout = resolv
 }
 
 /**
+ * Propaga el valor de MODELO DE EQUIPO en celdas combinadas de la columna A.
+ * @param {import('xlsx').WorkSheet} sheet
+ * @param {unknown[][]} rows
+ */
+function fillMergedModeloCells(sheet, rows) {
+  const merges = sheet['!merges'] ?? [];
+  for (const merge of merges) {
+    if (merge.s.c !== 0 || merge.e.c !== 0) continue;
+
+    const topValue = String(rows[merge.s.r]?.[0] ?? '').trim();
+    if (!topValue) continue;
+
+    for (let rowIndex = merge.s.r; rowIndex <= merge.e.r; rowIndex += 1) {
+      const row = rows[rowIndex];
+      if (!row) continue;
+      if (!String(row[0] ?? '').trim()) {
+        row[0] = topValue;
+      }
+    }
+  }
+}
+
+/**
  * @param {Buffer} buffer
  */
 export function parseTonerProductsWorkbook(buffer) {
@@ -330,10 +390,12 @@ export function parseTonerProductsWorkbook(buffer) {
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) return [];
 
-  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+  const sheet = workbook.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet, {
     header: 1,
     defval: '',
   });
+  fillMergedModeloCells(sheet, rows);
 
   const layout = resolveTonerSheetLayout(rows[0] ?? []);
 

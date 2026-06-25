@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Star } from 'lucide-react';
 
-import { isProductOutOfStock } from '@/components/cart/add-to-cart-button';
 import { ProductCardOverlayActions } from '@/components/product/product-card-overlay-actions';
 import { CatalogPreviewPriceBlock } from '@/components/product/catalog-preview-price-block';
 import { ProductCardTitle } from '@/components/product/product-card-title';
+import { ProductCardImageConditionBadge } from '@/components/product/product-card-image-condition-badge';
 import {
   PRODUCT_CARD_IMAGE_CLASS,
   ProductCardHoverImage,
@@ -22,9 +22,11 @@ import { featuredToCompareItem } from '@/lib/compare-product';
 import {
   buildProductCardImageCandidates,
   buildProductCardImageSource,
+  buildProductCardStoredImageCandidates,
   resolveProductCardHoverImageFromProduct,
 } from '@/lib/product-card-images';
 import { productPath } from '@/lib/product-path';
+import { resolveProductCardConditionLabel } from '@/lib/product-card-condition';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/types/product';
 
@@ -94,6 +96,10 @@ export function ProductShowcaseCard({
     gallery: catalogProduct?.gallery ?? null,
   }), [catalogProduct, product]);
   const imageCandidates = useMemo(() => buildProductCardImageCandidates(imageSource), [imageSource]);
+  const storedImageCandidates = useMemo(
+    () => buildProductCardStoredImageCandidates(imageSource),
+    [imageSource],
+  );
   const hoverImageSrc = useMemo(() => resolveProductCardHoverImageFromProduct(imageSource), [imageSource]);
   const compareSelected = isSelected(product.id);
   const wishlistSelected = isWishlisted(product.id);
@@ -105,18 +111,8 @@ export function ProductShowcaseCard({
     code: product.code ?? null,
     attributes: product.attributes ?? [],
   };
+  const hasConditionBadge = Boolean(resolveProductCardConditionLabel(badgeSource));
   const stock = catalogProduct?.stock ?? 10;
-  const outOfStock = isProductOutOfStock({
-    id: product.id,
-    name: product.name,
-    description: catalogProduct?.description ?? null,
-    price: displayPrice.priceUsd,
-    currency: 'USD',
-    image_url: product.image,
-    stock,
-    category: product.category,
-    created_at: catalogProduct?.created_at ?? new Date().toISOString(),
-  });
   const cartProduct: Product = {
     id: product.id,
     name: product.name,
@@ -160,8 +156,10 @@ export function ProductShowcaseCard({
                     : 'aspect-[4/3] p-1 sm:aspect-square sm:p-1.5',
               )}
             >
+              <ProductCardImageConditionBadge product={badgeSource} />
               <ProductCardHoverImage
                 candidates={imageCandidates}
+                storedCandidates={storedImageCandidates}
                 hoverSrc={hoverImageSrc}
                 alt={product.name}
                 className="size-full"
@@ -190,7 +188,12 @@ export function ProductShowcaseCard({
               product={badgeSource}
               brandTone={brandTone}
               variant={isFeatured ? 'featured' : 'card'}
-              {...(isFeatured ? { stock, outOfStock } : {})}
+              {...(isFeatured
+                ? {
+                    stock,
+                    outOfStock: stock <= 0,
+                  }
+                : {})}
             />
           </Link>
 
@@ -212,6 +215,7 @@ export function ProductShowcaseCard({
           productName={product.name}
           isCompareSelected={compareSelected}
           isWishlisted={wishlistSelected}
+          withConditionBadge={hasConditionBadge}
           onWishlist={() => toggleWishlist(featuredToWishlistItem(product))}
           onQuickView={() => setQuickViewOpen(true)}
           onCompare={() => toggle(featuredToCompareItem(product))}

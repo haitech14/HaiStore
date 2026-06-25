@@ -1,6 +1,8 @@
 /** Orden de modelos en la fila «Lo más destacado» (IM 430F/550F/600F primero). */
 export const HOME_HIGHLIGHTED_MODEL_PATTERNS: readonly RegExp[] = [
   /\bim\s*430\s*f\b/i,
+  /\bm\s*320\s*f\b/i,
+  /\bmp\s*305\s*\+?\b/i,
   /\bim\s*550\s*f\b/i,
   /\bim\s*600\s*f\b/i,
   /\bim\s*5000\b/i,

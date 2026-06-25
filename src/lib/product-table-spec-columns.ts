@@ -4,6 +4,7 @@ import {
   PRODUCCION_ATTR,
   PRODUCTION_FILTER_OPTIONS,
 } from '@/lib/category-catalog-filters';
+import { parseInventoryTagList } from '@/lib/inventory-tags';
 import { buildProductDetailBadges } from '@/lib/product-detail-badges';
 import type { Product } from '@/types/product';
 
@@ -30,6 +31,84 @@ export function formatProductTableCategory(category: string | null | undefined):
     return `Multif. ${value.slice('Multifuncionales '.length).toLowerCase()}`;
   }
   return value;
+}
+
+function formatProductTableSubcategory(value: string | null | undefined): string {
+  if (!value?.trim()) return '—';
+  const trimmed = value.trim();
+  if (trimmed === 'Multifuncionales Seminuevas') return 'Seminuevas';
+  if (trimmed === 'Multifuncionales Nuevas') return 'Nuevas';
+  if (trimmed === 'Multifuncionales Remanufacturadas') return 'Remanufacturadas';
+  if (trimmed.startsWith('Multifuncionales ')) {
+    return trimmed.slice('Multifuncionales '.length);
+  }
+  if (trimmed === 'Repuestos Originales') return 'Originales';
+  if (trimmed === 'Toner Original') return 'Original';
+  if (trimmed === 'Toner Compatible') return 'Compatible';
+  if (trimmed.startsWith('Repuestos ')) return trimmed.slice('Repuestos '.length);
+  if (trimmed.startsWith('Toner ')) return trimmed.slice('Toner '.length);
+  if (trimmed.startsWith('Impresoras ')) return trimmed.slice('Impresoras '.length);
+  return formatProductTableCategory(trimmed);
+}
+
+function stripCategoryRootPrefix(label: string, root: string): string {
+  const trimmed = label.trim();
+  const rootTrim = root.trim();
+  if (!rootTrim) return trimmed;
+  if (trimmed.toLowerCase() === rootTrim.toLowerCase()) return '';
+  if (trimmed.toLowerCase().startsWith(`${rootTrim.toLowerCase()} `)) {
+    return trimmed.slice(rootTrim.length).trim();
+  }
+  return trimmed;
+}
+
+function splitSingleCategoryLabel(value: string): { root: string; sub: string | null } {
+  const roots = [
+    'Multifuncionales',
+    'Impresoras',
+    'Toner y Suministros',
+    'Toner y suministros',
+    'Tóner y Suministros',
+    'Repuestos',
+    'Formato Ancho',
+    'Toner',
+  ].sort((a, b) => b.length - a.length);
+
+  for (const root of roots) {
+    if (value === root) return { root, sub: null };
+    if (value.toLowerCase().startsWith(`${root.toLowerCase()} `)) {
+      return { root, sub: value.slice(root.length).trim() };
+    }
+  }
+
+  return { root: value, sub: null };
+}
+
+/** Separa categoría raíz y subcategoría para la tabla de catálogo. */
+export function splitProductTableCategoryParts(category: string | null | undefined): {
+  rootLabel: string;
+  subLabel: string;
+} {
+  const tags = parseInventoryTagList(category ?? undefined);
+  if (tags.length === 0) {
+    return { rootLabel: '—', subLabel: '—' };
+  }
+
+  if (tags.length >= 2) {
+    const root = tags[0];
+    const sub = tags[tags.length - 1];
+    const subShort = stripCategoryRootPrefix(sub, root) || sub;
+    return {
+      rootLabel: formatProductTableCategory(root),
+      subLabel: formatProductTableSubcategory(subShort),
+    };
+  }
+
+  const { root, sub } = splitSingleCategoryLabel(tags[0]);
+  return {
+    rootLabel: formatProductTableCategory(root),
+    subLabel: sub ? formatProductTableSubcategory(sub) : '—',
+  };
 }
 
 export type ProductTableSpecColumnId = (typeof PRODUCT_TABLE_SPEC_COLUMNS)[number]['id'];

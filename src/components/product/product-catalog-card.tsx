@@ -6,7 +6,7 @@ import {
   ImageOff,
 } from 'lucide-react';
 
-import { isProductOutOfStock } from '@/components/cart/add-to-cart-button';
+import { isProductOutOfStock, ON_REQUEST_STOCK_BADGE_CLASS } from '@/components/cart/add-to-cart-button';
 import { ProductRating } from '@/components/product/product-rating';
 import { AdminRolePricesTooltip } from '@/components/admin/admin-role-prices-tooltip';
 import { useDisplayCurrency } from '@/context/display-currency-context';
@@ -26,6 +26,7 @@ import { ViewAsRolePrices } from '@/components/product/view-as-role-prices';
 import { useCatalogDisplayPrice } from '@/hooks/use-catalog-display-price';
 import {
   buildProductCardImageCandidates,
+  buildProductCardStoredImageCandidates,
   resolveProductCardHoverImageFromProduct,
 } from '@/lib/product-card-images';
 import { formatProductCardTitle } from '@/lib/product-card-title';
@@ -157,10 +158,15 @@ function CatalogCardStockLine({
     <p
       className={cn(
         'flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs leading-tight sm:text-sm',
-        outOfStock ? 'text-orange-600' : 'text-emerald-700',
+        !outOfStock && 'text-emerald-700',
       )}
     >
-      <span className="inline-flex items-center gap-1 font-semibold">
+      <span
+        className={cn(
+          'inline-flex items-center gap-1 font-semibold',
+          outOfStock ? ON_REQUEST_STOCK_BADGE_CLASS : 'text-emerald-700',
+        )}
+      >
         <Check className="size-3.5 shrink-0" aria-hidden="true" />
         {outOfStock ? 'A pedido' : `Stock: ${stock}`}
       </span>
@@ -177,6 +183,10 @@ export function ProductCatalogCard({ product }: ProductCatalogCardProps) {
   const outOfStock = isProductOutOfStock(product);
   const detailHref = productPath(product);
   const imageCandidates = useMemo(() => buildProductCardImageCandidates(product), [product]);
+  const storedImageCandidates = useMemo(
+    () => buildProductCardStoredImageCandidates(product),
+    [product],
+  );
   const hoverImageSrc = useMemo(() => resolveProductCardHoverImageFromProduct(product), [product]);
   const wishlistSelected = isWishlisted(product.id);
   const displayTitle = formatProductCardTitle(product);
@@ -221,6 +231,7 @@ export function ProductCatalogCard({ product }: ProductCatalogCardProps) {
         >
           <ProductCardHoverImage
             candidates={imageCandidates}
+            storedCandidates={storedImageCandidates}
             hoverSrc={hoverImageSrc}
             alt={product.name}
             className="size-full"

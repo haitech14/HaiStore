@@ -9,6 +9,8 @@ interface ProductCardOverlayActionsProps {
   productName: string;
   isCompareSelected: boolean;
   isWishlisted?: boolean;
+  /** Desplaza los iconos hacia abajo cuando hay badge de condición en la imagen. */
+  withConditionBadge?: boolean;
   onWishlist?: () => void;
   onQuickView: () => void;
   onCompare: () => void;
@@ -18,12 +20,18 @@ export function ProductCardOverlayActions({
   productName,
   isCompareSelected,
   isWishlisted = false,
+  withConditionBadge = false,
   onWishlist,
   onQuickView,
   onCompare,
 }: ProductCardOverlayActionsProps) {
   return (
-    <div className="pointer-events-auto absolute right-3 top-3 z-10 flex flex-col gap-1.5">
+    <div
+      className={cn(
+        'pointer-events-auto absolute right-3 z-10 flex flex-col gap-1.5',
+        withConditionBadge ? 'top-10 sm:top-11' : 'top-3',
+      )}
+    >
       <button
         type="button"
         aria-pressed={isWishlisted}
