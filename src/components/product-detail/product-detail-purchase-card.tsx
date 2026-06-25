@@ -220,7 +220,7 @@ export function ProductDetailPurchaseCard({
   return (
     <aside
       ref={purchaseActionsRef}
-      className="min-w-0 lg:sticky lg:top-24 lg:self-start"
+      className="min-w-0 lg:sticky lg:top-4 lg:self-start"
       aria-labelledby="compra-producto-titulo"
     >
       <h2 id="compra-producto-titulo" className="sr-only">

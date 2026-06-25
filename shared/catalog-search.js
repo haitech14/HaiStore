@@ -329,6 +329,14 @@ export function clearProductSearchHaystackCache() {
   productHaystackCache.clear();
 }
 
+/** Precalcula haystacks de búsqueda para todo el catálogo (una vez al arranque). */
+export function prewarmProductSearchHaystacks(products) {
+  if (!Array.isArray(products)) return;
+  for (const product of products) {
+    resolveProductHaystackFields(product);
+  }
+}
+
 function resolveProductHaystackFields(product) {
   const id = product?.id;
   if (typeof id === 'string' && id.length > 0) {

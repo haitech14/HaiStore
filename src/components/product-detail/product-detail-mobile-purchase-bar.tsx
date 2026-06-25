@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Zap } from 'lucide-react';
 
-import { AddToCartButton } from '@/components/cart/add-to-cart-button';
+import { AddToCartButton, getAddToCartLabel } from '@/components/cart/add-to-cart-button';
 import { DualPrice } from '@/components/product/product-dual-price';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/cart-context';
@@ -111,19 +111,21 @@ export function ProductDetailMobilePurchaseBar({
   };
 
   const buyNowLabel = outOfStock ? 'Pedido' : 'Comprar';
+  const addToCartLabel = getAddToCartLabel(product, 'short');
 
   return (
     <div
       className={cn(
-        'fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 shadow-[0_-4px_20px_rgba(15,23,42,0.12)] backdrop-blur-sm transition-transform duration-200 lg:hidden',
+        'fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 shadow-[0_-4px_20px_rgba(15,23,42,0.12)] backdrop-blur-sm transition-transform duration-200',
         'pb-[max(0.75rem,env(safe-area-inset-bottom))]',
         showBar ? 'translate-y-0' : 'pointer-events-none translate-y-full',
       )}
       aria-hidden={!showBar}
     >
-      <div className="container flex items-center gap-2">
+      <div className="container flex items-center gap-2 sm:gap-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-bold leading-tight text-red-600">
+          <p className="hidden truncate text-sm font-medium text-foreground lg:block">{product.name}</p>
+          <p className="truncate text-lg font-bold leading-tight text-red-600 lg:text-xl">
             <DualPrice usd={totalUsd} />
           </p>
           {savingsMessage ? (
@@ -134,15 +136,15 @@ export function ProductDetailMobilePurchaseBar({
           <AddToCartButton
             product={product}
             addOptions={cartAddOptions}
-            className="min-h-11 gap-1.5 rounded-md bg-red-600 px-3 text-sm font-bold text-white hover:bg-red-500"
+            className="min-h-11 gap-1.5 rounded-md bg-red-600 px-3 text-sm font-bold text-white hover:bg-red-500 lg:px-4"
           >
             <ShoppingCart className="size-4 shrink-0" aria-hidden="true" />
-            <span className="sr-only sm:not-sr-only sm:inline">Carrito</span>
+            <span className="sr-only sm:not-sr-only sm:inline lg:inline">{addToCartLabel}</span>
           </AddToCartButton>
           <Button
             type="button"
             onClick={handleBuyNow}
-            className="min-h-11 gap-1 rounded-md bg-[#0f1f3d] px-3 text-sm font-bold text-white hover:bg-[#0f1f3d]/90"
+            className="min-h-11 gap-1 rounded-md bg-[#0f1f3d] px-3 text-sm font-bold text-white hover:bg-[#0f1f3d]/90 lg:px-4"
             aria-label="Comprar ahora"
           >
             <Zap className="size-4 shrink-0" aria-hidden="true" />

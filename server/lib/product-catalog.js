@@ -15,6 +15,7 @@ import { resolveProductGallery, resolveProductImageUrl } from './product-image-u
 import {
   clearProductSearchHaystackCache,
   normalizeCatalogSearchText,
+  prewarmProductSearchHaystacks,
   productMatchesSearchQuery,
   takeTopProductsBySearchRelevance,
 } from '../../shared/catalog-search.js';
@@ -142,7 +143,7 @@ const SUPABASE_CATALOG_LIST_COLUMNS = [
 const SUPABASE_CATALOG_DETAIL_COLUMNS = `${SUPABASE_CATALOG_LIST_COLUMNS},inventory_snapshot`;
 
 const PUBLIC_CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
-const SEARCH_RESULT_CACHE_TTL_MS = 30 * 1000;
+const SEARCH_RESULT_CACHE_TTL_MS = 3 * 60 * 1000;
 const SEARCH_RESULT_CACHE_MAX = 256;
 
 /** @type {Map<string, { products: unknown[]; cachedAt: number }>} */
@@ -355,6 +356,7 @@ export async function listProducts({ role = 'public', adminView = false } = {}) 
     .then((products) => {
       publicCatalogCache.set(cacheKey, { products, cachedAt: Date.now() });
       indexPublicCatalogById(role, products);
+      prewarmProductSearchHaystacks(products);
       publicCatalogInFlight.delete(cacheKey);
       return products;
     })

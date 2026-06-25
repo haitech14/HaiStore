@@ -71,17 +71,6 @@ export function Header() {
       ? `${formatPenFromUsd(totalPrice)}, tipo de cambio venta`
       : `${totalPrice.toFixed(2)} dólares`;
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const updateScrolled = () => {
-      setScrolled(window.scrollY > 4);
-    };
-
-    updateScrolled();
-    window.addEventListener('scroll', updateScrolled, { passive: true });
-    return () => window.removeEventListener('scroll', updateScrolled);
-  }, []);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -99,9 +88,8 @@ export function Header() {
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 w-full bg-white supports-[backdrop-filter]:bg-white/95 supports-[backdrop-filter]:backdrop-blur-sm',
+        'relative z-50 w-full bg-white supports-[backdrop-filter]:bg-white/95 supports-[backdrop-filter]:backdrop-blur-sm',
         'shadow-[0_4px_14px_rgba(15,23,42,0.12)]',
-        scrolled && 'shadow-[0_6px_20px_rgba(15,23,42,0.16)]',
       )}
     >
       <HeaderUtilityBar />

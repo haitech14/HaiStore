@@ -18,6 +18,7 @@ import type { EquipmentRentalEstimate } from '@/components/product-detail/produc
 import { ProductDetailGallery } from '@/components/product-detail/product-detail-gallery';
 import { ProductDetailHeroInfo } from '@/components/product-detail/product-detail-hero-info';
 import { ProductDetailMobilePurchaseBar } from '@/components/product-detail/product-detail-mobile-purchase-bar';
+import { ProductDetailSocialProofToast } from '@/components/product-detail/product-detail-social-proof-toast';
 import { ProductDetailPurchaseCard } from '@/components/product-detail/product-detail-purchase-card';
 import { ProductDetailResources } from '@/components/product-detail/product-detail-resources';
 import { ProductDetailSpecsTable } from '@/components/product-detail/product-detail-specs-table';
@@ -767,6 +768,8 @@ export function ProductDetailView({ product, featuredMeta }: ProductDetailViewPr
         purchaseActionsRef={purchaseActionsRef}
         {...(equipmentConfiguration ? { equipmentConfiguration } : {})}
       />
+
+      <ProductDetailSocialProofToast productName={product.name} />
     </div>
   );
 }

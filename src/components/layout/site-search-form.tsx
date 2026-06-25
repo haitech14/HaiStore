@@ -1,12 +1,13 @@
-import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, FolderOpen, ImageOff, Loader2, Plus, Search, ShoppingCart, Wrench } from 'lucide-react';
 
 import { AddToCartButton, isProductOutOfStock } from '@/components/cart/add-to-cart-button';
 import { useAuth } from '@/context/auth-context';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useStoreCategoriesTree } from '@/hooks/use-store-categories';
-import { useProductSearch } from '@/hooks/use-product-search';
+import { prefetchProductSearch, useProductSearch } from '@/hooks/use-product-search';
 import { categoryLandingPath } from '@/lib/category-path';
 import { seedProductQueryCache } from '@/lib/find-cached-product';
 import { buildCategorySelectOptions } from '@/lib/inventory-category-options';
@@ -146,20 +147,20 @@ function SearchProductSuggestionRow({
           </span>
         </span>
         {showAdminPrices ? (
-          <span className="hidden shrink-0 space-y-0.5 text-right tabular-nums min-[480px]:block">
-            <span className="block">
-              <span className="block text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="hidden shrink-0 flex-col items-end gap-y-0.5 min-[480px]:flex">
+            <span className="flex items-baseline gap-x-1.5 text-[0.6875rem] sm:text-xs">
+              <span className="shrink-0 font-semibold uppercase tracking-wide text-muted-foreground">
                 Técnico
               </span>
-              <span className="block text-xs font-semibold text-foreground">
+              <span className="font-semibold tabular-nums text-foreground">
                 {formatUsd(rolePrices.tecnico)}
               </span>
             </span>
-            <span className="block">
-              <span className="block text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="flex items-baseline gap-x-1.5 text-[0.6875rem] sm:text-xs">
+              <span className="shrink-0 font-semibold uppercase tracking-wide text-muted-foreground">
                 Público
               </span>
-              <span className="block text-xs font-semibold text-foreground">
+              <span className="font-semibold tabular-nums text-foreground">
                 {formatUsd(rolePrices.public)}
               </span>
             </span>
@@ -188,6 +189,22 @@ function SearchProductSuggestionRow({
   );
 }
 
+function SearchProductSuggestionSkeleton() {
+  return (
+    <div
+      className="flex items-center gap-2 border-b border-border/40 px-2.5 py-2 sm:gap-2.5 sm:px-3"
+      aria-hidden="true"
+    >
+      <div className="size-10 shrink-0 animate-pulse rounded border border-border/60 bg-muted sm:size-11" />
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="h-3.5 w-3/4 animate-pulse rounded bg-muted" />
+        <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+      </div>
+      <div className="h-4 w-14 shrink-0 animate-pulse rounded bg-muted" />
+    </div>
+  );
+}
+
 export function SiteSearchForm({
   className,
   onNavigate,
@@ -211,8 +228,7 @@ export function SiteSearchForm({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [productDisplayLimit, setProductDisplayLimit] = useState(PRODUCT_SEARCH_INITIAL_VISIBLE);
 
-  const deferredQuery = useDeferredValue(query);
-  const isSearchPending = query.trim() !== deferredQuery.trim();
+  const debouncedQuery = useDebouncedValue(query, 200);
 
   const categoryOptions = useMemo(() => {
     const fromTree = buildCategorySelectOptions(categoryTree);
@@ -220,25 +236,27 @@ export function SiteSearchForm({
   }, [categoryTree]);
 
   const categorySuggestions = useMemo(
-    () => filterCategoriesBySearch(deferredQuery),
-    [deferredQuery],
+    () => filterCategoriesBySearch(query),
+    [query],
   );
 
   const serviceSuggestions = useMemo(
-    () => filterServicesBySearch(deferredQuery),
-    [deferredQuery],
+    () => filterServicesBySearch(query),
+    [query],
   );
 
   const trimmedQuery = query.trim();
-  const trimmedDeferredQuery = deferredQuery.trim();
+  const trimmedDebouncedQuery = debouncedQuery.trim();
   const queryTooShort =
     panelOpen && trimmedQuery.length > 0 && trimmedQuery.length < MIN_PRODUCT_SEARCH_LENGTH;
+  const isSearchDebouncing =
+    trimmedQuery.length >= MIN_PRODUCT_SEARCH_LENGTH && trimmedQuery !== trimmedDebouncedQuery;
 
   const searchEnabled =
-    panelOpen && trimmedDeferredQuery.length >= MIN_PRODUCT_SEARCH_LENGTH;
+    panelOpen && trimmedDebouncedQuery.length >= MIN_PRODUCT_SEARCH_LENGTH;
 
   const { data: searchResult, isLoading: searchLoading, isFetching: searchFetching } =
-    useProductSearch(deferredQuery, {
+    useProductSearch(debouncedQuery, {
       categoryFilter,
       limit: productDisplayLimit,
       enabled: searchEnabled,
@@ -246,8 +264,10 @@ export function SiteSearchForm({
 
   const productSuggestions = searchResult?.products ?? [];
   const totalMatches = searchResult?.total ?? 0;
-  const isInitialSearchLoading = searchEnabled && searchLoading;
-  const isSearchRefreshing = searchEnabled && searchFetching && !searchLoading;
+  const isProductsLoading =
+    searchEnabled && (searchLoading || isSearchDebouncing) && productSuggestions.length === 0;
+  const isSearchRefreshing =
+    searchEnabled && searchFetching && !searchLoading && !isSearchDebouncing;
   const canLoadMoreProducts =
     productSuggestions.length > 0 &&
     productSuggestions.length < totalMatches &&
@@ -255,11 +275,11 @@ export function SiteSearchForm({
 
   useEffect(() => {
     setProductDisplayLimit(PRODUCT_SEARCH_INITIAL_VISIBLE);
-  }, [trimmedDeferredQuery, categoryFilter]);
+  }, [trimmedDebouncedQuery, categoryFilter]);
 
   const productGroups = useMemo(
-    () => groupSearchProductsByCategory(productSuggestions, deferredQuery),
-    [productSuggestions, deferredQuery],
+    () => groupSearchProductsByCategory(productSuggestions, debouncedQuery),
+    [productSuggestions, debouncedQuery],
   );
 
   const groupedProductSuggestions = useMemo(
@@ -288,13 +308,36 @@ export function SiteSearchForm({
     [categorySuggestions, serviceSuggestions, groupedProductSuggestions],
   );
 
-  const showSuggestions = searchEnabled && (suggestions.length > 0 || !isInitialSearchLoading);
+  const showEmptyResults =
+    panelOpen &&
+    trimmedQuery.length >= MIN_PRODUCT_SEARCH_LENGTH &&
+    !isProductsLoading &&
+    !isSearchDebouncing &&
+    !searchFetching &&
+    suggestions.length === 0;
+
+  const showPanel =
+    panelOpen &&
+    (queryTooShort ||
+      trimmedQuery.length >= MIN_PRODUCT_SEARCH_LENGTH ||
+      categorySuggestions.length > 0 ||
+      serviceSuggestions.length > 0);
+
+  const warmupSearch = useCallback(() => {
+    void prefetchProductSearch(queryClient, {
+      query: 'ricoh',
+      categoryFilter,
+      limit: PRODUCT_SEARCH_INITIAL_VISIBLE,
+      role,
+      viewAsRoles,
+    });
+  }, [queryClient, categoryFilter, role, viewAsRoles]);
 
   useEffect(() => {
-    if (!showSuggestions) {
+    if (!showPanel || queryTooShort || suggestions.length === 0) {
       setActiveIndex(-1);
     }
-  }, [showSuggestions, suggestions.length]);
+  }, [showPanel, queryTooShort, suggestions.length]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -360,7 +403,7 @@ export function SiteSearchForm({
       return;
     }
 
-    if (!showSuggestions || suggestions.length === 0) return;
+    if (!showPanel || queryTooShort || suggestions.length === 0) return;
 
     if (event.key === 'ArrowDown') {
       event.preventDefault();
@@ -382,7 +425,10 @@ export function SiteSearchForm({
 
   const placeholder = 'Buscar productos, categorías o marcas...';
 
-  const showPanel = panelOpen && (queryTooShort || showSuggestions || isInitialSearchLoading || isSearchPending);
+  const showSuggestionsList =
+    !queryTooShort &&
+    !showEmptyResults &&
+    (suggestions.length > 0 || isProductsLoading);
 
   return (
     <div ref={rootRef} className={cn('relative w-full', className)}>
@@ -407,7 +453,10 @@ export function SiteSearchForm({
               setQuery(event.target.value);
               setPanelOpen(true);
             }}
-            onFocus={() => setPanelOpen(true)}
+            onFocus={() => {
+              setPanelOpen(true);
+              warmupSearch();
+            }}
             onKeyDown={handleKeyDown}
             role="combobox"
             aria-expanded={showPanel}
@@ -478,21 +527,12 @@ export function SiteSearchForm({
             <p className="px-3 py-2.5 text-sm text-muted-foreground" role="status">
               Escribe al menos {MIN_PRODUCT_SEARCH_LENGTH} caracteres para buscar.
             </p>
-          ) : isInitialSearchLoading ? (
-            <p
-              className="flex items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground"
-              role="status"
-              aria-live="polite"
-            >
-              <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden="true" />
-              Buscando…
-            </p>
-          ) : suggestions.length === 0 ? (
+          ) : showEmptyResults ? (
             <p className="px-3 py-2.5 text-sm text-muted-foreground" role="status">
-              No hay resultados para «{trimmedDeferredQuery}». Prueba con otro término o revisa la
+              No hay resultados para «{trimmedDebouncedQuery}». Prueba con otro término o revisa la
               ortografía.
             </p>
-          ) : (
+          ) : showSuggestionsList ? (
             <>
               {isSearchRefreshing ? (
                 <p
@@ -626,6 +666,19 @@ export function SiteSearchForm({
                       </li>
                     ))
                   : null}
+
+                {isProductsLoading ? (
+                  <>
+                    <li role="presentation">
+                      <SuggestionSectionHeading>Productos</SuggestionSectionHeading>
+                    </li>
+                    {[0, 1, 2].map((index) => (
+                      <li key={`product-skeleton-${index}`} role="presentation">
+                        <SearchProductSuggestionSkeleton />
+                      </li>
+                    ))}
+                  </>
+                ) : null}
               </ul>
               {canLoadMoreProducts || totalMatches > productSuggestions.length ? (
                 <div className="space-y-0.5 border-t border-border/80 bg-muted/10 px-3 py-2">
